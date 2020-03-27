@@ -1422,6 +1422,7 @@ void lua_engine::initialize()
 	machine_type.set_function("soft_reset", &running_machine::schedule_soft_reset);
 	machine_type.set_function("save", &running_machine::schedule_save); // TODO: some kind of completion notification?
 	machine_type.set_function("load", &running_machine::schedule_load); // TODO: some kind of completion notification?
+#ifndef __LIBRETRO__
 	machine_type.set_function("buffer_save",
 			[] (running_machine &m, sol::this_state s)
 			{
@@ -1464,6 +1465,7 @@ void lua_engine::initialize()
 				else
 					m.popmessage();
 			});
+	#endif
 	machine_type.set_function("logerror", [] (running_machine &m, char const *str) { m.logerror("[luaengine] %s\n", str); });
 	machine_type.set_function("side_effects_disabled", &running_machine::side_effects_disabled);
 	machine_type["time"] = sol::property(&running_machine::time);
