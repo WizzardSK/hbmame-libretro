@@ -353,7 +353,6 @@ end
 		local function writevars()
 			_p(1, "all_ldflags     = " .. all_ldflags)
 			_p(1, "libs            = " .. libs)
-			_p(1, "walibs          = " .. walibs)
 			_p(1, "all_outputfiles = " .. table.concat(objfiles, " "))
 			if #cfg.prelinkcommands > 0 then
 				_p(1, 'pre_link        = echo Running pre-link commands && ' .. table.implode(cfg.prelinkcommands, "", "", " && ") .. " && ")
