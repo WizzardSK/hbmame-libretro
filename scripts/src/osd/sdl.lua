@@ -219,8 +219,10 @@ SDLOS_TARGETOS      = "unix"
 if _OPTIONS["targetos"]=="windows" then
 	BASE_TARGETOS       = "win32"
 	SDLOS_TARGETOS      = "win32"
+	SDL_NETWORK         = "pcap"
 elseif _OPTIONS["targetos"]=="macosx" then
 	SDLOS_TARGETOS      = "macosx"
+	SDL_NETWORK         = "pcap"
 end
 
 if BASE_TARGETOS=="unix" then
