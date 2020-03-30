@@ -712,12 +712,8 @@ ifdef TARGETOS
 TARGET_PARAMS += --targetos='$(TARGETOS)'
 endif
 
-ifdef USE_TAPTUN
-PARAMS += --USE_TAPTUN='$(USE_TAPTUN)'
-endif
-
-ifdef USE_PCAP
-PARAMS += --USE_PCAP='$(USE_PCAP)'
+ifdef DONT_USE_NETWORK
+PARAMS += --DONT_USE_NETWORK='$(DONT_USE_NETWORK)'
 endif
 
 ifdef NO_OPENGL
@@ -1343,7 +1339,7 @@ macosx_x86: generate $(PROJECTDIR)/$(MAKETYPE)-osx/Makefile
 #-------------------------------------------------
 
 $(PROJECTDIR)/$(MAKETYPE)-osx-clang/Makefile: makefile $(SCRIPTS) $(GENIE)
-	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=osx-clang --gcc_version=$(CLANG_VERSION) $(MAKETYPE)
+	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=osx-clang --gcc_version=$(CLANG_VERSION) $(APPLE_EXTRA_FLAGS) $(MAKETYPE)
 
 .PHONY: macosx_x64_clang
 macosx_x64_clang: generate $(PROJECTDIR)/$(MAKETYPE)-osx-clang/Makefile
