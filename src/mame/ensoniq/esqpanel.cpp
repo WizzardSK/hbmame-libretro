@@ -437,6 +437,7 @@ esqpanel_device::esqpanel_device(const machine_config &mconfig, device_type type
 
 void esqpanel_device::device_start()
 {
+#if 0
 	m_external_panel_server = new esqpanel::external_panel_server(machine().manager().http());
 	if (machine().manager().http()->is_active())
 	{
@@ -452,6 +453,7 @@ void esqpanel_device::device_start()
 		m_external_timer = timer_alloc(FUNC(esqpanel_device::check_external_panel_server), this);
 		m_external_timer->enable(false);
 	}
+#endif
 }
 
 
