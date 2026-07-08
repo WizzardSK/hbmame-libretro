@@ -60,6 +60,9 @@
 #define end_timing(v)           do { } while (0)
 #endif
 
+#if defined(__LIBRETRO__)
+extern int thread_mode;
+#endif
 template <typename AtomType, typename MainType>
 static void spin_while(const volatile AtomType *atom, MainType val, osd_ticks_t timeout, int invert = 0)
 {
@@ -87,6 +90,12 @@ static void spin_while_not(const volatile AtomType *atom, MainType val, osd_tick
 
 int osd_get_num_processors(bool heavy_mt)
 {
+
+#if defined(__LIBRETRO__)
+	if(!thread_mode)
+	return 1;
+#endif 
+
 #if defined(SDLMAME_EMSCRIPTEN)
 	// multithreading is not supported at this time
 	return 1;
@@ -278,6 +287,11 @@ osd_work_queue *osd_work_queue_alloc(int flags)
 #if defined(SDLMAME_EMSCRIPTEN)
 	// threads are not supported at all
 	threadnum = 0;
+#endif
+
+#if defined(__LIBRETRO__)	
+	if(!thread_mode)
+		threadnum = 0;
 #endif
 
 	// clamp to the maximum

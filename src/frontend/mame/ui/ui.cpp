@@ -1720,11 +1720,13 @@ uint32_t mame_ui_manager::handler_ingame()
 	if (ui_disabled)
 		return 0;
 
+#ifndef __LIBRETRO__
 	if (inp.pressed(IPT_UI_CANCEL))
 	{
 		request_quit();
 		return 0;
 	}
+#endif
 
 	// turn on menus if requested
 	if (inp.pressed(IPT_UI_MENU))

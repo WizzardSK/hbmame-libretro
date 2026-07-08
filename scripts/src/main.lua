@@ -154,6 +154,13 @@ end
 	configuration { }
 
 	if _OPTIONS["targetos"]=="android" then
+-- RETRO HACK no sdl for libretro android
+if _OPTIONS["osd"] == "retro" then
+
+		if _OPTIONS["SEPARATE_BIN"]~="1" then
+			targetdir(MAME_DIR)
+		end
+else
 		files {
 			MAME_DIR .. "src/osd/sdl/android_main.cpp",
 		}

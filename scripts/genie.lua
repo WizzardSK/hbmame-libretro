@@ -431,6 +431,11 @@ newoption {
 	description = "Specify tvOS target when building using libretro"
 }
 
+newoption {
+	trigger = "LIBRETRO_OSX_ARM64",
+	description = "Specify cross compile OSX for arm64 target when building using libretro"
+}
+
 dofile ("extlib.lua")
 
 if _OPTIONS["SHLIB"]=="1" then
@@ -515,6 +520,16 @@ configuration { "Release", "vs20*" }
 		}
 	end
 
+-- Build SDL2 for Android
+if _OPTIONS["osd"] == "retro" then
+-- RETRO HACK no sdl for libretro android
+else
+if _OPTIONS["targetos"] == "android" then
+	_OPTIONS["with-bundled-sdl2"] = "1"
+end
+end
+-- RETRO HACK END no sdl for libretro android
+
 configuration {}
 
 msgcompile ("Compiling $(subst ../,,$<)...")
@@ -580,6 +595,12 @@ if _OPTIONS["osd"]=="retro" then
 			"__LIBRETRO__",
 			"NDEBUG",
 		}
+
+	if _OPTIONS["LIBRETRO_IOS"] == "1" or _OPTIONS["LIBRETRO_TVOS"] then
+		defines {
+			"TARGET_OS_IPHONE"
+		}
+	end
 end
 -- RETRO HACK
 
@@ -663,8 +684,8 @@ else
 	defines {
 		"LSB_FIRST",
 	}
-	-- For iOS in libretro, don't specify the arch since it's already specified in $(CC) and $(CXX)
-	if _OPTIONS["targetos"]=="macosx" and _OPTIONS["LIBRETRO_IOS"] ~= "1" and _OPTIONS["LIBRETRO_TVOS"] ~= "1" then
+	-- This really isint neeeded anymore ive updated the makefiles to test this with the hack removed, lets just get the builds working first
+	if _OPTIONS["targetos"]=="macosx"  and _OPTIONS["LIBRETRO_IOS"] ~= "1" and _OPTIONS["LIBRETRO_TVOS"] ~= "1" and _OPTIONS["LIBRETRO_OSX_ARM64"]~= "1" then
 		configuration { "arm64" }
 			buildoptions {
 				"-arch arm64",

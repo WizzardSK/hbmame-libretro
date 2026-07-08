@@ -56,6 +56,7 @@ DECLARE_ENUM_BITWISE_OPERATORS(machine_flags::type);
 
 
 constexpr u64 MACHINE_TYPE_ARCADE = machine_flags::TYPE_ARCADE; // MAMEUI Robbbert 2023-03-23
+
 /// \addtogroup machinedef
 /// \{
 /// \name System emulation status constants

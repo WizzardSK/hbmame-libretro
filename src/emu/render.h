@@ -673,7 +673,9 @@ public:
 
 	// getters
 	running_machine &machine() const { return m_machine; }
-
+#ifdef __LIBRETRO__
+	ui_event_sink &event_sink() const { return m_event_sink; }
+#endif
 	// global queries
 	bool is_live(screen_device &screen) const;
 	float max_update_rate() const;

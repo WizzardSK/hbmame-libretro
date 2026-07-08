@@ -27,6 +27,10 @@
 
 #include <algorithm>
 
+#ifdef __LIBRETRO__
+#include "libretro/osdretro.h"
+#endif
+
 //**************************************************************************
 //  DEBUGGING
 //**************************************************************************
@@ -1309,6 +1313,14 @@ void sound_manager::config_load(config_type cfg_type, config_level cfg_level, ut
 	// If no config file, ignore
 	if(!parentnode)
 		return;
+
+#ifdef __LIBRETRO__
+	// legacy master volume attenuation
+	if (util::xml::data_node const *node = parentnode->get_child("attenuation"))
+	{
+		m_master_gain = osd::db_to_linear(int(node->get_attribute_int("value", 0)));
+	}
+#endif
 
 	switch(cfg_type) {
 	case config_type::INIT:
@@ -2677,6 +2689,12 @@ void sound_manager::update(s32)
 	streams_update();
 
 	m_last_sync_time = machine().time();
+
+#ifdef __LIBRETRO__
+	/* Adjust sound timer for minimal latency and chunk size,
+	 * Runahead will break on startup if this is readjusted on change only */
+	m_update_timer->adjust(attotime::from_hz(retro_fps * retro_fps), 0, attotime::from_hz(retro_fps * retro_fps));
+#endif
 }
 
 void sound_manager::streams_update()

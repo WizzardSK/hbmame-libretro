@@ -45,6 +45,20 @@
 #include <cstdio>
 #include <iostream>
 
+#if defined(__LIBRETRO__)
+mame_machine_manager *retro_manager;
+
+void retro_execute()
+{
+	retro_manager->execute();
+}
+
+void free_man()
+{
+	util::archive_file::cache_clear();
+	delete retro_manager;
+}
+#endif
 
 //**************************************************************************
 //  CONSTANTS
@@ -214,20 +228,6 @@ cli_frontend::~cli_frontend()
 {
 }
 
-#if defined(__LIBRETRO__)
-mame_machine_manager *retro_manager;
-
-void retro_execute(){
-  	retro_manager->execute();
-}
-
-void free_man(){
-
-	util::archive_file::cache_clear();
-	global_free(retro_manager);
-}
-#endif
-
 void cli_frontend::start_execution(mame_machine_manager *manager, const std::vector<std::string> &args)
 {
 	std::ostringstream option_errors;
@@ -263,6 +263,10 @@ void cli_frontend::start_execution(mame_machine_manager *manager, const std::vec
 	if (!m_options.command().empty())
 	{
 		execute_commands(exename);
+#ifdef __LIBRETRO__
+		/* Signal 'retro_load_game' to not continue */
+		m_result = 1;
+#endif
 		return;
 	}
 
@@ -289,13 +293,6 @@ void cli_frontend::start_execution(mame_machine_manager *manager, const std::vec
 		throw emu_fatalerror(EMU_ERR_NO_SUCH_SYSTEM, "Unknown system '%s'", m_options.system_name());
 
 	// otherwise just run the game
-#if defined(__LIBRETRO__)
-      retro_manager = mame_machine_manager::instance(m_options, m_osd);
-      //retro_manager = machine_manager::instance(m_options, m_osd);
-      m_result = retro_manager->execute();
-
-      return;
-#endif
 	m_result = manager->execute();
 
 }
@@ -309,13 +306,19 @@ int cli_frontend::execute(std::vector<std::string> &args)
 {
 	// wrap the core execution in a try/catch to field all fatal errors
 	m_result = EMU_ERR_NONE;
+
+#if defined(__LIBRETRO__)
+	retro_manager = mame_machine_manager::instance(m_options, m_osd);
+#else
 	mame_machine_manager *manager = mame_machine_manager::instance(m_options, m_osd);
+#endif
 
 	try
 	{
-      		start_execution(manager, args);
 #if defined(__LIBRETRO__)
-      return m_result;
+		start_execution(retro_manager, args);
+#else
+		start_execution(manager, args);
 #endif
 	}
 	// handle exceptions of various types
@@ -376,8 +379,10 @@ int cli_frontend::execute(std::vector<std::string> &args)
 		m_result = EMU_ERR_FATALERROR;
 	}
 
+#if !defined(__LIBRETRO__)
 	util::archive_file::cache_clear();
 	delete manager;
+#endif
 
 	return m_result;
 }

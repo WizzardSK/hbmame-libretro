@@ -175,9 +175,7 @@ private:
 public:
 	render_primitive_list   *m_primlist;
 	osd_window_config       m_win_config;
-#ifndef __LIBRETRO__
 private:
-#endif
 	int                     m_index;
 protected:
 	bool                    m_fullscreen;

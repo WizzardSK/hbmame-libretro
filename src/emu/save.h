@@ -311,12 +311,6 @@ public:
 	save_error write_buffer(void *buf, size_t size);
 	save_error read_buffer(const void *buf, size_t size);
 
-#if defined(__LIBRETRO__)
-	save_error write_data(void *data, size_t size);
-	save_error read_data(void *data, size_t size);
-	s32 state_size() ;
-#endif
-
 private:
 	// state callback item
 	class state_callback

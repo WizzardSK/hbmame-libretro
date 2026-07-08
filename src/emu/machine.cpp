@@ -1419,13 +1419,12 @@ void running_machine::emscripten_load(const char *name) {
 //**************************************************************************
 
 #if defined(__LIBRETRO__)
-extern void retro_finish();
+extern int POSTNOTIFY;
 extern int RLOOP;
 extern int ENDEXEC;
-extern int retro_pause;
 
-void running_machine::retro_machineexit(){
-
+void running_machine::retro_machine_exit()
+{
 	// and out via the exit phase
 	m_current_phase = machine_phase::EXIT;
 
@@ -1433,22 +1432,30 @@ void running_machine::retro_machineexit(){
 	sound().ui_mute(true);
 	nvram_save();
 	m_configuration->save_settings();
+
 	call_notifiers(MACHINE_NOTIFY_EXIT);
-	printf("retro exit machine\n");
 	util::archive_file::cache_clear();
 
 	m_logfile.reset();
 }
 
-void running_machine::retro_loop(){
+void running_machine::retro_loop()
+{
+	// get most recent input now
+	m_manager.osd().input_update(true);
+	// perform tasks for this frame
+	// except start using this "next frame input response" pre-frame notify
+	// after allowing a few startup frames for hiscore plugin to init properly
+	if (POSTNOTIFY)
+		POSTNOTIFY--;
+	else
+		call_notifiers(MACHINE_NOTIFY_FRAME);
 
-	while (RLOOP==1) {
-
+	while (RLOOP == 1)
+	{
 		// execute CPUs if not paused
 		if (!m_paused)
-		{
 			m_scheduler.timeslice();
-		}
 		// otherwise, just pump video updates through
 		else
 			m_video->frame_update();
@@ -1456,28 +1463,13 @@ void running_machine::retro_loop(){
 		// handle save/load
 		if (m_saveload_schedule != saveload_schedule::NONE)
 			handle_saveload();
-
 	}
 
-	if( (m_hard_reset_pending || m_exit_pending) && m_saveload_schedule == saveload_schedule::NONE){
+	if ((m_hard_reset_pending || m_exit_pending) && m_saveload_schedule == saveload_schedule::NONE)
+	{
+		retro_machine_exit();
 
-	 	// and out via the exit phase
-		m_current_phase = machine_phase::EXIT;
-
-		// save the NVRAM and configuration
-		sound().ui_mute(true);
-		nvram_save();
-		m_configuration->save_settings();
-
-		// call all exit callbacks registered
-		call_notifiers(MACHINE_NOTIFY_EXIT);
-
-		util::archive_file::cache_clear();
-
-		m_logfile.reset();
-
-		ENDEXEC=1;
+		ENDEXEC = 1;
 	}
-
 }
 #endif
