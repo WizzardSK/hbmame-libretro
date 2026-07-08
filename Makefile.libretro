@@ -1,3 +1,4 @@
+
 VERBOSE ?= 1
 NOWERROR ?= 1
 CONFIG ?= libretro
@@ -9,7 +10,7 @@ TARGET ?= hbmame
 # TARGETOS ?= linux
 PYTHON_EXECUTABLE ?= python3
 REGENIE ?= 1
-GITHUB_REPO ?= https://github.com/libretro/hbmame/
+GITHUB_REPO ?= https://github.com/libretro/hbmame-libretro/
 DEBUG ?= 0
 
 #see https://github.com/libretro/mame/blob/093209930f5fbdaee0d6f3a3666f3d70025d089f/3rdparty/genie/build/gmake.darwin/genie.make#L55C2-L55C47
@@ -114,11 +115,6 @@ ifneq ($(findstring win,$(platform)),)
 		PLATFLAGS += MINGW32=$(MINGW32)
 		LIBRETRO_CPU = x86
 		PTR64=0
-	else
-		# MSYSTEM not set, default to 64-bit
-		MINGW64 ?= /mingw64
-		PLATFLAGS += MINGW64=$(MINGW64)
-		LIBRETRO_CPU = x86_64
 	endif
 	CC  ?= cc
 	CXX ?= cxx
@@ -128,76 +124,52 @@ ifneq ($(findstring win,$(platform)),)
 	ifneq ($(LLD),)
 		BUILDFLAGS += LDOPTS=-fuse-ld=lld
 	endif
-	WINDRES := $(shell command -v windres 2>/dev/null || command -v x86_64-w64-mingw32-windres 2>/dev/null)
 	ifneq ($(WINDRES),)
 		PLATFLAGS += WINDRES=$(WINDRES)
 	endif
 endif
-
-# fix for older style variables used by hbmame
-ifneq ($(ANDROID_NDK_HOME),)
-	ifeq ($(UNAME_S),Darwin)
-		ifeq ($(UNAME_M),arm64)
-			ANDROID_NDK_HOST_TAG := darwin-arm64
-		else
-			ANDROID_NDK_HOST_TAG := darwin-x86_64
-		endif
-	else ifneq ($(findstring MINGW,$(UNAME_S)),)
-		ANDROID_NDK_HOST_TAG := windows-x86_64
-	else ifneq ($(findstring MSYS,$(UNAME_S)),)
-		ANDROID_NDK_HOST_TAG := windows-x86_64
-	else ifeq ($(UNAME_S),)
-		# UNAME_S empty means Windows (no uname available)
-		ANDROID_NDK_HOST_TAG := windows-x86_64
-	else
-		ANDROID_NDK_HOST_TAG := linux-x86_64
-	endif
-endif
-
-ifneq ($(ANDROID_NDK_HOME),)
-ANDROID_NDK_TOOLCHAIN := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(ANDROID_NDK_HOST_TAG)
-	export ANDROID_NDK_ROOT  := $(ANDROID_NDK_HOME)
-	export ANDROID_NDK_LLVM  := $(ANDROID_NDK_TOOLCHAIN)
-	export ANDROID_NDK_ARM   := $(ANDROID_NDK_TOOLCHAIN)
-	export ANDROID_NDK_ARM64 := $(ANDROID_NDK_TOOLCHAIN)
-	export ANDROID_NDK_X86   := $(ANDROID_NDK_TOOLCHAIN)
-	export ANDROID_NDK_X64   := $(ANDROID_NDK_TOOLCHAIN)
-	export ANDROID_NDK_CLANG := $(ANDROID_NDK_TOOLCHAIN)/bin/clang
-endif
-
 # android only needs a valid ANDROID_NDK_HOME set no paths are needed toolchain and makefile takes care of that
 # make CONFIG=libretero OSD=retro android-xxx is all thes required
 
-ifneq (,$(findstring android,$(platform)))
-	#buildbot fix
+ifeq ($(platform),android-arm)
+#buildbot fix
 	ifneq ($(ANDROID_NDK_ROOT),)
-		ANDROID_NDK_HOME=$(ANDROID_NDK_ROOT)
+	ANDROID_NDK_HOME=$(ANDROID_NDK_ROOT)
 	endif
 	export ANDROID_NDK_HOME ?= /opt/ndk
-
-	# because of pthread_cond_clockwait
-	PLATFLAGS += WITH_ANDROID=30
-endif
-
-ifeq ($(platform),android-arm)
 	PLATFLAGS += TARGETOS=android-arm gcc=android-arm PLATFORM=arm
 	LIBRETRO_CPU :=
 	LIBRETRO_OS :=
 	PTR64 :=
 endif
 ifeq ($(platform),android-arm64)
+#buildbot fix
+	ifneq ($(ANDROID_NDK_ROOT),)
+	ANDROID_NDK_HOME=$(ANDROID_NDK_ROOT)
+	endif
+	export ANDROID_NDK_HOME ?= /opt/ndk
 	PLATFLAGS += TARGETOS=android-arm64 gcc=android-arm64 PLATFORM=arm64
 	LIBRETRO_CPU :=
 	LIBRETRO_OS :=
 	PTR64 :=
 endif
 ifeq ($(platform),android-x86)
+#buildbot fix
+	ifneq ($(ANDROID_NDK_ROOT),)
+	ANDROID_NDK_HOME=$(ANDROID_NDK_ROOT)
+	endif
+	export ANDROID_NDK_HOME ?= /opt/ndk
 	PLATFLAGS += TARGETOS=android-x86 gcc=android-x86 PLATFORM=x86
 	LIBRETRO_CPU :=
 	LIBRETRO_OS :=
 	PTR64 :=
 endif
 ifeq ($(platform),android-x86_64)
+#buildbot fix
+	ifneq ($(ANDROID_NDK_ROOT),)
+	ANDROID_NDK_HOME=$(ANDROID_NDK_ROOT)
+	endif
+	export ANDROID_NDK_HOME ?= /opt/ndk
 	PLATFLAGS += TARGETOS=android-x64 gcc=android-x64 PLATFORM=x64
 	LIBRETRO_CPU :=
 	LIBRETRO_OS :=
@@ -205,12 +177,12 @@ ifeq ($(platform),android-x86_64)
 endif
 
 ifneq ($(ANDROID_NDK_HOME),)
-    OK := $(shell if [ -d $(ANDROID_NDK_HOME) ]; then echo "ok"; fi)
-    ifeq ($(OK),)
-        $(error  path $(ANDROID_NDK_HOME) does not exist! please set ANDROID_NDK_HOME!)
-    else
-        $(info  ANDROID_NDK_HOME path is a valid directory $(ANDROID_NDK_HOME))
-    endif
+OK := $(shell if [ -d $(ANDROID_NDK_HOME) ]; then echo "ok"; fi)
+ifeq ($(OK),)
+$(error  path $(ANDROID_NDK_HOME) does not exist! please set ANDROID_NDK_HOME!)
+else
+$(info  ANDROID_NDK_HOME path is a valid directory $(ANDROID_NDK_HOME))
+endif
 endif
 
 ifeq ($(platform),linux32)
@@ -307,7 +279,6 @@ endif
 ifneq (,$(or $(findstring webos,$(CROSS_COMPILE)),$(findstring starfish,$(CROSS_COMPILE))))
 	LIBRETRO_CPU :=
 	PLATFLAGS += NOASM=1
-	PLATFLAGS += PLATFORM=arm
 	PLATFLAGS += ARCHITECTURE=
 	PLATFLAGS += USE_QTDEBUG=0
 	ifneq (,$(findstring aarch64,$(CROSS_COMPILE)))
@@ -315,9 +286,9 @@ ifneq (,$(or $(findstring webos,$(CROSS_COMPILE)),$(findstring starfish,$(CROSS_
 		PLATFLAGS += PLATFORM=arm64
 		TOOLCHAIN_PREFIX = aarch64-webos-linux-gnu-
 	else
+		FORCE_DRC_C_BACKEND := 1
 		PTR64 := 0
 		PLATFLAGS += PLATFORM=arm
-		FORCE_DRC_C_BACKEND := 1
 		ifneq (,$(findstring starfish,$(CROSS_COMPILE)))
 			TOOLCHAIN_PREFIX = arm-starfishmllib32-linux-gnueabi-
 		else
@@ -327,7 +298,6 @@ ifneq (,$(or $(findstring webos,$(CROSS_COMPILE)),$(findstring starfish,$(CROSS_
 	PLATFLAGS += OVERRIDE_CC=$(TOOLCHAIN_PREFIX)gcc OVERRIDE_CXX=$(TOOLCHAIN_PREFIX)g++
 	PLATFLAGS += OVERRIDE_LD=$(TOOLCHAIN_PREFIX)ld OVERRIDE_AR=$(TOOLCHAIN_PREFIX)ar
 	PLATFLAGS += CROSS_BUILD=1
-	PLATFLAGS += NO_X11=1
 	BUILDFLAGS += LDOPTS=-fuse-ld=gold
 	BUILDFLAGS += LDOPTS+=-Wl,--long-plt
     BUILDFLAGS += OPTIMIZE=s
