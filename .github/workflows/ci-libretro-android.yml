@@ -1,0 +1,42 @@
+name: Build Libretro Android (ARM64)
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk wget unzip cmake ninja-build
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+
+      - uses: actions/checkout@v6
+
+      - name: Build
+        shell: bash
+        run: |
+          export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
+
+          export ANDROID_NDK_LLVM="$TOOLCHAIN"
+          export ANDROID_NDK_ARM64="$TOOLCHAIN/bin/aarch64-linux-android24"
+
+          echo "NDK=$ANDROID_NDK_HOME"
+          echo "LLVM=$ANDROID_NDK_LLVM"
+          echo "ARM64=$ANDROID_NDK_ARM64"
+
+          make -f Makefile.libretro \
+            platform=android-arm64 \
+            OVERRIDE_CC="$TOOLCHAIN/bin/aarch64-linux-android24-clang" \
+            OVERRIDE_CXX="$TOOLCHAIN/bin/aarch64-linux-android24-clang++" \
+            OVERRIDE_AR="$TOOLCHAIN/bin/llvm-ar" \
+            CROSS_BUILD=1 \
+            -j$(nproc)
