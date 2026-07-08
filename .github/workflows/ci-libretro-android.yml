@@ -17,7 +17,7 @@ jobs:
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r26d
+          ndk-version: r29
 
       - uses: actions/checkout@v6
 
@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
-
+          export API=30
           export ANDROID_NDK_LLVM="$TOOLCHAIN"
           export ANDROID_NDK_ARM64="$TOOLCHAIN/bin/aarch64-linux-android24"
 
@@ -35,8 +35,9 @@ jobs:
 
           make -f Makefile.libretro \
             platform=android-arm64 \
-            OVERRIDE_CC="$TOOLCHAIN/bin/aarch64-linux-android24-clang" \
-            OVERRIDE_CXX="$TOOLCHAIN/bin/aarch64-linux-android24-clang++" \
+            OVERRIDE_CC="$TOOLCHAIN/bin/aarch64-linux-android${API}-clang" \
+            OVERRIDE_CXX="$TOOLCHAIN/bin/aarch64-linux-android${API}-clang++" \
             OVERRIDE_AR="$TOOLCHAIN/bin/llvm-ar" \
+            WITH_ANDROID="30" \
             CROSS_BUILD=1 \
             -j$(nproc)
