@@ -24,8 +24,8 @@
 
 ***************************************************************************/
 
-#ifndef MAME_DEVICES_MACHINE_UPD7004_H
-#define MAME_DEVICES_MACHINE_UPD7004_H
+#ifndef MAME_MACHINE_UPD7004_H
+#define MAME_MACHINE_UPD7004_H
 
 #pragma once
 
@@ -44,12 +44,13 @@ public:
 	auto eoc_ff_callback() { return m_eoc_ff_cb.bind(); }
 	template <int N> auto in_callback() { return m_in_cb[N].bind(); }
 
-	DECLARE_READ8_MEMBER(read);
-	DECLARE_WRITE8_MEMBER(write);
+	uint8_t read(offs_t offset);
+	void write(offs_t offset, uint8_t data);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+	virtual void device_start() override ATTR_COLD;
+
+	TIMER_CALLBACK_MEMBER(update_state);
 
 private:
 	// callbacks
@@ -77,4 +78,4 @@ private:
 // device type definition
 DECLARE_DEVICE_TYPE(UPD7004, upd7004_device)
 
-#endif // MAME_DEVICES_MACHINE_UPD7004_H
+#endif // MAME_MACHINE_UPD7004_H

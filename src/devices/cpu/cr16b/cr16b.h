@@ -26,8 +26,8 @@ protected:
 	cr16b_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, address_map_constructor map);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual void execute_run() override;
@@ -42,8 +42,8 @@ protected:
 private:
 	// address space
 	address_space_config m_space_config;
-	address_space *m_space;
-	memory_access_cache<1, 0, ENDIANNESS_LITTLE> *m_cache;
+	memory_access<21, 1, 0, ENDIANNESS_LITTLE>::cache m_cache;
+	memory_access<21, 1, 0, ENDIANNESS_LITTLE>::specific m_space;
 
 	// internal state
 	u16 m_regs[16];

@@ -46,8 +46,8 @@ DEFINE_DEVICE_TYPE(F38T56, f38t56_device, "f38t56_psu", "Fairchild F38T56 PSU")
 f3853_device::f3853_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock) :
 	device_t(mconfig, type, tag, owner, clock),
 	m_int_req_callback(*this),
-	m_pri_out_callback(*this),
-	m_int_daisy_chain_callback(*this),
+	m_pri_out_callback(*this), // TODO: not implemented
+	m_int_daisy_chain_callback(*this, 0),
 	m_int_vector(0),
 	m_prescaler(31),
 	m_priority_line(false),
@@ -60,7 +60,7 @@ f3853_device::f3853_device(const machine_config &mconfig, const char *tag, devic
 
 f3851_device::f3851_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock) :
 	f3853_device(mconfig, type, tag, owner, clock),
-	m_read_port(*this),
+	m_read_port(*this, 0),
 	m_write_port(*this)
 { }
 
@@ -86,22 +86,6 @@ f38t56_device::f38t56_device(const machine_config &mconfig, const char *tag, dev
 //  initialisation
 //-------------------------------------------------
 
-void f3853_device::device_resolve_objects()
-{
-	m_int_req_callback.resolve_safe();
-	m_pri_out_callback.resolve_safe(); // TODO: not implemented
-	m_int_daisy_chain_callback.resolve();
-}
-
-void f3851_device::device_resolve_objects()
-{
-	f3853_device::device_resolve_objects();
-
-	// 2 I/O ports
-	m_read_port.resolve_all_safe(0);
-	m_write_port.resolve_all_safe();
-}
-
 void f3853_device::device_start()
 {
 	// lookup table for 3851/3853 lfsr timer
@@ -113,7 +97,7 @@ void f3853_device::device_start()
 		reg = reg << 1 | (BIT(reg,7) ^ BIT(reg,5) ^ BIT(reg,4) ^ BIT(reg,3) ^ 1);
 	}
 
-	m_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(f3853_device::timer_callback),this));
+	m_timer = timer_alloc(FUNC(f3853_device::timer_callback), this);
 
 	// zerofill (what's not in constructor)
 	m_external_int_enable = false;
@@ -149,7 +133,7 @@ void f3853_device::device_reset()
 
 	// clear ports at power-on
 	for (int i = 0; i < 4; i++)
-		write(machine().dummy_space(), i, 0);
+		write(i, 0);
 }
 
 
@@ -162,7 +146,7 @@ void f3853_device::set_interrupt_request_line()
 	m_int_req_callback(m_request_flipflop && !m_priority_line ? ASSERT_LINE : CLEAR_LINE);
 }
 
-IRQ_CALLBACK_MEMBER(f3853_device::int_acknowledge)
+u16 f3853_device::int_acknowledge()
 {
 	if (m_external_int_enable && !m_priority_line && m_request_flipflop)
 	{
@@ -176,8 +160,8 @@ IRQ_CALLBACK_MEMBER(f3853_device::int_acknowledge)
 		set_interrupt_request_line();
 		return timer_interrupt_vector();
 	}
-	else if (!m_int_daisy_chain_callback.isnull())
-		return m_int_daisy_chain_callback(device, irqline);
+	else if (!m_int_daisy_chain_callback.isunset())
+		return m_int_daisy_chain_callback();
 	else
 	{
 		// should never happen
@@ -207,7 +191,7 @@ TIMER_CALLBACK_MEMBER(f3853_device::timer_callback)
 }
 
 
-WRITE_LINE_MEMBER(f3853_device::ext_int_w)
+void f3853_device::ext_int_w(int state)
 {
 	if (!m_external_interrupt_line && state && m_external_int_enable)
 	{
@@ -217,14 +201,14 @@ WRITE_LINE_MEMBER(f3853_device::ext_int_w)
 	set_interrupt_request_line();
 }
 
-WRITE_LINE_MEMBER(f3853_device::pri_in_w)
+void f3853_device::pri_in_w(int state)
 {
 	m_priority_line = bool(state);
 	set_interrupt_request_line();
 }
 
 
-READ8_MEMBER(f3853_device::read)
+uint8_t f3853_device::read(offs_t offset)
 {
 	switch (offset & 3)
 	{
@@ -240,7 +224,7 @@ READ8_MEMBER(f3853_device::read)
 	}
 }
 
-WRITE8_MEMBER(f3853_device::write)
+void f3853_device::write(offs_t offset, uint8_t data)
 {
 	switch (offset & 3)
 	{
@@ -273,7 +257,7 @@ WRITE8_MEMBER(f3853_device::write)
 //  f3851_device-specific handlers
 //-------------------------------------------------
 
-READ8_MEMBER(f3851_device::read)
+uint8_t f3851_device::read(offs_t offset)
 {
 	switch (offset & 3)
 	{
@@ -287,7 +271,7 @@ READ8_MEMBER(f3851_device::read)
 	}
 }
 
-WRITE8_MEMBER(f3851_device::write)
+void f3851_device::write(offs_t offset, uint8_t data)
 {
 	switch (offset & 3)
 	{
@@ -298,7 +282,7 @@ WRITE8_MEMBER(f3851_device::write)
 
 	// interrupt control, timer: same as 3853
 	case 2: case 3:
-		f3853_device::write(space, offset, data);
+		f3853_device::write(offset, data);
 		break;
 	}
 }
@@ -331,7 +315,7 @@ TIMER_CALLBACK_MEMBER(f3856_device::timer_callback)
 	timer_start(m_timer_count);
 }
 
-READ8_MEMBER(f3856_device::read)
+uint8_t f3856_device::read(offs_t offset)
 {
 	switch (offset & 3)
 	{
@@ -341,17 +325,17 @@ READ8_MEMBER(f3856_device::read)
 
 	// other: same as 3851
 	default:
-		return f3851_device::read(space, offset);
+		return f3851_device::read(offset);
 	}
 }
 
-WRITE8_MEMBER(f3856_device::write)
+void f3856_device::write(offs_t offset, uint8_t data)
 {
 	switch (offset & 3)
 	{
 	// I/O ports: same as 3851
 	case 0: case 1:
-		f3851_device::write(space, offset, data);
+		f3851_device::write(offset, data);
 		break;
 
 	// interrupt/timer control
@@ -376,7 +360,7 @@ WRITE8_MEMBER(f3856_device::write)
 
 	// set timer
 	case 3:
-		f3853_device::write(space, offset, data);
+		f3853_device::write(offset, data);
 		break;
 	}
 }
@@ -386,7 +370,7 @@ WRITE8_MEMBER(f3856_device::write)
 //  f38t56_device-specific handlers
 //-------------------------------------------------
 
-READ8_MEMBER(f38t56_device::read)
+uint8_t f38t56_device::read(offs_t offset)
 {
 	switch (offset & 3)
 	{
@@ -396,17 +380,17 @@ READ8_MEMBER(f38t56_device::read)
 
 	// other: same as 3856
 	default:
-		return f3856_device::read(space, offset);
+		return f3856_device::read(offset);
 	}
 }
 
-WRITE8_MEMBER(f38t56_device::write)
+void f38t56_device::write(offs_t offset, uint8_t data)
 {
 	switch (offset & 3)
 	{
 	// I/O ports: same as 3851
 	case 0: case 1:
-		f3851_device::write(space, offset, data);
+		f3851_device::write(offset, data);
 		break;
 
 	// interrupt/timer control
@@ -434,7 +418,7 @@ WRITE8_MEMBER(f38t56_device::write)
 	// set timer
 	case 3:
 		m_timer_modulo = data;
-		f3853_device::write(space, offset, data);
+		f3853_device::write(offset, data);
 		break;
 	}
 }

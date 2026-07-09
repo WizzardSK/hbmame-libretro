@@ -25,7 +25,7 @@ public:
 	void common_write_3853(uint32_t offset, uint8_t data);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom) override;
+	virtual uint8_t read_rom(offs_t offset) override;
 
 protected:
 	chanf_rom_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
@@ -45,12 +45,12 @@ public:
 	chanf_maze_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_ram) override { return common_read_2102(offset); }
-	virtual DECLARE_WRITE8_MEMBER(write_ram) override { common_write_2102(offset, data); }
+	virtual uint8_t read_ram(offs_t offset) override { return common_read_2102(offset); }
+	virtual void write_ram(offs_t offset, uint8_t data) override { common_write_2102(offset, data); }
 };
 
 
@@ -63,12 +63,12 @@ public:
 	chanf_hangman_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_ram) override { return common_read_2102(offset); }
-	virtual DECLARE_WRITE8_MEMBER(write_ram) override { common_write_2102(offset, data); }
+	virtual uint8_t read_ram(offs_t offset) override { return common_read_2102(offset); }
+	virtual void write_ram(offs_t offset, uint8_t data) override { common_write_2102(offset, data); }
 };
 
 
@@ -81,8 +81,8 @@ public:
 	chanf_chess_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_ram) override { return common_read_3853(offset); }
-	virtual DECLARE_WRITE8_MEMBER(write_ram) override { common_write_3853(offset, data); }
+	virtual uint8_t read_ram(offs_t offset) override { return common_read_3853(offset); }
+	virtual void write_ram(offs_t offset, uint8_t data) override { common_write_3853(offset, data); }
 };
 
 
@@ -95,14 +95,14 @@ public:
 	chanf_multi_old_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom) override;
-	virtual DECLARE_READ8_MEMBER(read_ram) override { return common_read_3853(offset); }
-	virtual DECLARE_WRITE8_MEMBER(write_ram) override { common_write_3853(offset, data); }
-	virtual DECLARE_WRITE8_MEMBER(write_bank) override;
+	virtual uint8_t read_rom(offs_t offset) override;
+	virtual uint8_t read_ram(offs_t offset) override { return common_read_3853(offset); }
+	virtual void write_ram(offs_t offset, uint8_t data) override { common_write_3853(offset, data); }
+	virtual void write_bank(uint8_t data) override;
 
 private:
 	int m_base_bank;
@@ -118,14 +118,14 @@ public:
 	chanf_multi_final_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom) override;
-	virtual DECLARE_READ8_MEMBER(read_ram) override { return common_read_3853(offset); }
-	virtual DECLARE_WRITE8_MEMBER(write_ram) override { common_write_3853(offset, data); }
-	virtual DECLARE_WRITE8_MEMBER(write_bank) override;
+	virtual uint8_t read_rom(offs_t offset) override;
+	virtual uint8_t read_ram(offs_t offset) override { return common_read_3853(offset); }
+	virtual void write_ram(offs_t offset, uint8_t data) override { common_write_3853(offset, data); }
+	virtual void write_bank(uint8_t data) override;
 
 private:
 	int m_base_bank, m_half_bank;

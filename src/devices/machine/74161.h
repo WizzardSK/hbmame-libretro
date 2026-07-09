@@ -68,27 +68,30 @@ public:
 	auto tc_cb() { return m_tc_func.bind(); }
 
 	// public interfaces
-	DECLARE_WRITE_LINE_MEMBER( clear_w );
-	DECLARE_WRITE_LINE_MEMBER( pe_w );
-	DECLARE_WRITE_LINE_MEMBER( cet_w );
-	DECLARE_WRITE_LINE_MEMBER( cep_w );
-	DECLARE_WRITE_LINE_MEMBER( clock_w );
-	DECLARE_WRITE8_MEMBER( p_w );
-	DECLARE_WRITE_LINE_MEMBER( p1_w );
-	DECLARE_WRITE_LINE_MEMBER( p2_w );
-	DECLARE_WRITE_LINE_MEMBER( p3_w );
-	DECLARE_WRITE_LINE_MEMBER( p4_w );
+	void clear_w(int state);
+	void pe_w(int state);
+	void cet_w(int state);
+	void cep_w(int state);
+	void clock_w(int state);
+	void p_w(uint8_t data);
+	void p1_w(int state);
+	void p2_w(int state);
+	void p3_w(int state);
+	void p4_w(int state);
 
-	DECLARE_READ_LINE_MEMBER( output_r );
-	DECLARE_READ_LINE_MEMBER( tc_r );
+	int output_r();
+	int tc_r();
+
+	void set_cet_pin_value(int value) { m_cetpre = value; }
+	void set_cep_pin_value(int value) { m_ceppre = value; }
 
 protected:
 	// construction/destruction
 	ttl7416x_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, bool synchronous_reset, uint8_t limit);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	void init();
@@ -111,9 +114,12 @@ private:
 	uint8_t m_pclock;   // pin 2
 	uint8_t m_p;        // pins 3-6 from LSB to MSB
 
+	// Preset inputs
+	uint8_t m_cetpre;
+	uint8_t m_ceppre;
+
 	// outputs
 	uint8_t m_out;      // pins 14-11 from LSB to MSB
-	uint8_t m_tc;       // pin 15
 
 	const bool      m_synchronous_reset;
 	const uint8_t   m_limit;

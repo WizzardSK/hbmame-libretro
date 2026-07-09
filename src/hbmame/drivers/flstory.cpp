@@ -1,31 +1,25 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
-#include "../mame/drivers/flstory.cpp"
+#include "../mame/taito/flstory.cpp"
 
-// PSmame (c) gaston90 used with permission
-
- /****************************************************
-         Proyecto Shadows Mame Build Plus
-*****************************************************/
-
- /*******************
- The FairyLand Story   
+/*******************
+ The FairyLand Story
 **********************/
 
-ROM_START( flstoryjs01 )
+ROM_START( flstory01 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cpu-a45_ps01.15",   0x0000, 0x4000, CRC(1be138fa) SHA1(eaf3b2810d7f4a95930024ec440bf2ba59230e2d) )
 	ROM_LOAD( "cpu-a45_ps01.16",   0x4000, 0x4000, CRC(74b3f227) SHA1(f8ba5c5db92cda691febecdf62b148157adf744a) )
 	ROM_LOAD( "cpu-a45_ps01.17",   0x8000, 0x4000, CRC(1309b079) SHA1(0b82af55273aba6433a789b1d6cfbda650ab85c9) )
 
-	ROM_REGION( 0x10000, "audiocpu", 0 ) 
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "a45_12.8",     0x0000, 0x2000, CRC(d6f593fb) SHA1(8551ef22c2cdd9df8d7949a178883f56ea56a4a2) )
 	ROM_LOAD( "a45_13.9",     0x2000, 0x2000, CRC(451f92f9) SHA1(f4196e6d3420983b74001303936d086a48b10827) )
 
-	ROM_REGION( 0x0800, "bmcu:mcu", 0 ) 
+	ROM_REGION( 0x0800, "bmcu:mcu", 0 )
 	ROM_LOAD( "a45-20.mcu",   0x0000, 0x0800, CRC(7d2cdd9b) SHA1(b9a7b4c7d9d58b4b7cab1304beaa9d17f9559419) )
 
-	ROM_REGION( 0x20000, "gfx1", ROMREGION_INVERT )
+	ROM_REGION( 0x20000, "tiles", ROMREGION_INVERT )
 	ROM_LOAD( "vid-a45.18",   0x00000, 0x4000, CRC(6f08f69e) SHA1(8f1b7e63a38f855cf26d57aed678da7cf1378fdf) )
 	ROM_LOAD( "vid-a45_ps01.06",   0x04000, 0x4000, CRC(04be939f) SHA1(eee61a1de548a9b9d368b689426f564d7d6680f4) )
 	ROM_LOAD( "vid-a45.08",   0x08000, 0x4000, CRC(d0b028ca) SHA1(c8bd9136ad3180002961ecfe600fc91a3c891539) )
@@ -38,4 +32,5 @@ ROM_END
 
 /*    YEAR  NAME           PARENT    MACHINE     INPUT     INIT            MONITOR COMPANY         FULLNAME FLAGS */
 // The FairyLand Story
-GAME( 1985, flstoryjs01,  flstory,  flstory,      flstory,  flstory_state, empty_init, ROT180, "hack", "The FairyLand Story (Translation Chinese)", MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE )
+GAME( 1985, flstory01,  flstory,  flstory,      flstory,  flstory_mcu_state, empty_init, ROT180, "hack", "The FairyLand Story (Chinese)", MACHINE_SUPPORTS_SAVE )
+

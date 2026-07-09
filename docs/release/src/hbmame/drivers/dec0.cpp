@@ -1,4 +1,4 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/dec0.cpp"
 
@@ -13,7 +13,7 @@ ROM_START( baddudef )
 	ROM_LOAD( "ei07.8a",   0x8000, 0x8000, CRC(9fb1ef4b) SHA1(f4dd0773be93c2ad8b0faacd12939c531b5aa130) )
 
 	ROM_REGION( 0x10000, "gfx1", 0 )
-	ROM_LOAD( "ei25.15j",  0x00000, 0x08000, CRC(bcf59a69) SHA1(486727e19c12ea55b47e2ef773d0d0471cf50083) )
+	ROM_LOAD( "ei25.15h",  0x00000, 0x08000, CRC(bcf59a69) SHA1(486727e19c12ea55b47e2ef773d0d0471cf50083) )
 	ROM_LOAD( "baddudef.26",  0x08000, 0x08000, CRC(bb8d93d0) SHA1(64a462c86cf270b3aa3e359b0f423a816e9dafb6) )
 
 	ROM_REGION( 0x40000, "gfx2", 0 )
@@ -23,7 +23,7 @@ ROM_START( baddudef )
 	ROM_LOAD( "ei24.17f",  0x30000, 0x10000, CRC(6f226dda) SHA1(65ebb16a292c57d49c135fce7ed7537146226eb5) )
 
 	ROM_REGION( 0x20000, "gfx3", 0 )
-	ROM_LOAD( "ei30.9j",   0x08000, 0x08000, CRC(982da0d1) SHA1(d819a587905624d793988f2ea726783da527d9f2) )
+	ROM_LOAD( "ei30.9h",   0x08000, 0x08000, CRC(982da0d1) SHA1(d819a587905624d793988f2ea726783da527d9f2) )
 	ROM_CONTINUE(          0x00000, 0x08000 )
 	ROM_LOAD( "ei28.9f",   0x18000, 0x08000, CRC(f01ebb3b) SHA1(1686690cb0c87d9e687b2abb4896cf285ab8378f) )
 	ROM_CONTINUE(          0x10000, 0x08000 )
@@ -55,12 +55,12 @@ ROM_START( decodemo )
 	ROM_LOAD16_BYTE( "decodemo.3",   0x40001, 0x10000, CRC(d7978eeb) SHA1(1adc95bebe9eea8c112d40cd04ab7a8d75c4f961) )
 
 	// The instruction [33C0 0030 C003] [move.w D0, $30C003.l] is considered illegal, we need to patch out all 3 occurrences
-	//ROM_FILL( 0x04ba, 1, 0x4e )
-	//ROM_FILL( 0x04bb, 1, 0x71 ) /* write a nop instruction [4e71] */
-	//ROM_COPY( "maincpu", 0x04ba, 0x04bc, 2 ) /* The faulty instruction is 6 bytes long, so we need 3 nops */
-	//ROM_COPY( "maincpu", 0x04ba, 0x04be, 2 )
-	//ROM_COPY( "maincpu", 0x04ba, 0x04e8, 6 ) /* copy the 3 nops to 0x4e8 */
-	//ROM_COPY( "maincpu", 0x04ba, 0x096e, 6 ) /* and 0x96e */
+	ROM_FILL( 0x04ba, 1, 0x4e )
+	ROM_FILL( 0x04bb, 1, 0x71 ) /* write a nop instruction [4e71] */
+	ROM_COPY( "maincpu", 0x04ba, 0x04bc, 2 ) /* The faulty instruction is 6 bytes long, so we need 3 nops */
+	ROM_COPY( "maincpu", 0x04ba, 0x04be, 2 )
+	ROM_COPY( "maincpu", 0x04ba, 0x04e8, 6 ) /* copy the 3 nops to 0x4e8 */
+	ROM_COPY( "maincpu", 0x04ba, 0x096e, 6 ) /* and 0x96e */
 
 	// pf_control_0 was not being set. This sends 3 to 240000, and 0 to the rest.
 	ROM_FILL(0x1000, 0x80, 0)
@@ -126,27 +126,17 @@ ROM_START( decodemo )
 	ROM_LOAD( "ei31.9a",   0x0000, 0x1000, CRC(2a8745d2) SHA1(f15ab17b1e7836d603135f5c66ca2e3d72f6e4a2) )
 ROM_END
 
-GAME( 2007, baddudef, baddudes, baddudes, baddudes, dec0_state, init_hbarrel, ROT0, "Arkatrad", "Bad Dudes vs. Dragonninja (Translation French 2017-10-29)", MACHINE_SUPPORTS_SAVE )
-GAME( 1996, decodemo, baddudes, baddudes, baddudes, dec0_state, init_hbarrel, ROT0, "Charles Doty", "Demo - Data East", MACHINE_SUPPORTS_SAVE )
-
-
-
-//PSmame (c) gaston90 used with permission
-
- /********************************************
-     Proyecto Shadows Mame Build Plus
-**********************************************/
 
 /********
  Robocop
 *********/
 
-ROM_START( robocopbs01 )
+ROM_START( robocopb01 )
 	ROM_REGION( 0x60000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "robop_05.rom", 0x00000, 0x10000, CRC(bcef3e9b) SHA1(0ca099ea7428f877036e6e2a6daddfd9145ed9bb) )
 	ROM_LOAD16_BYTE( "robop_01.rom", 0x00001, 0x10000, CRC(c9803685) SHA1(13b3b0ebee24b4453685616e9a204b4ca6fb0053) )
 	ROM_LOAD16_BYTE( "robop_04.rom", 0x20000, 0x10000, CRC(9d7b79e0) SHA1(e0d901b9b3cd62f7c947da04f7447ebfa88bf44a) )
-	ROM_LOAD16_BYTE( "robop_00_ps01.rom", 0x20001, 0x10000, CRC(631301c1) SHA1(c4288e6be0ca6e5ae4c93dca2fe5816522b9c309) )
+	ROM_LOAD16_BYTE( "robop_00_s01.rom", 0x20001, 0x10000, CRC(631301c1) SHA1(c4288e6be0ca6e5ae4c93dca2fe5816522b9c309) )
 
 	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "ep03-3", 0x08000, 0x08000, CRC(5b164b24) SHA1(b217a2ac8b26aebd208631a13030487ed27d232e) )
@@ -181,7 +171,10 @@ ROM_START( robocopbs01 )
 	ROM_LOAD( "ep02", 0x00000, 0x10000, CRC(711ce46f) SHA1(939a8545e53776ff2180d2c7e63bc997689c088e) )
 ROM_END
 
-/*    YEAR  NAME            PARENT    MACHINE        INPUT       INIT             MONITOR COMPANY                 FULLNAME FLAGS */
+/*    YEAR  NAME          PARENT    MACHINE   INPUT     CLASS       INIT         MONITOR COMPANY                 FULLNAME FLAGS */
+GAME( 2007, baddudef,     baddudes, baddudes, baddudes, dec0_state, init_hbarrel, ROT0, "Arkatrad", "Bad Dudes vs. Dragonninja (French, 2017-10-29)", MACHINE_SUPPORTS_SAVE )
+GAME( 1996, decodemo,     baddudes, baddudes, baddudes, dec0_state, init_hbarrel, ROT0, "Charles Doty", "Demo - Data East", MACHINE_SUPPORTS_SAVE )
+
 // Robocop
-GAME( 1988, robocopbs01,   robocop,  robocopb,   robocop,    dec0_state, empty_init,      ROT0, "bootleg", "Robocop (Red Corporation World bootleg)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, robocopb01,   robocop,  robocopb, robocop,  dec0_state, empty_init,   ROT0, "bootleg", "Robocop (Red Corporation World bootleg)", MACHINE_SUPPORTS_SAVE )
 

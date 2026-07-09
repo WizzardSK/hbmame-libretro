@@ -129,7 +129,6 @@ void smioc_device::smioc_mem(address_map &map)
 static DEVICE_INPUT_DEFAULTS_START(terminal)
 	DEVICE_INPUT_DEFAULTS("RS232_TXBAUD", 0xff, RS232_BAUD_9600)
 	DEVICE_INPUT_DEFAULTS("RS232_RXBAUD", 0xff, RS232_BAUD_9600)
-	DEVICE_INPUT_DEFAULTS("RS232_STARTBITS", 0xff, RS232_STARTBITS_1)
 	DEVICE_INPUT_DEFAULTS("RS232_DATABITS", 0xff, RS232_DATABITS_7)
 	DEVICE_INPUT_DEFAULTS("RS232_PARITY", 0xff, RS232_PARITY_EVEN)
 	DEVICE_INPUT_DEFAULTS("RS232_STOPBITS", 0xff, RS232_STOPBITS_1)
@@ -202,11 +201,9 @@ smioc_device::smioc_device(const machine_config &mconfig, const char *tag, devic
 	m_smioc_ram(*this, "smioc_ram"),
 	m_dma_timer(nullptr),
 	m_451_timer(nullptr),
-	m_m68k_r_cb(*this),
+	m_m68k_r_cb(*this, 0),
 	m_m68k_w_cb(*this)
 {
-
-
 }
 
 //-------------------------------------------------
@@ -215,12 +212,8 @@ smioc_device::smioc_device(const machine_config &mconfig, const char *tag, devic
 
 void smioc_device::device_start()
 {
-	m_dma_timer = timer_alloc(0, nullptr);
-	m_451_timer = timer_alloc(1, nullptr);
-
-	/* Resolve callbacks */
-	m_m68k_r_cb.resolve_safe(0);
-	m_m68k_w_cb.resolve_safe();
+	m_dma_timer = timer_alloc(FUNC(smioc_device::raise_drq), this);
+	m_451_timer = timer_alloc(FUNC(smioc_device::raise_int1), this);
 
 	m_451_timer->adjust(attotime::from_msec(200), 0, attotime::from_msec(200));
 }
@@ -246,20 +239,17 @@ void smioc_device::SoftReset()
 	m_deviceBusy = 1;
 }
 
-
-void smioc_device::device_timer(emu_timer &timer, device_timer_id tid, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(smioc_device::raise_drq)
 {
-	switch (tid)
-	{
-	case 0: // DMA Timer
-		m_smioccpu->drq0_w(1);
-		break;
+	// DMA Timer
+	m_smioccpu->drq0_w(1);
+}
 
-	case 1: // 451 emulation timer - Trigger the SMIOC to read from C0180 and store data
-		m_smioccpu->int1_w(CLEAR_LINE);
-		m_smioccpu->int1_w(HOLD_LINE);
-		break;
-	}
+TIMER_CALLBACK_MEMBER(smioc_device::raise_int1)
+{
+	// 451 emulation timer - Trigger the SMIOC to read from C0180 and store data
+	m_smioccpu->int1_w(CLEAR_LINE);
+	m_smioccpu->int1_w(HOLD_LINE);
 }
 
 void smioc_device::SendCommand(u16 command)
@@ -365,14 +355,8 @@ void smioc_device::SetDmaParameter(smioc_dma_parameter_t param, u16 value)
 {
 	int address = DmaParameterAddress(param);
 
-	static char const *const paramNames[] = { "smiocdma_sendaddress", "smiocdma_sendlength", "smiocdma_recvaddress", "smiocdma_recvlength" };
-	const char* paramName = "?";
-	if (param >= 0 && param < (sizeof(paramNames) / sizeof(*paramNames)))
-	{
-		paramName = paramNames[param];
-	}
-
-	WriteRamParameter("SetDmaParameter", paramName, address, value);
+	static char const *const paramNames[4] = { "smiocdma_sendaddress", "smiocdma_sendlength", "smiocdma_recvaddress", "smiocdma_recvlength" };
+	WriteRamParameter("SetDmaParameter", paramNames[param & 3], address, value);
 }
 
 u16 smioc_device::ReadDmaParameter(smioc_dma_parameter_t param)
@@ -439,7 +423,7 @@ void smioc_device::update_and_log(u16& reg, u16 newValue, const char* register_n
 	reg = newValue;
 }
 
-READ8_MEMBER(smioc_device::ram2_mmio_r)
+u8 smioc_device::ram2_mmio_r(offs_t offset)
 {
 	const char *description = "";
 	u8 data = m_logic_ram[offset & 0xFFF];
@@ -497,7 +481,7 @@ READ8_MEMBER(smioc_device::ram2_mmio_r)
 	return data;
 }
 
-WRITE8_MEMBER(smioc_device::ram2_mmio_w)
+void smioc_device::ram2_mmio_w(offs_t offset, u8 data)
 {
 	const char *description = "";
 
@@ -557,7 +541,7 @@ WRITE8_MEMBER(smioc_device::ram2_mmio_w)
 	LOG_PARAMETER_RAM("ram2[%04X] <= %02X %s\n", offset, data, description);
 }
 
-READ8_MEMBER(smioc_device::dma68k_r)
+u8 smioc_device::dma68k_r(offs_t offset)
 {
 	u8 data = 0;
 
@@ -575,7 +559,7 @@ READ8_MEMBER(smioc_device::dma68k_r)
 	return data;
 }
 
-WRITE8_MEMBER(smioc_device::dma68k_w)
+void smioc_device::dma68k_w(offs_t offset, u8 data)
 {
 
 	m_dma_timer->adjust(attotime::from_usec(10));
@@ -585,7 +569,7 @@ WRITE8_MEMBER(smioc_device::dma68k_w)
 	LOG_REGISTER_ACCESS("%s dma68k[%04X] <= %02X\n", machine().time().as_string(), offset, data);
 }
 
-READ8_MEMBER(smioc_device::boardlogic_mmio_r)
+u8 smioc_device::boardlogic_mmio_r(offs_t offset)
 {
 	u8 data = 0xFF;
 	switch (offset)
@@ -619,7 +603,7 @@ READ8_MEMBER(smioc_device::boardlogic_mmio_r)
 	return data;
 }
 
-WRITE8_MEMBER(smioc_device::boardlogic_mmio_w)
+void smioc_device::boardlogic_mmio_w(offs_t offset, u8 data)
 {
 	switch (offset)
 	{
@@ -695,16 +679,16 @@ void smioc_device::AdvanceStatus2()
 }
 
 
-READ8_MEMBER(smioc_device::dma8237_2_dmaread)
+u8 smioc_device::dma8237_2_dmaread(offs_t offset)
 {
 	int data = m_smioccpu->space(AS_PROGRAM).read_byte(offset);
 	LOG_REGISTER_ACCESS("dma2read [0x%x] => 0x%x\n", offset, data);
-	m_scc2698b->write_reg(0x03, data);
+	m_scc2698b->write(0x03, data);
 	return data;
 }
-WRITE8_MEMBER(smioc_device::dma8237_2_dmawrite)
+void smioc_device::dma8237_2_dmawrite(offs_t offset, u8 data)
 {
-	data = m_scc2698b->read_reg(0x03);
+	data = m_scc2698b->read(0x03);
 	LOG_REGISTER_ACCESS("dma2write [0x%x] <= 0x%x\n", offset, data);
 	m_smioccpu->space(AS_PROGRAM).write_byte(offset, data);
 }

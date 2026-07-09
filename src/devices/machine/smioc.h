@@ -38,23 +38,23 @@ class smioc_device : public device_t
 {
 public:
 	/* Constructor and Destructor */
-	smioc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	smioc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	auto m68k_r_callback() { return m_m68k_r_cb.bind(); }
 	auto m68k_w_callback() { return m_m68k_w_cb.bind(); }
 
 
-	DECLARE_READ8_MEMBER(ram2_mmio_r);
-	DECLARE_WRITE8_MEMBER(ram2_mmio_w);
+	u8 ram2_mmio_r(offs_t offset);
+	void ram2_mmio_w(offs_t offset, u8 data);
 
-	DECLARE_READ8_MEMBER(dma68k_r);
-	DECLARE_WRITE8_MEMBER(dma68k_w);
+	u8 dma68k_r(offs_t offset);
+	void dma68k_w(offs_t offset, u8 data);
 
-	DECLARE_READ8_MEMBER(dma8237_2_dmaread);
-	DECLARE_WRITE8_MEMBER(dma8237_2_dmawrite);
+	u8 dma8237_2_dmaread(offs_t offset);
+	void dma8237_2_dmawrite(offs_t offset, u8 data);
 
-	DECLARE_READ8_MEMBER(boardlogic_mmio_r);
-	DECLARE_WRITE8_MEMBER(boardlogic_mmio_w);
+	u8 boardlogic_mmio_r(offs_t offset);
+	void boardlogic_mmio_w(offs_t offset, u8 data);
 
 
 	int m_activePortIndex;
@@ -103,12 +103,14 @@ public:
 
 protected:
 	/* Device-level overrides */
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	/* Optional information overrides */
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+
+	TIMER_CALLBACK_MEMBER(raise_drq);
+	TIMER_CALLBACK_MEMBER(raise_int1);
 
 	u16 ReadDmaParameter(smioc_dma_parameter_t param);
 	int DmaParameterAddress(smioc_dma_parameter_t param);
@@ -127,7 +129,7 @@ private:
 
 	u8 m_logic_ram[4096]; // 4kb of ram in the 0x4xxxx window, mainly used by the board's logic to proxy command parameters and data.
 
-	void smioc_mem(address_map &map);
+	void smioc_mem(address_map &map) ATTR_COLD;
 
 	void update_and_log(u16& reg, u16 newValue, const char* register_name);
 

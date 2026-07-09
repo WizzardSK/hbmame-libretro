@@ -3,6 +3,7 @@
 /***************************************************************************
 
     cubeqcpu.h
+
     Interface file for the Cube Quest CPUs
     Written by Phil Bennett
 
@@ -56,13 +57,12 @@ protected:
 	};
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual u32 execute_min_cycles() const noexcept override { return 1; }
 	virtual u32 execute_max_cycles() const noexcept override { return 1; }
-	virtual u32 execute_input_lines() const noexcept override { return 0; }
 	virtual void execute_run() override;
 
 	// device_memory_interface overrides
@@ -99,8 +99,9 @@ private:
 	const char *m_sound_region_tag;
 	u16 *m_sound_data;
 
-	address_space *m_program;
-	memory_access_cache<3, -3, ENDIANNESS_BIG> *m_cache;
+	memory_access<9, 3, -3, ENDIANNESS_BIG>::cache m_cache;
+	memory_access<9, 3, -3, ENDIANNESS_BIG>::specific m_program;
+
 	int m_icount;
 
 	bool do_sndjmp(u8 jmp);
@@ -154,13 +155,12 @@ protected:
 	};
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual u32 execute_min_cycles() const noexcept override { return 1; }
 	virtual u32 execute_max_cycles() const noexcept override { return 1; }
-	virtual u32 execute_input_lines() const noexcept override { return 0; }
 	virtual void execute_run() override;
 
 	// device_memory_interface overrides
@@ -208,8 +208,8 @@ private:
 	u8 m_rc;
 	u8 m_clkcnt;
 
-	address_space *m_program;
-	memory_access_cache<3, -3, ENDIANNESS_BIG> *m_cache;
+	memory_access<9, 3, -3, ENDIANNESS_BIG>::cache m_cache;
+	memory_access<9, 3, -3, ENDIANNESS_BIG>::specific m_program;
 	int m_icount;
 
 	// For the debugger
@@ -266,13 +266,12 @@ protected:
 	};
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual u32 execute_min_cycles() const noexcept override { return 1; }
 	virtual u32 execute_max_cycles() const noexcept override { return 1; }
-	virtual u32 execute_input_lines() const noexcept override { return 0; }
 	virtual void execute_run() override;
 
 	// device_memory_interface overrides
@@ -325,8 +324,8 @@ private:
 	u32  m_e_stack[32768];   /* Stack DRAM: 32kx20 */
 	u32  m_o_stack[32768];   /* Stack DRAM: 32kx20 */
 
-	address_space *m_program;
-	memory_access_cache<3, -3, ENDIANNESS_BIG> *m_cache;
+	memory_access<9, 3, -3, ENDIANNESS_BIG>::cache m_cache;
+	memory_access<9, 3, -3, ENDIANNESS_BIG>::specific m_program;
 	int m_icount;
 
 	// For the debugger

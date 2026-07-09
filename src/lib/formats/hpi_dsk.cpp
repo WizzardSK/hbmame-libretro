@@ -45,12 +45,17 @@
 
 *********************************************************************/
 
-#include "emu.h"
 #include "hpi_dsk.h"
+
+#include "coretmpl.h" // BIT
+#include "ioprocs.h"
+
+#include "osdcore.h" // osd_printf_*
+
 
 // Debugging
 #define VERBOSE 0
-#define LOG(...)  do { if (VERBOSE) printf(__VA_ARGS__); } while (false)
+#define LOG(...)  do { if (VERBOSE) osd_printf_info(__VA_ARGS__); } while (false)
 
 constexpr unsigned IL_OFFSET    = 0x12; // Position of interleave factor in HPI image (2 bytes, big-endian)
 constexpr unsigned DEFAULT_IL   = 7;    // Default interleaving factor
@@ -63,22 +68,18 @@ constexpr uint32_t DATA_CD_PATTERN = 0x55552a44;    // C/D pattern of 0xff + DAT
 constexpr unsigned GAP1_SIZE    = 17;   // Size of gap 1 (+1)
 constexpr unsigned GAP2_SIZE    = 35;   // Size of gap 2 (+1)
 constexpr int ID_DATA_OFFSET = 30 * 16; // Nominal distance (in cells) between ID & DATA AM
-// Size of image file (holding 77 cylinders)
-constexpr unsigned HPI_IMAGE_SIZE = HPI_TRACKS * HPI_HEADS * HPI_SECTORS * HPI_SECTOR_SIZE;
 constexpr unsigned HPI_RED_TRACKS = 75; // Reduced number of tracks
-constexpr unsigned HPI_9885_TRACKS = 67;    // Tracks visible to HP9885 drives
-// Size of reduced image file (holding 75 cylinders)
-constexpr unsigned HPI_RED_IMAGE_SIZE = HPI_RED_TRACKS * HPI_HEADS * HPI_SECTORS * HPI_SECTOR_SIZE;
 
 hpi_format::hpi_format()
 {
-	(void)HPI_IMAGE_SIZE;
-	(void)HPI_RED_IMAGE_SIZE;
 }
 
-int hpi_format::identify(io_generic *io, uint32_t form_factor)
+int hpi_format::identify(util::random_read &io, uint32_t form_factor, const std::vector<uint32_t> &variants) const
 {
-	uint64_t size = io_generic_size(io);
+	uint64_t size;
+	if (io.length(size)) {
+		return 0;
+	}
 
 	// we try to stay back and give only 50 points, since another image
 	// format may also have images of the same size (there is no header and no
@@ -87,7 +88,7 @@ int hpi_format::identify(io_generic *io, uint32_t form_factor)
 	unsigned dummy_tracks;
 	if (((form_factor == floppy_image::FF_8) || (form_factor == floppy_image::FF_UNKNOWN)) &&
 		geometry_from_size(size , dummy_heads , dummy_tracks)) {
-		return 50;
+		return FIFID_SIZE;
 	} else {
 		return 0;
 	}
@@ -140,26 +141,31 @@ bool hpi_format::geometry_from_size(uint64_t image_size , unsigned& heads , unsi
 	}
 }
 
-bool hpi_format::load(io_generic *io, uint32_t form_factor, floppy_image *image)
+bool hpi_format::load(util::random_read &io, uint32_t form_factor, const std::vector<uint32_t> &variants, floppy_image &image) const
 {
 	unsigned heads;
 	unsigned cylinders;
 
-	uint64_t size = io_generic_size(io);
+	uint64_t size;
+	if (io.length(size)) {
+		return false;
+	}
 	if (!geometry_from_size(size, heads, cylinders)) {
 		return false;
 	}
 	int max_tracks;
 	int max_heads;
-	image->get_maximal_geometry(max_tracks , max_heads);
+	image.get_maximal_geometry(max_tracks , max_heads);
 	if (cylinders > max_tracks || heads > max_heads) {
 		return false;
 	}
-	image->set_variant(heads == 2 ? floppy_image::DSDD : floppy_image::SSDD);
+	image.set_variant(heads == 2 ? floppy_image::DSDD : floppy_image::SSDD);
 
 	// Suck in the whole image
-	std::vector<uint8_t> image_data(size);
-	io_generic_read(io, (void *)image_data.data(), 0, size);
+	auto const [err, image_data, actual] = read_at(io, 0, size);
+	if (err || (actual != size)) {
+		return false;
+	}
 
 	// Get interleave factor from image
 	unsigned il = (unsigned)image_data[ IL_OFFSET ] * 256 + image_data[ IL_OFFSET + 1 ];
@@ -189,24 +195,22 @@ bool hpi_format::load(io_generic *io, uint32_t form_factor, floppy_image *image)
 	return true;
 }
 
-bool hpi_format::save(io_generic *io, floppy_image *image)
+bool hpi_format::save(util::random_read_write &io, const std::vector<uint32_t> &variants, const floppy_image &image) const
 {
 	int tracks;
 	int heads;
-	image->get_actual_geometry(tracks, heads);
+	image.get_actual_geometry(tracks, heads);
 
 	for (int cyl = 0; cyl < tracks; cyl++) {
 		for (int head = 0; head < heads; head++) {
-			uint8_t bitstream[ 21000 ];
-			int bitstream_size;
-			generate_bitstream_from_track(cyl , head , CELL_SIZE , bitstream , bitstream_size , image , 0);
+			auto bitstream = generate_bitstream_from_track(cyl , head , CELL_SIZE , image , 0);
 			int pos = 0;
 			unsigned track_no , head_no , sector_no;
 			uint8_t sector_data[ HPI_SECTOR_SIZE ];
-			while (get_next_sector(bitstream , bitstream_size , pos , track_no , head_no , sector_no , sector_data)) {
+			while (get_next_sector(bitstream , pos , track_no , head_no , sector_no , sector_data)) {
 				if (track_no == cyl && head_no == head && sector_no < HPI_SECTORS) {
 					unsigned offset_in_image = chs_to_lba(cyl, head, sector_no, heads) * HPI_SECTOR_SIZE;
-					io_generic_write(io, sector_data, offset_in_image, HPI_SECTOR_SIZE);
+					/*auto const [err, actual] =*/ write_at(io, offset_in_image, sector_data, HPI_SECTOR_SIZE); // FIXME: check for errors
 				}
 			}
 		}
@@ -214,22 +218,22 @@ bool hpi_format::save(io_generic *io, floppy_image *image)
 	return true;
 }
 
-const char *hpi_format::name() const
+const char *hpi_format::name() const noexcept
 {
 	return "hpi";
 }
 
-const char *hpi_format::description() const
+const char *hpi_format::description() const noexcept
 {
 	return "HP9895A floppy disk image";
 }
 
-const char *hpi_format::extensions() const
+const char *hpi_format::extensions() const noexcept
 {
 	return "hpi";
 }
 
-bool hpi_format::supports_save() const
+bool hpi_format::supports_save() const noexcept
 {
 	return true;
 }
@@ -260,7 +264,7 @@ void hpi_format::write_mmfm_bit(std::vector<uint32_t> &buffer , bool data_bit , 
 void hpi_format::write_mmfm_byte(std::vector<uint32_t> &buffer , uint8_t data , uint8_t clock)
 {
 	for (unsigned i = 0; i < 8; i++) {
-		write_mmfm_bit(buffer , BIT(data , i) , BIT(clock , i));
+		write_mmfm_bit(buffer , util::BIT(data , i) , util::BIT(clock , i));
 	}
 }
 
@@ -281,7 +285,7 @@ void hpi_format::write_crc(std::vector<uint32_t> &buffer , uint16_t crc)
 {
 	// Note that CRC is stored with MSB (x^15) first
 	for (unsigned i = 0; i < 16; i++) {
-		write_mmfm_bit(buffer , BIT(crc , 15 - i) , 0);
+		write_mmfm_bit(buffer , util::BIT(crc , 15 - i) , 0);
 	}
 }
 
@@ -365,17 +369,16 @@ unsigned hpi_format::chs_to_lba(unsigned cylinder , unsigned head , unsigned sec
 	return sector + (head + cylinder * heads) * HPI_SECTORS;
 }
 
-std::vector<uint8_t> hpi_format::get_next_id_n_block(const uint8_t *bitstream , int bitstream_size , int& pos , int& start_pos)
+std::vector<uint8_t> hpi_format::get_next_id_n_block(const std::vector<bool> &bitstream , int& pos , int& start_pos)
 {
 	std::vector<uint8_t> res;
 	uint32_t sr = 0;
 	// Look for either sync + ID AM or sync + DATA AM
-	while (pos < bitstream_size && sr != ID_CD_PATTERN && sr != DATA_CD_PATTERN) {
-		bool bit = BIT(bitstream[ pos >> 3 ] , 7 - (pos & 7));
+	while (pos < bitstream.size() && sr != ID_CD_PATTERN && sr != DATA_CD_PATTERN) {
+		sr = (sr << 1) | bitstream[pos];
 		pos++;
-		sr = (sr << 1) | bit;
 	}
-	if (pos == bitstream_size) {
+	if (pos == bitstream.size()) {
 		// End of track reached
 		return res;
 	}
@@ -392,11 +395,11 @@ std::vector<uint8_t> hpi_format::get_next_id_n_block(const uint8_t *bitstream , 
 	}
 	// Align to data cells
 	pos++;
-	for (unsigned i = 0; i < to_dump && pos < bitstream_size; i++) {
+	for (unsigned i = 0; i < to_dump && pos < bitstream.size(); i++) {
 		uint8_t byte = 0;
 		unsigned j;
-		for (j = 0; j < 8 && pos < bitstream_size; j++) {
-			bool bit = BIT(bitstream[ pos >> 3 ] , 7 - (pos & 7));
+		for (j = 0; j < 8 && pos < bitstream.size(); j++) {
+			bool bit = bitstream[pos];
 			pos += 2;
 			byte >>= 1;
 			if (bit) {
@@ -410,7 +413,7 @@ std::vector<uint8_t> hpi_format::get_next_id_n_block(const uint8_t *bitstream , 
 	return res;
 }
 
-bool hpi_format::get_next_sector(const uint8_t *bitstream , int bitstream_size , int& pos , unsigned& track , unsigned& head , unsigned& sector , uint8_t *sector_data)
+bool hpi_format::get_next_sector(const std::vector<bool> &bitstream , int& pos , unsigned& track , unsigned& head , unsigned& sector , uint8_t *sector_data)
 {
 	std::vector<uint8_t> block;
 	while (true) {
@@ -418,7 +421,7 @@ bool hpi_format::get_next_sector(const uint8_t *bitstream , int bitstream_size ,
 		int id_pos = 0;
 		while (true) {
 			if (block.size() == 0) {
-				block = get_next_id_n_block(bitstream , bitstream_size , pos , id_pos);
+				block = get_next_id_n_block(bitstream , pos , id_pos);
 				if (block.size() == 0) {
 					return false;
 				}
@@ -434,7 +437,7 @@ bool hpi_format::get_next_sector(const uint8_t *bitstream , int bitstream_size ,
 		}
 		// Then for DATA block
 		int data_pos = 0;
-		block = get_next_id_n_block(bitstream , bitstream_size , pos , data_pos);
+		block = get_next_id_n_block(bitstream , pos , data_pos);
 		if (block.size() == 0) {
 			return false;
 		}
@@ -487,4 +490,4 @@ const uint8_t hpi_format::m_track_skew[ HPI_SECTORS - 1 ][ HPI_HEADS ] = {
 	{ 0x00 , 0x00 }     // Interleave = 29
 };
 
-const floppy_format_type FLOPPY_HPI_FORMAT = &floppy_image_format_creator<hpi_format>;
+const hpi_format FLOPPY_HPI_FORMAT;

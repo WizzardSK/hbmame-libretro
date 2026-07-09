@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -35,12 +35,11 @@ static int DoExchangeItem(HWND hFrom, HWND hTo, int nMinItem)
 	lvi.iSubItem   = 0;
 	lvi.mask       = LVIF_PARAM | LVIF_TEXT;
 	lvi.pszText    = buf;
-	lvi.cchTextMax = ARRAY_LENGTH(buf);
+	lvi.cchTextMax = std::size(buf);
 	if (ListView_GetItem(hFrom, &lvi))
 	{
 		// Add this item to the Show and delete it from Available
-		BOOL b_res = ListView_DeleteItem(hFrom, lvi.iItem);
-		b_res++;
+		(void)ListView_DeleteItem(hFrom, lvi.iItem);
 		lvi.iItem = ListView_GetItemCount(hTo);
 		(void)ListView_InsertItem(hTo, &lvi);
 		ListView_SetItemState(hTo, lvi.iItem, LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
@@ -68,12 +67,11 @@ static void DoMoveItem( HWND hWnd, BOOL bDown)
 	lvi.iSubItem   = 0;
 	lvi.mask       = LVIF_PARAM | LVIF_TEXT;
 	lvi.pszText    = buf;
-	lvi.cchTextMax = ARRAY_LENGTH(buf);
+	lvi.cchTextMax = std::size(buf);
 	if (ListView_GetItem(hWnd, &lvi))
 	{
 		// Add this item to the Show and delete it from Available
-		BOOL b_res = ListView_DeleteItem(hWnd, lvi.iItem);
-		b_res++;
+		(void)ListView_DeleteItem(hWnd, lvi.iItem);
 		lvi.iItem += (bDown) ? 1 : -1;
 		(void)ListView_InsertItem(hWnd,&lvi);
 		ListView_SetItemState(hWnd, lvi.iItem, LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
@@ -373,8 +371,7 @@ INT_PTR InternalColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 						lvi.mask     = LVIF_PARAM;
 						lvi.pszText  = 0;
 						lvi.iItem    = i;
-						BOOL b_res = ListView_GetItem(hShown, &lvi);
-						b_res++;
+						(void)ListView_GetItem(hShown, &lvi);
 						order[nCount++]   = lvi.lParam;
 						shown[lvi.lParam] = TRUE;
 					}
@@ -384,8 +381,7 @@ INT_PTR InternalColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 						lvi.mask     = LVIF_PARAM;
 						lvi.pszText  = 0;
 						lvi.iItem    = i;
-						BOOL b_res = ListView_GetItem(hAvailable, &lvi);
-						b_res++;
+						(void)ListView_GetItem(hAvailable, &lvi);
 						order[nCount++]   = lvi.lParam;
 						shown[lvi.lParam] = FALSE;
 					}

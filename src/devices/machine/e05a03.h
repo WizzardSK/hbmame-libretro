@@ -1,4 +1,4 @@
-// license:GPL-2.0+
+// license:BSD-3-Clause
 // copyright-holders:Dirk Best
 /***************************************************************************
 
@@ -18,7 +18,7 @@
 class e05a03_device : public device_t
 {
 public:
-	e05a03_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	e05a03_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	auto nlq_lp_wr_callback() { return m_write_nlq_lp.bind(); }
 	auto pe_lp_wr_callback() { return m_write_pe_lp.bind(); }
@@ -26,20 +26,20 @@ public:
 	auto pe_wr_callback() { return m_write_pe.bind(); }
 	auto data_rd_callback() { return m_read_data.bind(); }
 
-	DECLARE_WRITE8_MEMBER( write );
-	DECLARE_READ8_MEMBER( read );
+	void write(offs_t offset, uint8_t data);
+	uint8_t read(offs_t offset);
 
-	WRITE_LINE_MEMBER( home_w ); /* home position signal */
-	WRITE_LINE_MEMBER( fire_w ); /* printhead solenoids trigger */
-	WRITE_LINE_MEMBER( strobe_w );
-	READ_LINE_MEMBER( busy_r );
-	WRITE_LINE_MEMBER( resi_w ); /* reset input */
-	WRITE_LINE_MEMBER( init_w ); /* centronics init */
+	void home_w(int state); /* home position signal */
+	void fire_w(int state); /* printhead solenoids trigger */
+	void strobe_w(int state);
+	int busy_r();
+	void resi_w(int state); /* reset input */
+	void init_w(int state); /* centronics init */
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	// internal state

@@ -24,54 +24,54 @@ public:
 	vrc5074_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	required_device<ns16550_device> m_uart;
 
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 	virtual void reset_all_mappings() override;
 	virtual void map_extra(uint64_t memory_window_start, uint64_t memory_window_end, uint64_t memory_offset, address_space *memory_space,
 						   uint64_t io_window_start, uint64_t io_window_end, uint64_t io_offset, address_space *io_space) override;
 	virtual void device_post_load() override;
 
 	template <typename T> void set_cpu_tag(T &&tag) { m_cpu.set_tag(std::forward<T>(tag)); }
-	void set_sdram_size(int index, int size) { m_sdram_size[index] = size; };
+	void set_sdram_size(int index, int size) { m_sdram_size[index] = size; }
 
 	void set_map(int id, const address_map_constructor &map, device_t *device);
 
-	virtual void config_map(address_map &map) override;
-	DECLARE_READ32_MEMBER(sdram_addr_r);
-	DECLARE_WRITE32_MEMBER(sdram_addr_w);
+	virtual void config_map(address_map &map) override ATTR_COLD;
+	uint32_t sdram_addr_r();
+	void sdram_addr_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
 	// PCI interrupts
-	DECLARE_WRITE_LINE_MEMBER(pci_intr_a);
-	DECLARE_WRITE_LINE_MEMBER(pci_intr_b);
-	DECLARE_WRITE_LINE_MEMBER(pci_intr_c);
-	DECLARE_WRITE_LINE_MEMBER(pci_intr_d);
-	DECLARE_WRITE_LINE_MEMBER(pci_intr_e);
+	void pci_intr_a(int state);
+	void pci_intr_b(int state);
+	void pci_intr_c(int state);
+	void pci_intr_d(int state);
+	void pci_intr_e(int state);
 	void update_pci_irq(const int index, const int state);
 
 	//cpu bus registers
-	DECLARE_READ32_MEMBER (cpu_reg_r);
-	DECLARE_WRITE32_MEMBER(cpu_reg_w);
-	DECLARE_READ32_MEMBER(serial_r);
-	DECLARE_WRITE32_MEMBER(serial_w);
+	uint32_t cpu_reg_r(offs_t offset);
+	void cpu_reg_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
+	uint32_t serial_r(offs_t offset);
+	void serial_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 	void update_nile_irqs();
 
-	DECLARE_READ32_MEMBER (pci0_r);
-	DECLARE_WRITE32_MEMBER(pci0_w);
+	uint32_t pci0_r(offs_t offset, uint32_t mem_mask = ~0);
+	void pci0_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	DECLARE_READ32_MEMBER (pci1_r);
-	DECLARE_WRITE32_MEMBER(pci1_w);
+	uint32_t pci1_r(offs_t offset, uint32_t mem_mask = ~0);
+	void pci1_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	virtual void target1_map(address_map &map);
-	DECLARE_READ32_MEMBER (target1_r);
-	DECLARE_WRITE32_MEMBER(target1_w);
+	virtual void target1_map(address_map &map) ATTR_COLD;
+	uint32_t target1_r(offs_t offset, uint32_t mem_mask = ~0);
+	void target1_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
 	// Serial port
-	DECLARE_WRITE_LINE_MEMBER(uart_irq_callback);
+	void uart_irq_callback(int state);
 
 protected:
 	address_space *m_cpu_space;
 	virtual space_config_vector memory_space_config() const override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	enum
@@ -85,8 +85,8 @@ private:
 
 	address_space_config m_mem_config, m_io_config;
 
-	void cpu_map(address_map &map);
-	void serial_map(address_map &map);
+	void cpu_map(address_map &map) ATTR_COLD;
+	void serial_map(address_map &map) ATTR_COLD;
 
 	void map_cpu_space();
 

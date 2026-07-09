@@ -17,13 +17,6 @@
 
 
 //**************************************************************************
-//  CONSTANTS
-//**************************************************************************
-
-#define PET_EXPANSION_SLOT_TAG     "exp"
-
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -39,10 +32,7 @@ public:
 	pet_expansion_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&opts, const char *dflt)
 		: pet_expansion_slot_device(mconfig, tag, owner, clock)
 	{
-		option_reset();
-		opts(*this);
-		set_default_option(dflt);
-		set_fixed(false);
+		set_options(std::forward<T>(opts), dflt, false);
 	}
 
 	pet_expansion_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
@@ -55,8 +45,8 @@ public:
 	int norom_r(offs_t offset, int sel);
 	uint8_t read(offs_t offset, uint8_t data, int &sel);
 	void write(offs_t offset, uint8_t data, int &sel);
-	DECLARE_READ_LINE_MEMBER( diag_r );
-	DECLARE_WRITE_LINE_MEMBER( irq_w );
+	int diag_r();
+	void irq_w(int state);
 
 	// cartridge interface
 	uint8_t dma_bd_r(offs_t offset);
@@ -85,8 +75,8 @@ public:
 	};
 
 protected:
-	// device-level overrides
-	virtual void device_start() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
 
 	device_pet_expansion_card_interface *m_card;
 
@@ -110,8 +100,8 @@ protected:
 
 	// runtime
 	virtual int pet_norom_r(offs_t offset, int sel) { return 1; }
-	virtual uint8_t pet_bd_r(offs_t offset, uint8_t data, int &sel) { return data; };
-	virtual void pet_bd_w(offs_t offset, uint8_t data, int &sel) { };
+	virtual uint8_t pet_bd_r(offs_t offset, uint8_t data, int &sel) { return data; }
+	virtual void pet_bd_w(offs_t offset, uint8_t data, int &sel) { }
 	virtual int pet_diag_r() { return 1; }
 	virtual void pet_irq_w(int state) { }
 
@@ -119,7 +109,7 @@ protected:
 };
 
 
-// device type definition
+// device type declaration
 DECLARE_DEVICE_TYPE(PET_EXPANSION_SLOT, pet_expansion_slot_device)
 
 

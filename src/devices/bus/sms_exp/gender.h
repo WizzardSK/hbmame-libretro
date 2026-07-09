@@ -31,18 +31,18 @@ public:
 	sms_gender_adapter_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device_sms_expansion_slot_interface overrides
-	virtual DECLARE_READ8_MEMBER(read) override;
-	virtual DECLARE_WRITE8_MEMBER(write) override;
-	virtual DECLARE_WRITE8_MEMBER(write_mapper) override;
-	virtual DECLARE_READ8_MEMBER(read_ram) override;
-	virtual DECLARE_WRITE8_MEMBER(write_ram) override;
+	virtual uint8_t read(offs_t offset) override;
+	virtual void write(offs_t offset, uint8_t data) override;
+	virtual void write_mapper(offs_t offset, uint8_t data) override;
+	virtual uint8_t read_ram(offs_t offset) override;
+	virtual void write_ram(offs_t offset, uint8_t data) override;
 
 	virtual int get_lphaser_xoffs() override;
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	required_device<sega8_cart_slot_device> m_subslot;

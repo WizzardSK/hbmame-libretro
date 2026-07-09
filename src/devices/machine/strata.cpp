@@ -23,6 +23,8 @@
 #include "emu.h"
 #include "strata.h"
 
+#include "endianness.h"
+
 
 #define FEEPROM_SIZE        0x800000    // 64Mbit
 #define BLOCK_SIZE          0x020000
@@ -66,9 +68,11 @@ void strataflash_device::nvram_default()
 //  .nv file
 //-------------------------------------------------
 
-void strataflash_device::nvram_read(emu_file &file)
+bool strataflash_device::nvram_read(util::read_stream &file)
 {
-	file.read(m_flashmemory.get(), COMPLETE_SIZE);
+	auto const [err, actual] = read(file, m_flashmemory.get(), COMPLETE_SIZE);
+	if (err || (COMPLETE_SIZE != actual))
+		return false;
 
 	// TODO
 
@@ -111,6 +115,8 @@ void strataflash_device::nvram_read(emu_file &file)
 
 	return 0;
 	*/
+
+	return true;
 }
 
 //-------------------------------------------------
@@ -118,7 +124,7 @@ void strataflash_device::nvram_read(emu_file &file)
 //  .nv file
 //-------------------------------------------------
 
-void strataflash_device::nvram_write(emu_file &file)
+bool strataflash_device::nvram_write(util::write_stream &file)
 {
 	// TODO
 
@@ -172,7 +178,8 @@ void strataflash_device::nvram_write(emu_file &file)
 	return 0;
 	*/
 
-	file.write(m_flashmemory.get(), COMPLETE_SIZE);
+	auto const [err, actual] = write(file, m_flashmemory.get(), COMPLETE_SIZE);
+	return !err;
 }
 
 //-------------------------------------------------
@@ -500,6 +507,7 @@ void strataflash_device::write8_16(offs_t offset, uint16_t data, bus_width_t bus
 		else
 			m_wrbuf_base = offset;
 		memset(m_wrbuf, 0xff, m_wrbuf_len); /* right??? */
+		[[fallthrough]];
 	case FM_WRBUFPART3:
 		if ((offset < m_wrbuf_base) || (offset >= (m_wrbuf_base + m_wrbuf_len)))
 			m_status |= 0x30;

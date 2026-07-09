@@ -22,57 +22,59 @@ function maintargetosdoptions(_target,_subtarget)
 
 	configuration { }
 
-	if _OPTIONS["DIRECTINPUT"] == "8" then
+	if _OPTIONS["USE_SDL"] == "1" then
 		links {
-			"dinput8",
-		}
-	else
-		links {
-			"dinput",
+			"SDL2",
+			"imm32",
+			"version",
 		}
 	end
 
-
-	if _OPTIONS["USE_SDL"] == "1" then
+	if _OPTIONS["USE_SDL3"] == "1" then
 		links {
-			"SDL.dll",
+			"SDL3",
+			"imm32",
+			"version",
 		}
 	end
 
 	links {
 		"comctl32",
 		"comdlg32",
-		"psapi",
+		"dinput8",
 		"ole32",
+		"psapi",
+		"shcore",
 		"shlwapi",
+		"uuid",
 	}
 end
 
 
 newoption {
-	trigger = "DIRECTINPUT",
-	description = "Minimum DirectInput version to support",
-	allowed = {
-		{ "7",  "Support DirectInput 7 or later"  },
-		{ "8",  "Support DirectInput 8 or later"  },
-	},
-}
-
-if not _OPTIONS["DIRECTINPUT"] then
-	_OPTIONS["DIRECTINPUT"] = "8"
-end
-
-newoption {
 	trigger = "USE_SDL",
-	description = "Enable SDL sound output",
+	description = "Enable SDL2 sound output and joystick input",
 	allowed = {
-		{ "0",  "Disable SDL sound output"  },
-		{ "1",  "Enable SDL sound output"   },
+		{ "0",  "Disable SDL2 sound/joystick"  },
+		{ "1",  "Enable SDL2 sound/joystick"   },
 	},
 }
 
 if not _OPTIONS["USE_SDL"] then
 	_OPTIONS["USE_SDL"] = "0"
+end
+
+newoption {
+	trigger = "USE_SDL3",
+	description = "Enable SDL3 sound output and joystick input",
+	allowed = {
+		{ "0",  "Disable SDL3 sound/joystick"  },
+		{ "1",  "Enable SDL3 sound/joystick"   },
+	},
+}
+
+if not _OPTIONS["USE_SDL3"] then
+	_OPTIONS["USE_SDL3"] = "0"
 end
 
 newoption {
@@ -124,17 +126,8 @@ project ("osd_" .. _OPTIONS["osd"])
 
 	defines {
 		"DIRECT3D_VERSION=0x0900",
+		"DIRECTINPUT_VERSION=0x0800",
 	}
-
-	if _OPTIONS["DIRECTINPUT"] == "8" then
-		defines {
-			"DIRECTINPUT_VERSION=0x0800",
-		}
-	else
-		defines {
-			"DIRECTINPUT_VERSION=0x0700",
-		}
-	end
 
 	includedirs {
 		MAME_DIR .. "src/emu",
@@ -151,30 +144,35 @@ project ("osd_" .. _OPTIONS["osd"])
 		MAME_DIR .. "src/osd/windows",
 	}
 
+	if _OPTIONS["gcc"]~=nil and string.find(_OPTIONS["gcc"], "clang") then
+		buildoptions_cpp {
+			"-Wno-ignored-attributes",-- many instances in ImGui
+		}
+	end
+
 	files {
 		MAME_DIR .. "src/osd/modules/render/d3d/d3dhlsl.cpp",
 		MAME_DIR .. "src/osd/modules/render/d3d/d3dcomm.h",
 		MAME_DIR .. "src/osd/modules/render/d3d/d3dhlsl.h",
 		MAME_DIR .. "src/osd/modules/render/drawd3d.cpp",
 		MAME_DIR .. "src/osd/modules/render/drawd3d.h",
-		MAME_DIR .. "src/osd/modules/render/drawgdi.cpp",
-		MAME_DIR .. "src/osd/modules/render/drawgdi.h",
-		MAME_DIR .. "src/osd/modules/render/drawnone.cpp",
-		MAME_DIR .. "src/osd/modules/render/drawnone.h",
 		MAME_DIR .. "src/osd/windows/video.cpp",
 		MAME_DIR .. "src/osd/windows/video.h",
 		MAME_DIR .. "src/osd/windows/window.cpp",
 		MAME_DIR .. "src/osd/windows/window.h",
 		MAME_DIR .. "src/osd/modules/osdwindow.cpp",
 		MAME_DIR .. "src/osd/modules/osdwindow.h",
-		MAME_DIR .. "src/osd/windows/winmenu.cpp",
 		MAME_DIR .. "src/osd/windows/winmain.cpp",
 		MAME_DIR .. "src/osd/windows/winmain.h",
+		MAME_DIR .. "src/osd/windows/winopts.cpp",
+		MAME_DIR .. "src/osd/windows/winopts.h",
 		MAME_DIR .. "src/osd/osdepend.h",
 		MAME_DIR .. "src/osd/modules/debugger/win/consolewininfo.cpp",
 		MAME_DIR .. "src/osd/modules/debugger/win/consolewininfo.h",
 		MAME_DIR .. "src/osd/modules/debugger/win/debugbaseinfo.cpp",
 		MAME_DIR .. "src/osd/modules/debugger/win/debugbaseinfo.h",
+		MAME_DIR .. "src/osd/modules/debugger/win/debuggerprefs.cpp",
+		MAME_DIR .. "src/osd/modules/debugger/win/debuggerprefs.h",
 		MAME_DIR .. "src/osd/modules/debugger/win/debugviewinfo.cpp",
 		MAME_DIR .. "src/osd/modules/debugger/win/debugviewinfo.h",
 		MAME_DIR .. "src/osd/modules/debugger/win/debugwininfo.cpp",
@@ -234,6 +232,7 @@ project ("ocore_" .. _OPTIONS["osd"])
 		MAME_DIR .. "src/osd/eigccppc.h",
 		MAME_DIR .. "src/osd/eigccx86.h",
 		MAME_DIR .. "src/osd/eivc.h",
+		MAME_DIR .. "src/osd/eivcarm.h",
 		MAME_DIR .. "src/osd/eivcx86.h",
 		MAME_DIR .. "src/osd/eminline.h",
 		MAME_DIR .. "src/osd/osdcomm.h",
@@ -243,7 +242,6 @@ project ("ocore_" .. _OPTIONS["osd"])
 		MAME_DIR .. "src/osd/strconv.h",
 		MAME_DIR .. "src/osd/osdsync.cpp",
 		MAME_DIR .. "src/osd/osdsync.h",
-		MAME_DIR .. "src/osd/windows/main.cpp",
 		MAME_DIR .. "src/osd/windows/winutf8.cpp",
 		MAME_DIR .. "src/osd/windows/winutf8.h",
 		MAME_DIR .. "src/osd/windows/winutil.cpp",

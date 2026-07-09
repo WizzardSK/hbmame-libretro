@@ -37,17 +37,19 @@ public:
 	auto di_cb() { return m_read_data.bind(); }
 	auto do_cb() { return m_write_data.bind(); }
 
-	DECLARE_READ8_MEMBER(read);
-	DECLARE_WRITE8_MEMBER(write);
+	uint8_t read();
+	void write(uint8_t data);
+	void write_strobe(uint8_t data);
 
-	DECLARE_WRITE_LINE_MEMBER(clock_w);
+	void clock_w(int state);
 
 	uint8_t do_r() { return m_data; }
+	int sr_r() { return m_sr; }
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	void set_sr_line(bool state);

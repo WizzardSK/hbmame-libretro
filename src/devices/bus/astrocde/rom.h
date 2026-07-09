@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Fabio Priuli
-#ifndef MAME_BUS_ASTROCADE_ROM_H
-#define MAME_BUS_ASTROCADE_ROM_H
+#ifndef MAME_BUS_ASTROCDE_ROM_H
+#define MAME_BUS_ASTROCDE_ROM_H
 
 #pragma once
 
@@ -19,7 +19,7 @@ public:
 	astrocade_rom_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom) override;
+	virtual uint8_t read_rom(offs_t offset) override;
 
 protected:
 	astrocade_rom_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
@@ -38,11 +38,11 @@ public:
 	astrocade_rom_256k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom) override;
+	virtual uint8_t read_rom(offs_t offset) override;
 
 private:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	uint8_t m_base_bank;
 };
@@ -56,11 +56,11 @@ public:
 	astrocade_rom_512k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom) override;
+	virtual uint8_t read_rom(offs_t offset) override;
 
 private:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	uint8_t m_base_bank;
 };
@@ -74,12 +74,12 @@ public:
 	astrocade_rom_cass_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom) override;
+	virtual uint8_t read_rom(offs_t offset) override;
 
 private:
 	virtual void device_start() override { }
 	virtual void device_reset() override { }
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	required_device<cassette_image_device> m_cassette;
 };
@@ -91,4 +91,4 @@ DECLARE_DEVICE_TYPE(ASTROCADE_ROM_256K, astrocade_rom_256k_device)
 DECLARE_DEVICE_TYPE(ASTROCADE_ROM_512K, astrocade_rom_512k_device)
 DECLARE_DEVICE_TYPE(ASTROCADE_ROM_CASS, astrocade_rom_cass_device)
 
-#endif // MAME_BUS_ASTROCADE_ROM_H
+#endif // MAME_BUS_ASTROCDE_ROM_H

@@ -21,7 +21,7 @@
  *****************************************************************************/
 
 #include "emu.h"
-#include "machine/pit8253.h"
+#include "pit8253.h"
 
 
 /***************************************************************************
@@ -82,9 +82,9 @@ fe2010_pit_device::fe2010_pit_device(const machine_config &mconfig, const char *
 
 void pit8253_device::device_add_mconfig(machine_config &config)
 {
-	PIT_COUNTER(config, "counter0", 0);
-	PIT_COUNTER(config, "counter1", 0);
-	PIT_COUNTER(config, "counter2", 0);
+	PIT_COUNTER(config, "counter0");
+	PIT_COUNTER(config, "counter1");
+	PIT_COUNTER(config, "counter2");
 }
 
 
@@ -98,9 +98,9 @@ void pit8253_device::device_resolve_objects()
 {
 	for (int timer = 0; timer < 3; timer++)
 	{
-		m_out_handler[timer].resolve_safe();
 		m_counter[timer]->m_index = timer;
 		m_counter[timer]->m_clockin = m_clk[timer];
+		m_counter[timer]->m_clock_period = (m_clk[timer] != 0) ? attotime::from_hz(m_clk[timer]) : attotime::never;
 	}
 }
 
@@ -111,12 +111,13 @@ void pit8253_device::device_resolve_objects()
 
 void pit_counter_device::device_start()
 {
-	/* initialize timer */
-	m_updatetimer = timer_alloc();
-	m_updatetimer->adjust(attotime::never);
+	/* initialize timers */
+	m_update_timer = timer_alloc(FUNC(pit_counter_device::update_tick), this);
+	adjust_timer(attotime::never);
 
 	/* set up state save values */
 	save_item(NAME(m_clockin));
+	save_item(NAME(m_clock_period));
 	save_item(NAME(m_control));
 	save_item(NAME(m_status));
 	save_item(NAME(m_lowcount));
@@ -126,7 +127,10 @@ void pit_counter_device::device_start()
 	save_item(NAME(m_wmsb));
 	save_item(NAME(m_rmsb));
 	save_item(NAME(m_output));
+	save_item(NAME(m_output_pin));
 	save_item(NAME(m_gate));
+	save_item(NAME(m_gate_input));
+	save_item(NAME(m_gate_rose));
 	save_item(NAME(m_latched_count));
 	save_item(NAME(m_latched_status));
 	save_item(NAME(m_null_count));
@@ -136,6 +140,8 @@ void pit_counter_device::device_start()
 
 	/* zerofill */
 	m_gate = 1;
+	m_gate_input = 1;
+	m_gate_rose = 0;
 	m_phase = 0;
 	m_clock_signal = 0;
 
@@ -145,6 +151,7 @@ void pit_counter_device::device_start()
 	m_lowcount = 0;
 
 	m_output = 0;
+	m_output_pin = 0;
 	m_latched_count = 0;
 	m_latched_status = 0;
 	m_null_count = 1;
@@ -177,6 +184,7 @@ void pit_counter_device::device_reset()
 	m_lowcount = 0;
 
 	m_output = 2; /* output is undetermined */
+	m_output_pin = 2;
 	m_latched_count = 0;
 	m_latched_status = 0;
 	m_null_count = 1;
@@ -197,6 +205,14 @@ void pit_counter_device::device_reset()
 #define CTRL_MODE(control)          (((control) >> 1) & (((control) & 0x04) ? 0x03 : 0x07))
 #define CTRL_BCD(control)           (((control) >> 0) & 0x01)
 
+inline void pit_counter_device::adjust_timer(attotime target)
+{
+//  if (target != m_next_update)
+	{
+		m_next_update = target;
+		m_update_timer->adjust(target - machine().time());
+	}
+}
 
 inline uint32_t pit_counter_device::adjusted_count() const
 {
@@ -283,9 +299,6 @@ void pit_counter_device::load_counter_value()
 {
 	m_value = m_count;
 	m_null_count = 0;
-
-	if (CTRL_MODE(m_control) == 3 && m_output == 0)
-		m_value &= 0xfffe;
 }
 
 
@@ -294,12 +307,29 @@ void pit_counter_device::set_output(int output)
 	if (output != m_output)
 	{
 		m_output = output;
-		LOG2("set_output() timer %d: %s\n", m_index, output ? "low to high" : "high to low");
-
-		downcast<pit8253_device *>(owner())->m_out_handler[m_index](output);
+		flush_output();
 	}
 }
 
+void pit_counter_device::flush_output()
+{
+	int new_output = m_output;
+	if (m_clockin == 0)
+	{
+		// TODO: The same logic should apply when m_clockin != 0, but that needs
+		// to be verified.
+		const int mode = CTRL_MODE(m_control);
+		if ((mode == 2 || mode == 3) && m_gate_input == 0)
+			new_output = 1;
+	}
+
+	if (new_output != m_output_pin)
+	{
+		LOG2("set_output() timer %d: %s\n", m_index, new_output ? "low to high" : "high to low");
+		m_output_pin = new_output;
+		downcast<pit8253_device *>(owner())->m_out_handler[m_index](new_output);
+	}
+}
 
 /* This emulates timer "timer" for "elapsed_cycles" cycles and assumes no
    callbacks occur during that time. */
@@ -497,7 +527,7 @@ void pit_counter_device::simulate(int64_t elapsed_cycles)
 					}
 				}
 
-				if (elapsed_cycles > 0 && m_phase == 3)
+				if (elapsed_cycles >= adjusted_value && m_phase == 3)
 				{
 					/* Reload counter, output goes high */
 					elapsed_cycles -= adjusted_value;
@@ -684,15 +714,9 @@ void pit_counter_device::simulate(int64_t elapsed_cycles)
 	}
 
 	if (cycles_to_output == CYCLES_NEVER || m_clockin == 0)
-	{
-		m_updatetimer->adjust(attotime::never);
-	}
+		adjust_timer(attotime::never);
 	else
-	{
-		attotime next_fire_time = m_last_updated + cycles_to_output * attotime::from_hz(m_clockin);
-
-		m_updatetimer->adjust(next_fire_time - machine().time());
-	}
+		adjust_timer(m_last_updated + cycles_to_output * m_clock_period);
 
 	LOG2("simulate(): simulating %d cycles in mode %d, bcd = %d, phase = %d, gate = %d, output %d, value = 0x%04x, cycles_to_output = %04x\n",
 			(int)elapsed_cycles, mode, bcd, m_phase, m_gate, m_output, m_value, cycles_to_output);
@@ -704,13 +728,56 @@ void pit_counter_device::update()
 	/* With the 82C54's maximum clockin of 10MHz, 64 bits is nearly 60,000
 	   years of time. Should be enough for now. */
 	attotime now = machine().time();
-	attotime elapsed_time = now - m_last_updated;
-	int64_t elapsed_cycles = elapsed_time.as_double() * m_clockin;
+	int64_t elapsed_cycles = 0;
+	if (m_clockin != 0)
+	{
+		if (now > m_last_updated)
+		{
+			attotime elapsed_time = now - m_last_updated;
 
-	LOG2("update(): %d elapsed_cycles\n", elapsed_cycles);
+			// in the case of sub-Hz frequencies, just loop; there's not going to be many
+			if (m_clock_period.m_seconds != 0)
+			{
+				while (elapsed_time >= m_clock_period)
+				{
+					elapsed_cycles++;
+					elapsed_time -= m_clock_period;
+				}
+			}
 
-	if (m_clockin)
-		m_last_updated += elapsed_cycles * attotime::from_hz(m_clockin);
+			// otherwise, compute it a straightforward way
+			else
+			{
+				elapsed_cycles = elapsed_time.m_attoseconds / m_clock_period.m_attoseconds;
+
+				// not expecting to see many cases of this, but just in case, let's do it right
+				if (elapsed_time.m_seconds != 0)
+				{
+					// first account for the elapsed_cycles counted above (guaranteed to be <= elapsed_time.m_attoseconds)
+					elapsed_time.m_attoseconds -= elapsed_cycles * m_clock_period.m_attoseconds;
+
+					// now compute the integral cycles per second based on the clock period
+					int64_t cycles_per_second = ATTOSECONDS_PER_SECOND / m_clock_period.m_attoseconds;
+
+					// add that many times the number of elapsed seconds
+					elapsed_cycles += cycles_per_second * elapsed_time.m_seconds;
+
+					// now compute how many attoseconds we missed for each full second (will be 0 for integral values)
+					int64_t remainder_per_second = ATTOSECONDS_PER_SECOND - cycles_per_second * m_clock_period.m_attoseconds;
+
+					// add those to the elapsed attoseconds
+					elapsed_time.m_attoseconds += elapsed_time.m_seconds * remainder_per_second;
+
+					// finally, see if that adds up to any additional cycles
+					elapsed_cycles += elapsed_time.m_attoseconds / m_clock_period.m_attoseconds;
+				}
+			}
+
+			LOG2("update(): %d elapsed_cycles\n", elapsed_cycles);
+
+			m_last_updated += elapsed_cycles * m_clock_period;
+		}
+	}
 	else
 		m_last_updated = now;
 
@@ -718,14 +785,13 @@ void pit_counter_device::update()
 	   sections punctuated by callbacks. */
 	if (elapsed_cycles > 0)
 		simulate(elapsed_cycles);
-	else if (m_clockin)
-		m_updatetimer->adjust(attotime::from_hz(m_clockin));
+	else if (m_clockin != 0)
+		adjust_timer(m_last_updated + m_clock_period);
 }
 
 
-/* We recycle bit 0 of m_value to hold the phase in mode 3 when count is
-   odd. Since read commands in mode 3 always return even numbers, we need to
-   mask this bit off. */
+/* Since read commands in mode 3 always return even numbers,
+   we need to mask bit 0 off. */
 uint16_t pit_counter_device::masked_value() const
 {
 	if ((CTRL_MODE(m_control) == 3) && (downcast<pit8253_device *>(owner())->m_type != pit_type::FE2010))
@@ -925,15 +991,15 @@ void pit8254_device::readback_command(uint8_t data)
 			m_counter[timer]->readback(read_command);
 }
 
-void pit_counter_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(pit_counter_device::update_tick)
 {
 	update();
 }
 
-void pit_counter_device::control_w(uint8_t data)
+TIMER_CALLBACK_MEMBER(pit_counter_device::control_w_deferred)
 {
 	update();
-
+	uint8_t data = (uint8_t)param;
 	if (CTRL_ACCESS(data) == 0)
 	{
 		LOG1("write(): readback\n");
@@ -955,10 +1021,10 @@ void pit_counter_device::control_w(uint8_t data)
 	}
 }
 
-void pit_counter_device::count_w(uint8_t data)
+TIMER_CALLBACK_MEMBER(pit_counter_device::count_w_deferred)
 {
 	update();
-
+	uint8_t data = (uint8_t)param;
 	bool middle_of_a_cycle = (machine().time() > m_last_updated && m_clockin != 0);
 
 	switch (CTRL_ACCESS(m_control))
@@ -972,10 +1038,11 @@ void pit_counter_device::count_w(uint8_t data)
 
 		/* check if we should compensate for not being on a cycle boundary */
 		if (middle_of_a_cycle)
-			m_last_updated += attotime::from_hz(m_clockin);
+			m_last_updated += m_clock_period;
 
 		load_count(data);
-		simulate(0);
+		if (m_clockin != 0)
+			simulate(0);
 
 		if (CTRL_MODE(m_control) == 0)
 			set_output(0);
@@ -986,10 +1053,11 @@ void pit_counter_device::count_w(uint8_t data)
 
 		/* check if we should compensate for not being on a cycle boundary */
 		if (middle_of_a_cycle)
-			m_last_updated += attotime::from_hz(m_clockin);
+			m_last_updated += m_clock_period;
 
 		load_count(data << 8);
-		simulate(0);
+		if (m_clockin != 0)
+			simulate(0);
 
 		if (CTRL_MODE(m_control) == 0)
 			set_output(0);
@@ -1001,10 +1069,11 @@ void pit_counter_device::count_w(uint8_t data)
 		{
 			/* check if we should compensate for not being on a cycle boundary */
 			if (middle_of_a_cycle)
-				m_last_updated += attotime::from_hz(m_clockin);
+				m_last_updated += m_clock_period;
 
 			load_count(m_lowcount | (data << 8));
-			simulate(0);
+			if (m_clockin != 0)
+				simulate(0);
 		}
 		else
 		{
@@ -1042,20 +1111,35 @@ void pit8253_device::write(offs_t offset, uint8_t data)
 		m_counter[offset]->count_w(data);
 }
 
-void pit_counter_device::gate_w(int state)
+bool pit_counter_device::edge_sensitive_gate() const
 {
+	const int mode = CTRL_MODE(m_control);
+	// TODO: The m_clockin check should not be necessary, but removing it needs
+	// to be verified.
+	return mode == 1 || mode == 2 || (mode == 3 && m_clockin == 0) || mode == 5;
+}
+
+TIMER_CALLBACK_MEMBER(pit_counter_device::gate_w_deferred)
+{
+	update();
+	int state = param;
 	LOG2("gate_w(): state=%d\n", state);
 
-	if (state != m_gate)
+	if (state != m_gate_input)
 	{
-		int mode = CTRL_MODE(m_control);
-
 		update();
-		m_gate = state;
-		if (state != 0 && ( mode == 1 || mode == 2 || mode == 5 ))
+		m_gate_input = state;
+		if (m_clockin != 0)
+			m_gate = state;
+		if (state != 0 && edge_sensitive_gate())
 		{
-			m_phase = 1;
+			if (m_clockin != 0)
+				m_phase = 1;
+			else
+				m_gate_rose = 1;
 		}
+		if (m_clockin == 0)
+			flush_output();
 		update();
 	}
 }
@@ -1070,17 +1154,31 @@ void pit_counter_device::set_clockin(double new_clockin)
 	if (started())
 		update();
 	m_clockin = new_clockin;
+	m_clock_period = (new_clockin != 0) ? attotime::from_hz(new_clockin) : attotime::never;
 	if (started())
 		update();
 }
 
 
-void pit_counter_device::set_clock_signal(int state)
+TIMER_CALLBACK_MEMBER(pit_counter_device::set_clock_signal_deferred)
 {
+	const int state = param;
 	LOG2("set_clock_signal(): state = %d\n", state);
 
-	/* Trigger on low to high transition */
+	/* Sample GATE and the GATE edge detection flipflop on low to high transition */
 	if (!m_clock_signal && state)
+	{
+		m_gate = m_gate_input;
+		if (m_gate_rose)
+		{
+			if (edge_sensitive_gate())
+				m_phase = 1;
+			m_gate_rose = 0;
+		}
+	}
+
+	/* Trigger on high to low transition */
+	if (m_clock_signal && !state)
 	{
 		/* Advance a cycle */
 		simulate(1);

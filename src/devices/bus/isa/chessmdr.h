@@ -25,19 +25,19 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
-	virtual ioport_constructor device_input_ports() const override;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 private:
 	required_device<chessmachine_device> m_chessm;
 
 	bool m_installed;
 
-	DECLARE_READ8_MEMBER(chessmdr_r);
-	DECLARE_WRITE8_MEMBER(chessmdr_w);
+	uint8_t chessmdr_r(offs_t offset);
+	void chessmdr_w(offs_t offset, uint8_t data);
 };
 
 

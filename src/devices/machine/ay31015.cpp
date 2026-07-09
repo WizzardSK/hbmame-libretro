@@ -104,8 +104,8 @@ Start bit (low), Bit 0, Bit 1... highest bit, Parity bit (if enabled), 1-2 stop 
 DEFINE_DEVICE_TYPE(AY31015, ay31015_device, "ay31015", "AY-3-1015 UART")
 DEFINE_DEVICE_TYPE(AY51013, ay51013_device, "ay51013", "AY-5-1013 UART")
 
-ay31015_device::ay31015_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, type, tag, owner, clock),
+ay31015_device::ay31015_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock) :
+	device_t(mconfig, type, tag, owner, clock),
 	m_control_reg(0),
 	m_status_reg(0),
 	m_second_stop_bit(0),
@@ -120,7 +120,7 @@ ay31015_device::ay31015_device(const machine_config &mconfig, device_type type, 
 	m_tx_buffer(0),
 	m_tx_parity(0),
 	m_tx_pulses(0),
-	m_read_si_cb(*this),
+	m_read_si_cb(*this, 0),
 	m_write_so_cb(*this),
 	m_write_pe_cb(*this),
 	m_write_fe_cb(*this),
@@ -142,25 +142,6 @@ ay31015_device::ay31015_device(const machine_config &mconfig, const char *tag, d
 ay51013_device::ay51013_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: ay31015_device(mconfig, AY51013, tag, owner, clock)
 {
-}
-
-//-------------------------------------------------
-//  device_resolve_objects - resolve objects that
-//  may be needed for other devices to set
-//  initial conditions at start time
-//-------------------------------------------------
-
-void ay31015_device::device_resolve_objects()
-{
-	m_read_si_cb.resolve();
-	m_write_so_cb.resolve();
-
-	m_write_tbmt_cb.resolve();
-	m_write_dav_cb.resolve();
-	m_write_or_cb.resolve();
-	m_write_fe_cb.resolve();
-	m_write_pe_cb.resolve();
-	m_write_eoc_cb.resolve();
 }
 
 //-------------------------------------------------
@@ -208,7 +189,7 @@ void ay31015_device::device_reset()
 
 inline uint8_t ay31015_device::get_si()
 {
-	if (!m_read_si_cb.isnull())
+	if (!m_read_si_cb.isunset())
 		m_pins[SI] = m_read_si_cb();
 
 	return m_pins[SI];
@@ -218,9 +199,7 @@ inline uint8_t ay31015_device::get_si()
 inline void ay31015_device::set_so( int data )
 {
 	m_pins[SO] = data ? 1 : 0;
-
-	if (!m_write_so_cb.isnull())
-		m_write_so_cb(m_pins[SO]);
+	m_write_so_cb(m_pins[SO]);
 }
 
 
@@ -231,14 +210,13 @@ inline void ay31015_device::update_status_pin(uint8_t reg_bit, ay31015_device::o
 	if (new_value != m_pins[pin])
 	{
 		m_pins[pin] = new_value;
-		if (!write_cb.isnull())
-			write_cb(new_value);
+		write_cb(new_value);
 	}
 }
 
 
 /*-------------------------------------------------
- ay31015_update_status_pins - Update the status pins
+ update_status_pins - Update the status pins
 -------------------------------------------------*/
 
 void ay31015_device::update_status_pins()
@@ -260,7 +238,7 @@ void ay31015_device::update_status_pins()
 
 
 /*-------------------------------------------------
- ay31015_rx_process - convert serial to parallel
+ rx_process - convert serial to parallel
 -------------------------------------------------*/
 
 void ay31015_device::rx_process()
@@ -428,7 +406,7 @@ void ay31015_device::rx_process()
 
 
 /*-------------------------------------------------
- ay31015_tx_process - convert parallel to serial
+ tx_process - convert parallel to serial
 -------------------------------------------------*/
 
 void ay31015_device::tx_process()
@@ -578,7 +556,7 @@ void ay31015_device::tx_process()
 
 
 /*-------------------------------------------------
- ay31015_reset - reset internal state
+ internal_reset - reset internal state
 -------------------------------------------------*/
 
 void ay31015_device::internal_reset()
@@ -634,7 +612,7 @@ void ay51013_device::internal_reset()
 }
 
 /*-------------------------------------------------
- ay31015_transfer_control_pins - transfers contents of controls pins to the control register
+ transfer_control_pins - transfers contents of controls pins to the control register
 -------------------------------------------------*/
 
 void ay31015_device::transfer_control_pins()
@@ -656,7 +634,7 @@ void ay31015_device::transfer_control_pins()
 
 
 /*-------------------------------------------------
- ay31015_set_input_pin - set an input pin
+ set_input_pin - set an input pin
 -------------------------------------------------*/
 void ay31015_device::set_input_pin( ay31015_device::input_pin pin, int data )
 {
@@ -709,7 +687,7 @@ void ay31015_device::set_input_pin( ay31015_device::input_pin pin, int data )
 
 
 /*-------------------------------------------------
- ay31015_get_output_pin - get the status of an output pin
+ get_output_pin - get the status of an output pin
 -------------------------------------------------*/
 
 int ay31015_device::get_output_pin( ay31015_device::output_pin pin )
@@ -719,10 +697,10 @@ int ay31015_device::get_output_pin( ay31015_device::output_pin pin )
 
 
 /*-------------------------------------------------
- ay31015_get_received_data - return a byte to the computer
+ received - return a byte to the computer
 -------------------------------------------------*/
 
-uint8_t ay31015_device::get_received_data()
+uint8_t ay31015_device::receive()
 {
 	if (m_auto_rdav && !machine().side_effects_disabled())
 	{
@@ -733,16 +711,10 @@ uint8_t ay31015_device::get_received_data()
 	return m_rx_buffer;
 }
 
-READ8_MEMBER(ay31015_device::receive)
-{
-	return get_received_data();
-}
-
-
 /*-------------------------------------------------
-    ay31015_set_transmit_data - accept a byte to transmit, if able
+ transmit - accept a byte to transmit, if able
 -------------------------------------------------*/
-void ay31015_device::set_transmit_data( uint8_t data )
+void ay31015_device::transmit( uint8_t data )
 {
 	if (m_status_reg & STATUS_TBMT)
 	{
@@ -750,9 +722,4 @@ void ay31015_device::set_transmit_data( uint8_t data )
 		m_status_reg &= ~STATUS_TBMT;
 		update_status_pins();
 	}
-}
-
-WRITE8_MEMBER(ay31015_device::transmit)
-{
-	set_transmit_data(data);
 }

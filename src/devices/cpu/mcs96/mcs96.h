@@ -16,10 +16,6 @@
 class mcs96_device : public cpu_device {
 public:
 	enum {
-		EXINT_LINE = 1
-	};
-
-	enum {
 		MCS96_PC = 1,
 		MCS96_PSW,
 		MCS96_INT_PENDING,
@@ -51,18 +47,17 @@ protected:
 	mcs96_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int data_width, address_map_constructor regs_map);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual uint32_t execute_min_cycles() const noexcept override;
 	virtual uint32_t execute_max_cycles() const noexcept override;
-	virtual uint32_t execute_input_lines() const noexcept override;
 	virtual void execute_run() override;
-	virtual void execute_set_input(int inputnum, int state) override;
 
 	// device_memory_interface overrides
 	virtual space_config_vector memory_space_config() const override;
+	virtual bool memory_translate(int spacenum, int intention, offs_t &address, address_space *&target_space) override;
 
 	// device_state_interface overrides
 	virtual void state_import(const device_state_entry &entry) override;
@@ -71,6 +66,8 @@ protected:
 
 	address_space_config program_config, regs_config;
 	address_space *program, *regs;
+	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::cache m_cache8;
+	memory_access<16, 1, 0, ENDIANNESS_LITTLE>::cache m_cache16;
 	std::function<u8 (offs_t address)> m_pr8;
 	required_shared_ptr<u16> register_file;
 

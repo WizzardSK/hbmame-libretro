@@ -23,27 +23,27 @@ class menu_simple_game_options : public menu
 public:
 	menu_simple_game_options(
 			mame_ui_manager &mui,
-			render_container &container,
+			render_target &target,
 			std::function<void ()> &&handler);
 	virtual ~menu_simple_game_options() override;
 
 protected:
-	virtual void custom_render(void *selectedref, float top, float bottom, float x, float y, float x2, float y2) override;
-	virtual void handle() override;
-	virtual void populate(float &customtop, float &custombottom) override;
+	virtual bool handle(event const *ev) override;
+	virtual void populate() override;
 
-	void handle_item_event(event const &menu_event);
+	bool handle_item_event(event const &menu_event);
 
 private:
 	enum
 	{
 		DISPLAY_MENU = 1001,
 		SOUND_MENU,
-		CONTROLLER_MENU,
 		MISC_MENU,
+		CONTROLLER_MENU,
+		INPUTASSIGN_MENU,
 		ADVANCED_MENU,
-		SAVE_OPTIONS,
-		CGI_MENU,
+		PLUGINS_MENU,
+		INPUTDEV_MENU,
 		SAVE_CONFIG
 	};
 
@@ -56,16 +56,16 @@ class menu_game_options : public menu_simple_game_options
 public:
 	menu_game_options(
 			mame_ui_manager &mui,
-			render_container &container,
+			render_target &target,
 			machine_filter_data &filter_data,
 			std::function<void ()> &&handler);
 	virtual ~menu_game_options() override;
 
 protected:
-	virtual void handle() override;
-	virtual void populate(float &customtop, float &custombottom) override;
+	virtual bool handle(event const *ev) override;
+	virtual void populate() override;
 
-	void handle_item_event(event const &menu_event);
+	bool handle_item_event(event const &menu_event);
 
 private:
 	enum

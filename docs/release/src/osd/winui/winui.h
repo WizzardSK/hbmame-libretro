@@ -1,22 +1,21 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 //****************************************************************************
 
-#ifndef WINUI_H
-#define WINUI_H
+#ifndef WINUI_WINUI_H
+#define WINUI_WINUI_H
 
 #include <commctrl.h>
 #include <commdlg.h>
 #include "emu.h"
-#include "pool.h"
 #include "screenshot.h"
 #include "drivenum.h"
 #include "romload.h"
 
 #define MAMENAME "HBMAME"
-#define UI_INI_FILENAME MAMENAME "UI.ini"
+#define MUI_INI_FILENAME MAMENAME "UI.ini"
 
 #ifdef PTR64
-#define MAMEUINAME MAMENAME "UI64"
+#define MAMEUINAME MAMENAME "UI"
 #else
 #define MAMEUINAME MAMENAME "UI32"
 #endif
@@ -40,8 +39,8 @@ enum
 	FILETYPE_AVI_FILES,
 	FILETYPE_MNG_FILES,
 	FILETYPE_EFFECT_FILES,
-	FILETYPE_JOYMAP_FILES,
-	FILETYPE_DEBUGSCRIPT_FILES,
+	FILETYPE_SHADER_FILES,
+	FILETYPE_BGFX_FILES,
 	FILETYPE_LUASCRIPT_FILES
 };
 
@@ -62,6 +61,7 @@ BOOL CommonFileDialog(common_file_dialog_proc cfd,char *filename, int filetype);
 
 HWND GetMainWindow(void);
 HWND GetTreeView(void);
+HWND GetProgressBar();
 void SetNumOptionFolders(int count);
 void GetRealColumnOrder(int order[]);
 HICON LoadIconFromFile(const char *iconname);
@@ -71,7 +71,6 @@ void MamePlayGame(void);
 int FindIconIndex(int nIconResource);
 int FindIconIndexByName(const char *icon_name);
 int GetSelectedPick(void);
-object_pool *GetMameUIMemoryPool(void);
 
 void UpdateListView(void);
 
@@ -85,8 +84,6 @@ char * ConvertAmpersandString(const char *s);
 HBITMAP GetBackgroundBitmap(void);
 HPALETTE GetBackgroundPalette(void);
 MYBITMAPINFO* GetBackgroundInfo(void);
-BOOL GetUseOldControl(void);
-BOOL GetUseXPControl(void);
 
 int GetMinimumScreenShotWindowWidth(void);
 
@@ -106,3 +103,4 @@ BOOL MouseHasBeenMoved(void);
 const char * GetSearchText(void);
 
 #endif
+

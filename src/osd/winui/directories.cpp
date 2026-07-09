@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -20,6 +20,7 @@
 #include "directories.h"
 #include "resource.h"
 #include "mui_util.h"
+#include "emu_opts.h"
 
 // SHELL DIR header
 #include <shlobj.h>
@@ -141,12 +142,12 @@ static void DirInfo_SetDir(tDirInfo *pInfo, int nType, int nItem, LPCTSTR pText)
 	else
 	{
 		t_s = win_tstring_strdup(pText);
-		if (!t_s)
-			return;
 		t_pOldText = pInfo[nType].m_tDirectory;
 		if (t_pOldText)
 			free(t_pOldText);
-		pInfo[nType].m_tDirectory = t_s; // don't free t_s else directory name is corrupted
+		if (!t_s)
+			return;
+		pInfo[nType].m_tDirectory = t_s;
 	}
 }
 
@@ -196,7 +197,7 @@ static void UpdateDirectoryList(HWND hDlg)
 	HWND hCombo = GetDlgItem(hDlg, IDC_DIR_COMBO);
 
 	/* Remove previous */
-	BOOL b_res = ListView_DeleteAllItems(hList);
+	(void)ListView_DeleteAllItems(hList);
 
 	/* Update list */
 	LV_ITEM Item;
@@ -225,7 +226,6 @@ static void UpdateDirectoryList(HWND hDlg)
 	/* select first one */
 
 	ListView_SetItemState(hList, 0, LVIS_SELECTED, LVIS_SELECTED);
-	b_res++;
 }
 
 static void Directories_OnSelChange(HWND hDlg)
@@ -255,7 +255,6 @@ static BOOL Directories_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
 	TCHAR *token;
 	TCHAR buf[MAX_PATH * MAX_DIRS];
 	TCHAR* t_s = NULL;
-	HRESULT res = 0;
 
 	/* count how many dirinfos there are */
 	int nDirInfoCount = 0;
@@ -285,13 +284,15 @@ static BOOL Directories_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
 	LVCol.mask = LVCF_WIDTH;
 	LVCol.cx = rectClient.right - rectClient.left - GetSystemMetrics(SM_CXHSCROLL);
 
-	res = ListView_InsertColumn(GetDlgItem(hDlg, IDC_DIR_LIST), 0, &LVCol);
-	res++;
+	(void)ListView_InsertColumn(GetDlgItem(hDlg, IDC_DIR_LIST), 0, &LVCol);
 
 	/* Keep a temporary copy of the directory strings in g_pDirInfo. */
 	for (i = 0; i < nDirInfoCount; i++)
 	{
-		s = g_directoryInfo[i].pfnGetTheseDirs();
+		if (g_directoryInfo[i].dir_index)
+			s = dir_get_value(g_directoryInfo[i].dir_index);
+		else
+			s = g_directoryInfo[i].pfnGetTheseDirs();
 		t_s = ui_wstring_from_utf8(s.c_str());
 		if( !t_s )
 			return false;
@@ -381,7 +382,13 @@ static int RetrieveDirList(int nDir, int nFlagResult, void (*SetTheseDirs)(const
 				_tcscat(buf, TEXT(";"));
 		}
 		char* utf8_buf = ui_utf8_from_wstring(buf);
-		SetTheseDirs(utf8_buf);
+		if (g_directoryInfo[nDir].dir_index)
+		{
+			string svalue = string(utf8_buf);
+			dir_set_value(g_directoryInfo[nDir].dir_index, svalue);
+		}
+		else
+			SetTheseDirs(utf8_buf);
 		free(utf8_buf);
 
 		nResult |= nFlagResult;
@@ -398,10 +405,17 @@ static void Directories_OnOk(HWND hDlg)
 		if (IsMultiDir(i))
 			nResult |= RetrieveDirList(i, g_directoryInfo[i].nDirDlgFlags, g_directoryInfo[i].pfnSetTheseDirs);
 		else
+		//if (DirInfo_Modified(g_pDirInfo, i))   // this line only makes sense with multi - TODO - fix this up.
 		{
 			LPTSTR s = FixSlash(DirInfo_Dir(g_pDirInfo, i));
 			char* utf8_s = ui_utf8_from_wstring(s);
-			g_directoryInfo[i].pfnSetTheseDirs(utf8_s);
+			if (g_directoryInfo[i].dir_index)
+			{
+				string svalue = string(utf8_s);
+				dir_set_value(g_directoryInfo[i].dir_index, svalue);
+			}
+			else
+				g_directoryInfo[i].pfnSetTheseDirs(utf8_s);
 			free(utf8_s);
 		}
 	}

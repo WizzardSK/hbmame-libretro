@@ -1,4 +1,4 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/retofinv.cpp"
 
@@ -40,3 +40,4 @@ ROM_START( retofinv4 )
 ROM_END
 
 GAME( 2011, retofinv4, retofinv, retofinvb1, retofinv, retofinv_state, empty_init, ROT90, "Paul Smith", "Return of the Invaders (hack)", 0 )
+

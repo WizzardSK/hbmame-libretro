@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Fabio Priuli
-#ifndef MAME_BUS_CPC_CRVISION_ROM_H
-#define MAME_BUS_CPC_CRVISION_ROM_H
+#ifndef MAME_BUS_CRVISION_ROM_H
+#define MAME_BUS_CRVISION_ROM_H
 
 #pragma once
 
@@ -18,7 +18,7 @@ public:
 	crvision_rom_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom80) override;
+	virtual uint8_t read_rom80(offs_t offset) override;
 
 protected:
 	crvision_rom_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
@@ -37,7 +37,7 @@ public:
 	crvision_rom6k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom80) override;
+	virtual uint8_t read_rom80(offs_t offset) override;
 };
 
 // ======================> crvision_rom8k_device
@@ -49,7 +49,7 @@ public:
 	crvision_rom8k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom80) override;
+	virtual uint8_t read_rom80(offs_t offset) override;
 };
 
 // ======================> crvision_rom10k_device
@@ -61,8 +61,8 @@ public:
 	crvision_rom10k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom40) override;
-	virtual DECLARE_READ8_MEMBER(read_rom80) override;
+	virtual uint8_t read_rom40(offs_t offset) override;
+	virtual uint8_t read_rom80(offs_t offset) override;
 };
 
 // ======================> crvision_rom12k_device
@@ -74,8 +74,8 @@ public:
 	crvision_rom12k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom40) override;
-	virtual DECLARE_READ8_MEMBER(read_rom80) override;
+	virtual uint8_t read_rom40(offs_t offset) override;
+	virtual uint8_t read_rom80(offs_t offset) override;
 };
 
 // ======================> crvision_rom16k_device
@@ -87,7 +87,7 @@ public:
 	crvision_rom16k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom80) override;
+	virtual uint8_t read_rom80(offs_t offset) override;
 };
 
 // ======================> crvision_rom18k_device
@@ -99,8 +99,8 @@ public:
 	crvision_rom18k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom40) override;
-	virtual DECLARE_READ8_MEMBER(read_rom80) override;
+	virtual uint8_t read_rom40(offs_t offset) override;
+	virtual uint8_t read_rom80(offs_t offset) override;
 };
 
 
@@ -113,5 +113,4 @@ DECLARE_DEVICE_TYPE(CRVISION_ROM_12K, crvision_rom12k_device)
 DECLARE_DEVICE_TYPE(CRVISION_ROM_16K, crvision_rom16k_device)
 DECLARE_DEVICE_TYPE(CRVISION_ROM_18K, crvision_rom18k_device)
 
-
-#endif // MAME_BUS_CPC_CRVISION_ROM_H
+#endif // MAME_BUS_CRVISION_ROM_H

@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -31,11 +31,13 @@
 #include "treeview.h"
 #include "resource.h"
 #include "mui_opts.h"
+#include "emu_opts.h"
 #include "help.h"
 #include "properties.h"  // For GetHelpIDs
 
 // MAME headers
 #include "winutf8.h"
+#include "corestr.h"
 
 #ifdef _MSC_VER
 #define snprintf _snprintf
@@ -72,7 +74,7 @@ static struct ComboBoxHistoryTab
 static string g_FilterText;
 
 #define NUM_EXCLUSIONS  12
-#define NUMHISTORYTAB   ARRAY_LENGTH(g_ComboBoxHistoryTab)
+#define NUMHISTORYTAB   std::size(g_ComboBoxHistoryTab)
 
 /* Pairs of filters that exclude each other */
 static DWORD filterExclusion[NUM_EXCLUSIONS] =
@@ -167,15 +169,20 @@ INT_PTR CALLBACK ResetDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 						ResetGUI();
 						EndDialog(hDlg, 1);
 						return true;
-					} else {
+					}
+					else
+					{
 						EndDialog(hDlg, 0);
 						return true;
 					}
-				} else {
+				}
+				else
+				{
 					// Give the user a chance to change what they want to reset.
 					break;
 				}
 			}
+			[[fallthrough]];
 		// Nothing was selected but OK, just fall through
 		case IDCANCEL :
 			EndDialog(hDlg, 0);
@@ -204,6 +211,7 @@ INT_PTR CALLBACK InterfaceDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM 
 		Button_SetCheck(GetDlgItem(hDlg,IDC_START_GAME_CHECK),GetGameCheck());
 		Button_SetCheck(GetDlgItem(hDlg,IDC_JOY_GUI),GetJoyGUI());
 		Button_SetCheck(GetDlgItem(hDlg,IDC_KEY_GUI),GetKeyGUI());
+		Button_SetCheck(GetDlgItem(hDlg,IDC_UI_SKIP_WARNINGS),GetSkipWarnings());
 		Button_SetCheck(GetDlgItem(hDlg,IDC_OVERRIDE_REDX),GetOverrideRedX());
 		Button_SetCheck(GetDlgItem(hDlg,IDC_HIDE_MOUSE),GetHideMouseOnStartup());
 
@@ -308,6 +316,7 @@ INT_PTR CALLBACK InterfaceDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM 
 			SetGameCheck(Button_GetCheck(GetDlgItem(hDlg, IDC_START_GAME_CHECK)));
 			SetJoyGUI(Button_GetCheck(GetDlgItem(hDlg, IDC_JOY_GUI)));
 			SetKeyGUI(Button_GetCheck(GetDlgItem(hDlg, IDC_KEY_GUI)));
+			SetSkipWarnings(Button_GetCheck(GetDlgItem(hDlg, IDC_UI_SKIP_WARNINGS)));
 			SetOverrideRedX(Button_GetCheck(GetDlgItem(hDlg, IDC_OVERRIDE_REDX)));
 			SetHideMouseOnStartup(Button_GetCheck(GetDlgItem(hDlg,IDC_HIDE_MOUSE)));
 
@@ -350,11 +359,11 @@ INT_PTR CALLBACK InterfaceDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM 
 				PostMessage(GetMainWindow(),WM_COMMAND, MAKEWPARAM(ID_VIEW_LINEUPICONS, false),(LPARAM)NULL);
 			}
 			nCurSelection = ComboBox_GetCurSel(GetDlgItem(hDlg,IDC_SNAPNAME));
-			if (nCurSelection != CB_ERR) {
+			if (nCurSelection != CB_ERR)
+			{
 				const char* snapname_selection = (const char*)ComboBox_GetItemData(GetDlgItem(hDlg,IDC_SNAPNAME), nCurSelection);
-				if (snapname_selection) {
+				if (snapname_selection)
 					SetSnapName(snapname_selection);
-				}
 			}
 			EndDialog(hDlg, 0);
 
@@ -408,9 +417,9 @@ INT_PTR CALLBACK FilterDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPa
 			win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_EDIT), g_FilterText.c_str());
 			Edit_SetSel(GetDlgItem(hDlg, IDC_FILTER_EDIT), 0, -1);
 			// Mask out non filter flags
-			dwFilters = folder->m_dwFlags & F_MASK;
+			dwFilters = folder->m_dwFlags & FI_MASK;
 			// Display current folder name in dialog titlebar
-			snprintf(tmp,ARRAY_LENGTH(tmp),"Filters for %s Folder",folder->m_lpTitle);
+			snprintf(tmp,std::size(tmp),"Filters for %s Folder",folder->m_lpTitle);
 			win_set_window_text_utf8(hDlg, tmp);
 			if ( GetFilterInherit() )
 			{
@@ -419,87 +428,87 @@ INT_PTR CALLBACK FilterDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPa
 				if( lpParent )
 				{
 					/* Check the Parent Filters and inherit them on child,
-                     * No need to promote all games to parent folder, works as is */
-					dwpFilters = lpParent->m_dwFlags & F_MASK;
+					 * No need to promote all games to parent folder, works as is */
+					dwpFilters = lpParent->m_dwFlags & FI_MASK;
 					/*Check all possible Filters if inherited solely from parent, e.g. not being set explicitly on our folder*/
-					if( (dwpFilters & F_CLONES) && !(dwFilters & F_CLONES) )
+					if( (dwpFilters & FI_CLONES) && !(dwFilters & FI_CLONES) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_CLONES)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_CLONES), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_NONWORKING) && !(dwFilters & F_NONWORKING) )
+					if( (dwpFilters & FI_NW) && !(dwFilters & FI_NW) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_NONWORKING)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_NONWORKING), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_UNAVAILABLE) && !(dwFilters & F_UNAVAILABLE) )
+					if( (dwpFilters & FI_UNAVAIL) && !(dwFilters & FI_UNAVAIL) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_UNAVAILABLE)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_UNAVAILABLE), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_VECTOR) && !(dwFilters & F_VECTOR) )
+					if( (dwpFilters & FI_VECTOR) && !(dwFilters & FI_VECTOR) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_VECTOR)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_VECTOR), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_RASTER) && !(dwFilters & F_RASTER) )
+					if( (dwpFilters & FI_RASTER) && !(dwFilters & FI_RASTER) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_RASTER)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_RASTER), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_ORIGINALS) && !(dwFilters & F_ORIGINALS) )
+					if( (dwpFilters & FI_PARENTS) && !(dwFilters & FI_PARENTS) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_ORIGINALS)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_ORIGINALS), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_WORKING) && !(dwFilters & F_WORKING) )
+					if( (dwpFilters & FI_W) && !(dwFilters & FI_W) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_WORKING)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_WORKING), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_AVAILABLE) && !(dwFilters & F_AVAILABLE) )
+					if( (dwpFilters & FI_AVAIL) && !(dwFilters & FI_AVAIL) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_AVAILABLE)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_AVAILABLE), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_HORIZONTAL) && !(dwFilters & F_HORIZONTAL) )
+					if( (dwpFilters & FI_HORI) && !(dwFilters & FI_HORI) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_HORIZONTAL)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_HORIZONTAL), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_VERTICAL) && !(dwFilters & F_VERTICAL) )
+					if( (dwpFilters & FI_VERT) && !(dwFilters & FI_VERT) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_VERTICAL)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_VERTICAL), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_ARCADE) && !(dwFilters & F_ARCADE) )
+					if( (dwpFilters & FI_ARCADE) && !(dwFilters & FI_ARCADE) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_ARCADE)).append(" (*)");
 						win_set_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_ARCADE), strText.c_str());
 						bShowExplanation = true;
 					}
-					if( (dwpFilters & F_MESS) && !(dwFilters & F_MESS) )
+					if( (dwpFilters & FI_MESS) && !(dwFilters & FI_MESS) )
 					{
 						/*Add a Specifier to the Checkbox to show it was inherited from the parent*/
 						strText = win_get_window_text_utf8(GetDlgItem(hDlg, IDC_FILTER_MESS)).append(" (*)");
@@ -560,7 +569,7 @@ INT_PTR CALLBACK FilterDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPa
 			dwFilters = ValidateFilters(lpFilterRecord, dwFilters);
 
 			// Keep non filter flags
-			folder->m_dwFlags &= ~F_MASK;
+			folder->m_dwFlags &= ~FI_MASK;
 
 			// put in the set filters
 			folder->m_dwFlags |= dwFilters;
@@ -607,7 +616,6 @@ INT_PTR CALLBACK AddCustomFileDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPA
 {
 	static LPTREEFOLDER default_selection = NULL;
 	static int driver_index = 0;
-	BOOL res = 0;
 
 	switch (Msg)
 	{
@@ -633,7 +641,7 @@ INT_PTR CALLBACK AddCustomFileDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPA
 		// insert custom folders into our tree view
 		for (i=0;i<num_folders;i++)
 		{
-			if (folders[i]->m_dwFlags & F_CUSTOM)
+			if (folders[i]->m_dwFlags & FI_CUSTOM)
 			{
 				HTREEITEM hti;
 				int jj = 0;
@@ -676,14 +684,14 @@ INT_PTR CALLBACK AddCustomFileDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPA
 #endif
 							hti_child = TreeView_InsertItem(GetDlgItem(hDlg,IDC_CUSTOM_TREE),&tvis);
 							if (folders[jj] == default_selection)
-								res = TreeView_SelectItem(GetDlgItem(hDlg,IDC_CUSTOM_TREE),hti_child);
+								(void)TreeView_SelectItem(GetDlgItem(hDlg,IDC_CUSTOM_TREE),hti_child);
 						}
 					}
 
 					/*TreeView_Expand(GetDlgItem(hDlg,IDC_CUSTOM_TREE),hti,TVE_EXPAND);*/
 					if (first_entry || folders[i] == default_selection)
 					{
-						res = TreeView_SelectItem(GetDlgItem(hDlg,IDC_CUSTOM_TREE),hti);
+						(void)TreeView_SelectItem(GetDlgItem(hDlg,IDC_CUSTOM_TREE),hti);
 						first_entry = false;
 					}
 				}
@@ -692,7 +700,6 @@ INT_PTR CALLBACK AddCustomFileDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPA
 
 		win_set_window_text_utf8(GetDlgItem(hDlg,IDC_CUSTOMFILE_GAME), ModifyThe(driver_list::driver(driver_index).type.fullname()));
 
-		res++;
 		return true;
 	}
 	case WM_COMMAND:
@@ -739,7 +746,7 @@ INT_PTR CALLBACK DirectXDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lP
 
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDB_WEB_PAGE)
-			ShellExecute(GetMainWindow(), NULL, TEXT("http://www.microsoft.com/directx"), NULL, NULL, SW_SHOWNORMAL);
+			ShellExecute(GetMainWindow(), NULL, TEXT("https://www.microsoft.com/en_US/download/details.aspx?id=35"), NULL, NULL, SW_SHOWNORMAL);
 
 		if (LOWORD(wParam) == IDCANCEL || LOWORD(wParam) == IDB_WEB_PAGE)
 			EndDialog(hDlg, 0);
@@ -845,3 +852,4 @@ static void OnHScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 		SendDlgItemMessage(hwnd,IDC_SCREENSHOT_BORDERSIZETXT,WM_SETTEXT,0, (WPARAM)tmp);
 	}
 }
+

@@ -1,8 +1,105 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/taitosj.cpp"
 
-ROM_START( alpines01 )
+/******************
+ Adventure Canoe
+******************/
+static INPUT_PORTS_START( adcanoe )
+	PORT_START("IN0")      // Player 1
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )                    // Fire
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )                    // Speed-Up
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("IN1")      // Player 2 (cocktail)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL      // Fire
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL      // Speed-Up
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("IN2")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )
+	PORT_BIT( 0x1e, 0x00, IPT_UNUSED )                      // protection read
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
+
+	COMMON_IN3(IP_ACTIVE_LOW)
+
+	PORT_START("IN4")
+	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(taitosj_state, input_port_4_f0_r)    // from sound CPU
+
+	PORT_START("DSW1")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )              PORT_DIPLOCATION("SWA:1,2")
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x01, "4" )
+	PORT_DIPSETTING(    0x02, "5" )
+	PORT_DIPSETTING(    0x03, "6" )
+	PORT_DIPNAME( 0x04, 0x04, "Extend" )                      PORT_DIPLOCATION("SWA:3")
+	PORT_DIPSETTING(    0x00, "5000" )
+	PORT_DIPSETTING(    0x04, "10000" )
+	PORT_DIPNAME( 0x08, 0x08, "Year Display" )                 PORT_DIPLOCATION("SWA:4")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, "No Hit (Debug)" )               PORT_DIPLOCATION("SWA:5")
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_SERVICE( 0x20, IP_ACTIVE_LOW )                    PORT_DIPLOCATION("SWA:6")
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Flip_Screen ) )        PORT_DIPLOCATION("SWA:7")
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )            PORT_DIPLOCATION("SWA:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
+
+	PORT_START("DSW2")      // Coinage
+	DSW2_PORT
+
+	PORT_START("DSW3")
+	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
+INPUT_PORTS_END
+
+ROM_START( adcanoe )
+	ROM_REGION( 0x12000, "maincpu", 0 )
+	ROM_LOAD( "ac_12.ic69",   0x0000, 0x1000, CRC(4179cdc7) SHA1(a741ee864fd4e96ede4a3f55d6dc29cc2ff83cb6) )
+	ROM_LOAD( "ac_13.ic68",   0x1000, 0x1000, CRC(17d97740) SHA1(e7e7449e08ec1ca6dbea43596387ecf83187f5bd) )
+	ROM_LOAD( "ac_14.ic67",   0x2000, 0x1000, CRC(4b0c895e) SHA1(11e82391fcd88ad327bb82d24034ac3a171c291b) )
+	ROM_LOAD( "ac_15.ic66",   0x3000, 0x1000, CRC(262f4ce2) SHA1(eaf3c6fbede42ff465574f452e0560491c01cf70) )
+	ROM_LOAD( "ac_16.ic65",   0x4000, 0x1000, CRC(e68c7053) SHA1(3d05e899d1dcb01e971917945f37c557ba05fa86) )
+	ROM_LOAD( "ac_17.ic64",   0x5000, 0x1000, CRC(0bdd9efe) SHA1(69471fd0de72f7b4dc950239dbed79dc4862c3ee) )
+	ROM_LOAD( "ac_18.ic55",   0x6000, 0x1000, CRC(959a143b) SHA1(15d98c0bd1bb8306a67f2651f85ddd874ef1b3c9) )
+	ROM_LOAD( "ac_19.ic54",   0x7000, 0x1000, CRC(9e7693f6) SHA1(2f02e2b2b84fb94a5c661514a70dde38d63a0d1d) )
+	// 10000-11fff space for banked ROMs (not used)
+
+	ROM_REGION( 0x10000, "audiocpu", 0 )
+	ROM_LOAD( "ac_09.ic70",   0x0000, 0x1000, CRC(bed871c5) SHA1(4476b791193b99adf4c130486151775dab6a8bf9) )
+
+	ROM_REGION( 0x8000, "gfx", 0 )       // graphic ROMs used at runtime
+	ROM_LOAD( "ac_20.ic1",    0x0000, 0x1000, CRC(21b49aae) SHA1(e24c77898abd47df510e82c2ef29cb2e37fe4b03) )
+	ROM_LOAD( "ac_21.ic2",    0x1000, 0x1000, CRC(d7efd8f7) SHA1(6f1a371dd34eda4b0e1c9b4c9377471cd6edf138) )
+	ROM_LOAD( "ac_22.ic3",    0x2000, 0x1000, CRC(44290adf) SHA1(8455bc6ea3c9471048d1fbeb2940672f5f4a4de9) )
+	ROM_LOAD( "ac_23.ic4",    0x3000, 0x1000, CRC(011daec9) SHA1(067e49afcb8ac1295dfee34327eb118488ff9d26) )
+	ROM_LOAD( "ac_24.ic5",    0x4000, 0x1000, CRC(42943c3d) SHA1(e4c63d8e8d21e4e3f677f4024e759636be1da451) )
+
+	ROM_REGION( 0x0100, "proms", 0 )      // layer PROM
+	ROM_LOAD( "eb16.22",      0x0000, 0x0100, CRC(b833b5ea) SHA1(d233f1bf8a3e6cd876853ffd721b9b64c61c9047) )
+ROM_END
+
+
+/************
+ Alpine Ski
+*************/
+ROM_START( alpine01 )
 	ROM_REGION( 0x12000, "maincpu", 0 )
 	ROM_LOAD( "s01.rh16.069",     0x0000, 0x1000, CRC(9d859b68) SHA1(caa672e29a7a3fd595fb3be3cffd2e2f48ddc239) )
 	ROM_LOAD( "s01.rh17.068",     0x1000, 0x1000, CRC(2dfd6b46) SHA1(7d65e87173b6fabbf1525223fea1279923286b38) )
@@ -16,7 +113,7 @@ ROM_START( alpines01 )
 	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "rh13.070",     0x0000, 0x1000, CRC(dcad1794) SHA1(1d5479f10cdcc437241bb17c22204fb3ee60f8cb) )
 
-	ROM_REGION( 0x8000, "gfx1", 0 )
+	ROM_REGION( 0x8000, "gfx", 0 )
 	ROM_LOAD( "s01.rh24.001",     0x0000, 0x1000, CRC(d8f21891) SHA1(f89934ae12f3361aa5cd96d55fee53473b97149f) )
 	ROM_LOAD( "s01.rh25.002",     0x1000, 0x1000, CRC(5b528f71) SHA1(abd5cac0a2eb3bc068e890b287cf0e348d8e7df9) )
 	ROM_LOAD( "rh26.003",     0x2000, 0x1000, CRC(13da2a9b) SHA1(e3dd30a1036ec81b3867dc1c0d20449422d50c31) )
@@ -26,18 +123,10 @@ ROM_START( alpines01 )
 	ROM_LOAD( "eb16.22",      0x0000, 0x0100, CRC(b833b5ea) SHA1(d233f1bf8a3e6cd876853ffd721b9b64c61c9047) )
 ROM_END
 
-GAME( 1982, alpines01, alpine, nomcu, alpine, taitosj_state, init_alpine, ROT270, "hack", "Alpine Ski (Translation Chinese)", MACHINE_SUPPORTS_SAVE )
-
-
-/****************************************************
-         Proyecto Shadows Mame Build Plus
-*****************************************************/
-
- /**********
+/************
  Front Line
 *************/
-
-ROM_START( frontlins01 )
+ROM_START( frontlin01 )
 	ROM_REGION( 0x12000, "maincpu", 0 )
 	ROM_LOAD( "fl69_po01.u69",     0x00000, 0x1000, CRC(2a3500bb) SHA1(2ff28197fc91c57bb8554b0b0eb0136ec7cbd04e) )
 	ROM_LOAD( "fl68_po01.u68",     0x01000, 0x1000, CRC(f2c6a7f9) SHA1(876b52854366b110413ba9875b2ee9f436b0ae78) )
@@ -49,16 +138,16 @@ ROM_START( frontlins01 )
 	ROM_LOAD( "fl54.u54",     0x07000, 0x1000, CRC(d234c60f) SHA1(b45bf432a64b7aaf3762d72a762b5eca198d5b3d) )
 	ROM_LOAD( "aa1_10_po01.8",     0x0e000, 0x1000, CRC(78556a20) SHA1(ebf41e49261f7f557d3e298c93ddddde57258697) )
 	ROM_LOAD( "fl53_po01.u53",     0x10000, 0x1000, CRC(ea89040c) SHA1(03676c6c9a5f12d81d78b55dcb6f833e6e034c79) )
-	ROM_LOAD( "fl52.u52",     0x11000, 0x1000, CRC(cb223d34) SHA1(a1a4530ed25064c6cabe34c52bb239e3656e4ced) ) 
+	ROM_LOAD( "fl52.u52",     0x11000, 0x1000, CRC(cb223d34) SHA1(a1a4530ed25064c6cabe34c52bb239e3656e4ced) )
 
 	ROM_REGION( 0x10000, "audiocpu", 0 )
-	ROM_LOAD( "fl70.u70",     0x0000, 0x1000, CRC(15f4ed8c) SHA1(ec096234e4e594100180eb99c8c57eb97b9f57e2) )
-	ROM_LOAD( "fl71.u71",     0x1000, 0x1000, CRC(c3eb38e7) SHA1(427e5deb6a6e22d8c34923209a818f79d50e59d4) )
+	ROM_LOAD( "aa1_11.ic70",     0x0000, 0x1000, CRC(15f4ed8c) SHA1(ec096234e4e594100180eb99c8c57eb97b9f57e2) )
+	ROM_LOAD( "aa1_12.ic71",     0x1000, 0x1000, CRC(c3eb38e7) SHA1(427e5deb6a6e22d8c34923209a818f79d50e59d4) )
 
-	ROM_REGION( 0x0800, "bmcu:mcu", 0 )   
-	ROM_LOAD( "aa1.13",       0x0000, 0x0800, CRC(7e78bdd3) SHA1(9eeb0e969fd013b9db074a15b0463216453e9364) )
+	ROM_REGION( 0x0800, "bmcu:mcu", 0 )
+	ROM_LOAD( "aa1_13.ic24",       0x0000, 0x0800, CRC(7e78bdd3) SHA1(9eeb0e969fd013b9db074a15b0463216453e9364) )
 
-	ROM_REGION( 0x8000, "gfx1", 0 )     
+	ROM_REGION( 0x8000, "gfx", 0 )
 	ROM_LOAD( "fl1.u1",       0x0000, 0x1000, CRC(e82c9f46) SHA1(eaab468bb5e46e9c714e6f84e65f954331fdbc56) )
 	ROM_LOAD( "fl2.u2",       0x1000, 0x1000, CRC(123055d3) SHA1(6aaddd8ebb418c7c8584eb74ad13cd5accd5a196) )
 	ROM_LOAD( "fl3.u3",       0x2000, 0x1000, CRC(7ea46347) SHA1(b924a614abe01f7ca6a31463864d6cc55a47946e) )
@@ -68,11 +157,16 @@ ROM_START( frontlins01 )
 	ROM_LOAD( "fl7.u7",       0x6000, 0x1000, CRC(613682a3) SHA1(b681f3a4e70f207ce140adfac1388900d5013317) )
 	ROM_LOAD( "fl8_po01.u8",       0x7000, 0x1000, CRC(7f3e197a) SHA1(87863cef9bb381f3bd644d49f4f551716d09c7af) )
 
-	ROM_REGION( 0x0100, "proms", 0 )  
-	ROM_LOAD( "eb16.22",      0x0000, 0x0100, CRC(b833b5ea) SHA1(d233f1bf8a3e6cd876853ffd721b9b64c61c9047) )
+	ROM_REGION( 0x0100, "proms", 0 )
+	ROM_LOAD( "eb16.ic22",      0x0000, 0x0100, CRC(b833b5ea) SHA1(d233f1bf8a3e6cd876853ffd721b9b64c61c9047) )
 ROM_END
 
 
-/*    YEAR  NAME            PARENT    MACHINE        INPUT       INIT             MONITOR COMPANY                 FULLNAME FLAGS */
+/*    YEAR  NAME        PARENT       MACHINE   INPUT     CLASS          INIT          MONITOR  COMPANY    FULLNAME FLAGS */
+// Adventure Canoe
+GAME( 1982, adcanoe,    0,           nomcu,    adcanoe,  taitosj_state, init_taitosj, ROT90,  "Taito Corporation", "Adventure Canoe", MACHINE_SUPPORTS_SAVE )
+// Alpine Ski
+GAME( 1982, alpine01,   alpine,      nomcu,    alpine,   taitosj_state, init_alpine,  ROT270, "hack", "Alpine Ski (Chinese)", MACHINE_SUPPORTS_SAVE )
 // Front Line
-GAME( 1982, frontlins01, frontlin,        mcu,      frontlin, taitosj_state, init_taitosj, ROT270, "hack", "Front Line (Translation Chinese)", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, frontlin01, frontlin,    mcu,      frontlin, taitosj_state, init_taitosj, ROT270, "hack", "Front Line (Chinese)", MACHINE_SUPPORTS_SAVE )
+

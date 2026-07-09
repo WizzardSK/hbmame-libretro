@@ -1,4 +1,4 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/yiear.cpp"
 
@@ -25,3 +25,4 @@ ROM_START( nacho )
 ROM_END
 
 GAME( 2009, nacho, yiear, yiear, yiear, yiear_state, empty_init, ROT0, "Gatinho", "Nacho Libre", MACHINE_SUPPORTS_SAVE )
+

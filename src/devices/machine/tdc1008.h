@@ -7,8 +7,8 @@
 
 ***************************************************************************/
 
-#ifndef MAME_MACHINE_TDC1008_TDC1008_H
-#define MAME_MACHINE_TDC1008_TDC1008_H
+#ifndef MAME_MACHINE_TDC1008_H
+#define MAME_MACHINE_TDC1008_H
 
 #pragma once
 
@@ -24,27 +24,27 @@ public:
 	// construction/destruction
 	tdc1008_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
-	DECLARE_WRITE8_MEMBER(x_w);
-	DECLARE_WRITE8_MEMBER(y_w);
-	DECLARE_WRITE_LINE_MEMBER(tsx_w);
-	DECLARE_WRITE_LINE_MEMBER(tsm_w);
-	DECLARE_WRITE_LINE_MEMBER(tsl_w);
-	DECLARE_WRITE_LINE_MEMBER(clk_x_w);
-	DECLARE_WRITE_LINE_MEMBER(clk_y_w);
-	DECLARE_WRITE_LINE_MEMBER(clk_p_w);
-	DECLARE_WRITE_LINE_MEMBER(prel_w);
-	DECLARE_WRITE_LINE_MEMBER(rnd_w);
-	DECLARE_WRITE_LINE_MEMBER(tc_w);
-	DECLARE_WRITE_LINE_MEMBER(acc_w);
-	DECLARE_WRITE_LINE_MEMBER(sub_w);
+	void x_w(uint8_t data);
+	void y_w(uint8_t data);
+	void tsx_w(int state);
+	void tsm_w(int state);
+	void tsl_w(int state);
+	void clk_x_w(int state);
+	void clk_y_w(int state);
+	void clk_p_w(int state);
+	void prel_w(int state);
+	void rnd_w(int state);
+	void tc_w(int state);
+	void acc_w(int state);
+	void sub_w(int state);
 
 	// Output preloads by group
-	DECLARE_WRITE8_MEMBER(xtp_w);
-	DECLARE_WRITE8_MEMBER(msp_w);
-	DECLARE_WRITE8_MEMBER(lsp_w);
+	void xtp_w(uint8_t data);
+	void msp_w(uint8_t data);
+	void lsp_w(uint8_t data);
 
 	// Full output preload
-	DECLARE_WRITE32_MEMBER(output_w);
+	void output_w(uint32_t data);
 
 	// Outputs by group
 	auto xtp() { return m_xtp.bind(); }
@@ -56,8 +56,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	void latch_flags();
 
@@ -108,4 +108,4 @@ protected:
 // device type definition
 DECLARE_DEVICE_TYPE(TDC1008, tdc1008_device)
 
-#endif // MAME_MACHINE_TDC1008_TDC1008_H
+#endif // MAME_MACHINE_TDC1008_H

@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -122,7 +122,11 @@ const char * GetAuditString(int audit_result)
 		return "No";
 
 	default:
-		printf("unknown audit value %i\n",audit_result);
+		if (audit_result == -1)
+			printf("GetAuditString: Audit value -1, try doing a full F5 audit\n");
+		else
+			printf("GetAuditString: Unknown audit value %i\n",audit_result);
+		fflush(stdout);
 	}
 
 	return "?";
@@ -404,6 +408,7 @@ static void ProcessNextSample()
 			SendDlgItemMessage(hAudit, IDC_SAMPLES_TOTAL, WM_SETTEXT, 0, (LPARAM)buffer);
 			break;
 		}
+		[[fallthrough]];
 	default:
 		if ((DriverUsesSamples(sample_index)) || (m_choice == 1))
 		{
@@ -433,7 +438,7 @@ static void CLIB_DECL DetailsPrintf(const char *fmt, ...)
 	// so see which one's currently instantiated
 	HWND hEdit = GetDlgItem(hAudit, IDC_AUDIT_DETAILS);
 	if (hEdit ==  NULL)
-		hEdit = GetDlgItem(hAudit, IDC_AUDIT_DETAILS_PROP);
+		hEdit = GetDlgItem(hAudit, IDC_AUDIT_DETAILS_PROP0);
 
 	if (hEdit == NULL)
 	{
@@ -488,3 +493,4 @@ static const char * StatusString(int iStatus)
 
 	return ptr;
 }
+

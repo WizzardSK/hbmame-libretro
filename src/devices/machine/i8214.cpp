@@ -40,7 +40,8 @@ void i8214_device::trigger_interrupt(int level)
 
 	// set interrupt line
 	m_write_int(ASSERT_LINE);
-	m_write_int(CLEAR_LINE);
+	if (!m_int_dis_hack)
+		m_write_int(CLEAR_LINE); // TODO: wait one clock cycle to clear
 }
 
 
@@ -52,7 +53,12 @@ void i8214_device::check_interrupt()
 {
 	if (m_int_dis)
 	{
-		LOG("not checking interrupts because m_int_dis\n");
+		LOG("not checking interrupts because m_int_dis (%02x)\n", m_r);
+		if (m_int_dis_hack && m_r == 0xff)
+		{
+			m_int_dis = 0;
+			m_write_int(CLEAR_LINE);
+		}
 		return;
 	}
 	if (!m_etlg)
@@ -89,6 +95,12 @@ void i8214_device::check_interrupt()
 			}
 		}
 	}
+
+	if (m_int_dis_hack)
+	{
+		m_int_dis = 0;
+		m_write_int(CLEAR_LINE);
+	}
 }
 
 
@@ -105,6 +117,7 @@ i8214_device::i8214_device(const machine_config &mconfig, const char *tag, devic
 	: device_t(mconfig, I8214, tag, owner, clock)
 	, m_write_int(*this)
 	, m_write_enlg(*this)
+	, m_int_dis_hack(false)
 	, m_inte(0)
 	, m_int_dis(0)
 	, m_a(0)
@@ -122,10 +135,6 @@ i8214_device::i8214_device(const machine_config &mconfig, const char *tag, devic
 
 void i8214_device::device_start()
 {
-	// resolve callbacks
-	m_write_int.resolve_safe();
-	m_write_enlg.resolve_safe();
-
 	m_int_dis = 0;
 	m_etlg = 1;
 
@@ -159,7 +168,7 @@ uint8_t i8214_device::a_r()
 //  8080-compatible interrupt vector
 //-------------------------------------------------
 
-READ8_MEMBER(i8214_device::vector_r)
+uint8_t i8214_device::vector_r()
 {
 	return 0xc7 | (m_a << 3);
 }
@@ -234,7 +243,7 @@ void i8214_device::r_all_w(uint8_t state)
 //  sgs_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( i8214_device::sgs_w )
+void i8214_device::sgs_w(int state)
 {
 	LOG("%s: sgs_w: %d\n", machine().describe_context(), state);
 
@@ -248,7 +257,7 @@ WRITE_LINE_MEMBER( i8214_device::sgs_w )
 //  etlg_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( i8214_device::etlg_w )
+void i8214_device::etlg_w(int state)
 {
 	LOG("%s: etlg_w: %d\n", machine().describe_context(), state);
 
@@ -262,7 +271,7 @@ WRITE_LINE_MEMBER( i8214_device::etlg_w )
 //  inte_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( i8214_device::inte_w )
+void i8214_device::inte_w(int state)
 {
 	LOG("%s: inte_w: %d\n", machine().describe_context(), state);
 

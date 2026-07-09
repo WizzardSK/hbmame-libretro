@@ -34,41 +34,40 @@ public:
 	// construction/destruction
 	a2bus_agat_fdc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER(d14_i_b);
-	DECLARE_READ8_MEMBER(d15_i_a);
-	DECLARE_READ8_MEMBER(d15_i_c);
-	DECLARE_WRITE8_MEMBER(d14_o_c);
-	DECLARE_WRITE8_MEMBER(d15_o_b);
-	DECLARE_WRITE8_MEMBER(d15_o_c);
+	uint8_t d14_i_b();
+	uint8_t d15_i_a();
+	uint8_t d15_i_c();
+	void d14_o_c(uint8_t data);
+	void d15_o_b(uint8_t data);
+	void d15_o_c(uint8_t data);
 
-	DECLARE_FLOPPY_FORMATS(floppy_formats);
+	static void floppy_formats(format_registration &fr);
 
 protected:
 	// construction/destruction
 	a2bus_agat_fdc_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
 
 	// overrides of standard a2bus slot functions
 	virtual uint8_t read_c0nx(uint8_t offset) override;
 	virtual void write_c0nx(uint8_t offset, uint8_t data) override;
 	virtual uint8_t read_cnxx(uint8_t offset) override;
-
-	enum
-	{
-		TIMER_ID_LSS = 0,
-		TIMER_ID_SEEK,
-		TIMER_ID_MOTOR
-	};
+	virtual void reset_from_bus() override;
 
 	required_device<i8255_device> m_d14;
 	required_device<i8255_device> m_d15;
 
 private:
+	struct live_info {
+		uint16_t shift_reg;
+		bool data_bit_context;
+		uint8_t data_reg;
+	};
+
 	required_device<floppy_connector> floppy0;
 	required_device<floppy_connector> floppy1;
 
@@ -76,7 +75,11 @@ private:
 	attotime cycles_to_time(uint64_t cycles);
 
 	void lss_start();
-	void lss_sync();
+	TIMER_CALLBACK_MEMBER(lss_sync);
+	void live_write_raw(uint16_t raw);
+	void live_write_mfm(uint8_t mfm);
+
+	TIMER_CALLBACK_MEMBER(motor_off);
 
 	floppy_image_device *floppy;
 	int active, bits;
@@ -84,15 +87,21 @@ private:
 	uint16_t address;
 	uint64_t cycles;
 
-	u8 m_mxcs;
+	uint8_t m_mxcs;
 	int m_unit;
-	int m_state;
+
+	live_info cur_live;
+
+	uint8_t last_6502_write;
+	bool mode_write, write_desync;
+	attotime write_start_time;
+	attotime write_buffer[32];
+	int write_position;
 
 	int m_seektime;
 	int m_waittime;
 
 	emu_timer *m_timer_lss;
-	emu_timer *m_timer_seek;
 	emu_timer *m_timer_motor;
 
 	uint8_t *m_rom;

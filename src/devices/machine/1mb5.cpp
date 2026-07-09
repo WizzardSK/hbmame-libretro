@@ -57,7 +57,7 @@ hp_1mb5_device::hp_1mb5_device(const machine_config &mconfig, const char *tag, d
 {
 }
 
-READ8_MEMBER(hp_1mb5_device::cpu_r)
+uint8_t hp_1mb5_device::cpu_r(offs_t offset)
 {
 	uint8_t res = 0;
 
@@ -87,7 +87,7 @@ READ8_MEMBER(hp_1mb5_device::cpu_r)
 	return res;
 }
 
-WRITE8_MEMBER(hp_1mb5_device::cpu_w)
+void hp_1mb5_device::cpu_w(offs_t offset, uint8_t data)
 {
 	LOG("WR %u=%02x\n" , offset , data);
 
@@ -108,7 +108,7 @@ WRITE8_MEMBER(hp_1mb5_device::cpu_w)
 	}
 }
 
-READ8_MEMBER(hp_1mb5_device::uc_r)
+uint8_t hp_1mb5_device::uc_r(offs_t offset)
 {
 	uint8_t res = 0;
 
@@ -136,7 +136,7 @@ READ8_MEMBER(hp_1mb5_device::uc_r)
 	return res;
 }
 
-WRITE8_MEMBER(hp_1mb5_device::uc_w)
+void hp_1mb5_device::uc_w(offs_t offset, uint8_t data)
 {
 	//LOG("WRU %u=%02x SR=%02x\n" , offset , data , m_sr);
 
@@ -160,22 +160,22 @@ WRITE8_MEMBER(hp_1mb5_device::uc_w)
 	}
 }
 
-READ_LINE_MEMBER(hp_1mb5_device::irl_r)
+int hp_1mb5_device::irl_r()
 {
 	return m_service;
 }
 
-READ_LINE_MEMBER(hp_1mb5_device::halt_r)
+int hp_1mb5_device::halt_r()
 {
 	return m_halt;
 }
 
-READ_LINE_MEMBER(hp_1mb5_device::reset_r)
+int hp_1mb5_device::reset_r()
 {
 	return m_reset;
 }
 
-READ_LINE_MEMBER(hp_1mb5_device::int_r)
+int hp_1mb5_device::int_r()
 {
 	return m_cint;
 }
@@ -193,11 +193,6 @@ void hp_1mb5_device::clear_service()
 
 void hp_1mb5_device::device_start()
 {
-	m_irl_handler.resolve_safe();
-	m_halt_handler.resolve_safe();
-	m_reset_handler.resolve_safe();
-	m_int_handler.resolve_safe();
-
 	save_item(NAME(m_sr));
 	save_item(NAME(m_cr));
 	save_item(NAME(m_ib));

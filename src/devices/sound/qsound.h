@@ -10,44 +10,46 @@
 
 #pragma once
 
+#include "dirom.h"
 #include "cpu/dsp16/dsp16.h"
 
 
-class qsound_device : public device_t, public device_sound_interface, public device_rom_interface
+class qsound_device : public device_t, public device_sound_interface, public device_rom_interface<24>
 {
 public:
 	// default 60MHz clock (divided by 2 for DSP core clock, and then by 1248 for sample rate)
 	qsound_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock = 60'000'000);
+	virtual ~qsound_device();
 
-	DECLARE_WRITE8_MEMBER(qsound_w);
-	DECLARE_READ8_MEMBER(qsound_r);
+	void qsound_w(offs_t offset, u8 data);
+	u8 qsound_r();
 
 protected:
 	// device_t implementation
 	tiny_rom_entry const *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual void device_start() override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual void device_start() override ATTR_COLD;
 	virtual void device_clock_changed() override;
-	virtual void device_reset() override;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_sound_interface implementation
-	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples) override;
+	virtual void sound_stream_update(sound_stream &stream) override;
 
 	// device_rom_interface implementation
-	virtual void rom_bank_updated() override;
+	virtual void rom_bank_post_change() override;
 
-	void dsp_io_map(address_map &map);
+	void dsp_io_map(address_map &map) ATTR_COLD;
 
 private:
 	// DSP ROM access
-	DECLARE_READ16_MEMBER(dsp_sample_r);
-	DECLARE_WRITE16_MEMBER(dsp_pio_w);
+	u16 dsp_sample_r(offs_t offset);
+	void dsp_pio_w(offs_t offset, u16 data);
 
 	// for synchronised DSP communication
-	DECLARE_WRITE_LINE_MEMBER(dsp_ock_w);
-	DECLARE_READ16_MEMBER(dsp_pio_r);
-	void set_dsp_ready(void *ptr, s32 param);
-	void set_cmd(void *ptr, s32 param);
+	void dsp_ock_w(int state);
+	u16 dsp_pio_r();
+	void set_dsp_ready(s32 param);
+	void set_cmd(s32 param);
 
 	// MAME resources
 	required_device<dsp16_device_base> m_dsp;
@@ -66,7 +68,9 @@ private:
 
 DECLARE_DEVICE_TYPE(QSOUND, qsound_device)
 
-#if !defined(QSOUND_LLE) // && 0
+// alias QSOUND to QSOUND_HLE by default
+// define QSOUND_LLE to use the DSP emulation
+#if !defined(QSOUND_LLE)
 #include "qsoundhle.h"
 #define qsound_device qsound_hle_device
 #define QSOUND QSOUND_HLE

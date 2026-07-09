@@ -27,12 +27,12 @@ public:
 	}
 
 	spg2xx_sysdma_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-	DECLARE_READ16_MEMBER(dma_r);
-	DECLARE_WRITE16_MEMBER(dma_w);
+	uint16_t dma_r(offs_t offset);
+	void dma_w(offs_t offset, uint16_t data);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	void do_cpu_dma(uint32_t len);

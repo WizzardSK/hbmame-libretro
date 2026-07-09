@@ -95,13 +95,6 @@
 DEFINE_DEVICE_TYPE(SUNKBD_PORT, sun_keyboard_port_device, "sunkbd", "Sun Keyboard Port")
 
 
-int const device_sun_keyboard_port_interface::START_BIT_COUNT;
-int const device_sun_keyboard_port_interface::DATA_BIT_COUNT;
-device_serial_interface::parity_t const device_sun_keyboard_port_interface::PARITY;
-device_serial_interface::stop_bits_t const device_sun_keyboard_port_interface::STOP_BITS;
-int const device_sun_keyboard_port_interface::BAUD;
-
-
 
 sun_keyboard_port_device::sun_keyboard_port_device(
 		machine_config const &mconfig,
@@ -139,12 +132,6 @@ void sun_keyboard_port_device::device_config_complete()
 }
 
 
-void sun_keyboard_port_device::device_resolve_objects()
-{
-	m_rxd_handler.resolve_safe();
-}
-
-
 void sun_keyboard_port_device::device_start()
 {
 	save_item(NAME(m_rxd));
@@ -155,7 +142,7 @@ void sun_keyboard_port_device::device_start()
 }
 
 
-WRITE_LINE_MEMBER( sun_keyboard_port_device::write_txd )
+void sun_keyboard_port_device::write_txd(int state)
 {
 	if (m_dev)
 		m_dev->input_txd(state);
@@ -180,6 +167,7 @@ device_sun_keyboard_port_interface::~device_sun_keyboard_port_interface()
 
 void default_sun_keyboard_devices(device_slot_interface &device)
 {
+	device.option_add("type2hle",   SUN_TYPE2_HLE_KEYBOARD);
 	device.option_add("type3hle",   SUN_TYPE3_HLE_KEYBOARD);
 	device.option_add("type4hle",   SUN_TYPE4_HLE_KEYBOARD);
 	device.option_add("type5hle",   SUN_TYPE5_HLE_KEYBOARD);

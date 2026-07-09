@@ -28,10 +28,10 @@ class psxgpu_device : public device_t, public device_video_interface, public dev
 public:
 	// configuration helpers
 	auto vblank_callback() { return m_vblank_handler.bind(); }
-	void set_vram_size(int size) { vramSize = size; }
+	int vram_size() { return vramSize; }
 
-	DECLARE_WRITE32_MEMBER( write );
-	DECLARE_READ32_MEMBER( read );
+	void write(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
+	uint32_t read(offs_t offset, uint32_t mem_mask = ~0);
 	void dma_read( uint32_t *ram, uint32_t n_address, int32_t n_size );
 	void dma_write( uint32_t *ram, uint32_t n_address, int32_t n_size );
 	void lightgun_set( int, int );
@@ -48,13 +48,13 @@ protected:
 	psxgpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint32_t vram_size, psxcpu_device *cpu_tag);
 	psxgpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 	virtual void device_post_load() override;
-	virtual void device_reset() override;
+	virtual void device_reset() override ATTR_COLD;
 	virtual void device_config_complete() override;
 
 	// device_palette_interface overrides
-	virtual uint32_t palette_entries() const override { return 32*32*32*2; }
+	virtual uint32_t palette_entries() const noexcept override { return 32*32*32*2; }
 
 	int vramSize;
 

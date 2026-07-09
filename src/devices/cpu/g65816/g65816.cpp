@@ -8,7 +8,6 @@
 G65C816 CPU Emulator V1.00
 
 Copyright Karl Stenerud
-All rights reserved.
 
 */
 /* ======================================================================== */
@@ -88,6 +87,10 @@ TODO general:
     - Add 1 cycle in Emulation mode (E=1) for (dir),y; abs,x; and abs,y
       addressing modes.
 
+    - Rename g65* to w65*? (including filenames)
+
+    - Any difference between W65C8* and G65SC8*?
+
 */
 /* ======================================================================== */
 /* ================================= DATA ================================= */
@@ -96,28 +99,37 @@ TODO general:
 #include "emu.h"
 #include "g65816.h"
 
+#include "g65816cm.h"
 
-DEFINE_DEVICE_TYPE(G65816, g65816_device, "g65c816", "Western Design Center G65C816")
+
+DEFINE_DEVICE_TYPE(G65816, g65816_device, "w65c816", "WDC W65C816")
+DEFINE_DEVICE_TYPE(G65802, g65802_device, "w65c802", "WDC W65C802")
 DEFINE_DEVICE_TYPE(_5A22,  _5a22_device,  "5a22",    "Ricoh 5A22")
 
 enum
 {
-	CPU_TYPE_G65816 = 0,
-	CPU_TYPE_5A22 = 1
+	CPU_TYPE_W65C816 = 0,
+	CPU_TYPE_W65C802 = 1,
+	CPU_TYPE_5A22 = 2
 };
 
 
 g65816_device::g65816_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: g65816_device(mconfig, G65816, tag, owner, clock, CPU_TYPE_G65816, address_map_constructor())
+	: g65816_device(mconfig, G65816, tag, owner, clock, CPU_TYPE_W65C816, address_map_constructor())
+{
+}
+
+g65802_device::g65802_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: g65816_device(mconfig, G65802, tag, owner, clock, CPU_TYPE_W65C802, address_map_constructor())
 {
 }
 
 
 g65816_device::g65816_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int cpu_type, address_map_constructor internal)
 	: cpu_device(mconfig, type, tag, owner, clock)
-	, m_program_config("program", ENDIANNESS_LITTLE, 8, 24, 0, internal)
-	, m_data_config("data", ENDIANNESS_LITTLE, 8, 24, 0, internal)
-	, m_opcode_config("opcodes", ENDIANNESS_LITTLE, 8, 24, 0, internal)
+	, m_program_config("program", ENDIANNESS_LITTLE, 8, (cpu_type == CPU_TYPE_W65C802) ? 16 : 24, 0, internal)
+	, m_data_config("data", ENDIANNESS_LITTLE, 8, (cpu_type == CPU_TYPE_W65C802) ? 16 : 24, 0, internal)
+	, m_opcode_config("opcodes", ENDIANNESS_LITTLE, 8, (cpu_type == CPU_TYPE_W65C802) ? 16 : 24, 0, internal)
 	, m_vector_config("vectors", ENDIANNESS_LITTLE, 8, 5, 0)
 	, m_wdm_w(*this)
 	, m_cpu_type(cpu_type)
@@ -247,10 +259,10 @@ unsigned g65816_device::g65816i_read_8_opcode(unsigned address)
 
 unsigned g65816_device::g65816i_read_8_direct(unsigned address)
 {
-	if (FLAG_E)
+	if (FLAG_E && !MAKE_UINT_8(REGISTER_D))
 	{
 		/* force address into zero page */
-		address = REGISTER_D + MAKE_UINT_8(address - REGISTER_D);
+		address = REGISTER_D | MAKE_UINT_8(address);
 		CLOCKS -= (bus_5A22_cycle_burst(address));
 	}
 	else
@@ -279,10 +291,10 @@ void g65816_device::g65816i_write_8_normal(unsigned address, unsigned value)
 
 void g65816_device::g65816i_write_8_direct(unsigned address, unsigned value)
 {
-	if (FLAG_E)
+	if (FLAG_E && !MAKE_UINT_8(REGISTER_D))
 	{
 		/* force address into zero page */
-		address = REGISTER_D + MAKE_UINT_8(address - REGISTER_D);
+		address = REGISTER_D | MAKE_UINT_8(address);
 		CLOCKS -= (bus_5A22_cycle_burst(address));
 	}
 	else
@@ -296,58 +308,68 @@ void g65816_device::g65816i_write_8_direct(unsigned address, unsigned value)
 unsigned g65816_device::g65816i_read_16_normal(unsigned address)
 {
 	return   g65816i_read_8_normal(address) |
-			(g65816i_read_8_normal(address+1)<<8);
+			(g65816i_read_8_normal(address + 1) << 8);
 }
 
 unsigned g65816_device::g65816i_read_16_immediate(unsigned address)
 {
 	return   g65816i_read_8_immediate(address) |
-			(g65816i_read_8_immediate(address+1)<<8);
+			(g65816i_read_8_immediate(address + 1) << 8);
 }
 
 unsigned g65816_device::g65816i_read_16_direct(unsigned address)
 {
 	return   g65816i_read_8_direct(address) |
-			(g65816i_read_8_direct(address+1)<<8);
+			(g65816i_read_8_direct(address + 1) << 8);
+}
+
+unsigned g65816_device::g65816i_read_16_direct_x(unsigned address)
+{
+	if (FLAG_E && MAKE_UINT_8(REGISTER_D))
+	{
+		// The (direct,X) addressing mode has a bug in which the high byte is
+		// wrapped within the page if E = 1 and D&0xFF != 0.
+		uint8_t lo = g65816i_read_8_direct(address);
+		uint8_t hi = g65816i_read_8_direct((address & 0xffff00) |
+				MAKE_UINT_8(address + 1));
+		return lo | (hi<<8);
+	}
+	else
+	{
+		return g65816i_read_16_direct(address);
+	}
 }
 
 unsigned g65816_device::g65816i_read_16_vector(unsigned address)
 {
 	return   g65816i_read_8_vector(address) |
-			(g65816i_read_8_vector(address+1)<<8);
+			(g65816i_read_8_vector(address + 1) << 8);
 }
 
 void g65816_device::g65816i_write_16_normal(unsigned address, unsigned value)
 {
-	g65816i_write_8_normal(address, value&0xff);
-	g65816i_write_8_normal(address+1, value>>8);
+	g65816i_write_8_normal(address, value & 0xff);
+	g65816i_write_8_normal(address + 1, value >> 8);
 }
 
 void g65816_device::g65816i_write_16_direct(unsigned address, unsigned value)
 {
-	g65816i_write_8_direct(address, value&0xff);
-	g65816i_write_8_direct(address+1, value>>8);
+	g65816i_write_8_direct(address, value & 0xff);
+	g65816i_write_8_direct(address + 1, value >> 8);
 }
 
 unsigned g65816_device::g65816i_read_24_normal(unsigned address)
 {
 	return   g65816i_read_8_normal(address)       |
-			(g65816i_read_8_normal(address+1)<<8) |
-			(g65816i_read_8_normal(address+2)<<16);
+			(g65816i_read_8_normal(address + 1) << 8) |
+			(g65816i_read_8_normal(address + 2) << 16);
 }
 
 unsigned g65816_device::g65816i_read_24_immediate(unsigned address)
 {
 	return   g65816i_read_8_immediate(address)       |
-			(g65816i_read_8_immediate(address+1)<<8) |
-			(g65816i_read_8_immediate(address+2)<<16);
-}
-
-unsigned g65816_device::g65816i_read_24_direct(unsigned address)
-{
-	return   g65816i_read_8_direct(address)         |
-			(g65816i_read_8_direct(address+1)<<8) |
-			(g65816i_read_8_direct(address+2)<<16);
+			(g65816i_read_8_immediate(address + 1) << 8) |
+			(g65816i_read_8_immediate(address + 2) << 16);
 }
 
 
@@ -360,11 +382,11 @@ void g65816_device::g65816i_push_8(unsigned value)
 	g65816i_write_8_normal(REGISTER_S, value);
 	if (FLAG_E)
 	{
-		REGISTER_S = MAKE_UINT_8(REGISTER_S-1) | 0x100;
+		REGISTER_S = MAKE_UINT_8(REGISTER_S - 1) | 0x100;
 	}
 	else
 	{
-		REGISTER_S = MAKE_UINT_16(REGISTER_S-1);
+		REGISTER_S = MAKE_UINT_16(REGISTER_S - 1);
 	}
 }
 
@@ -372,19 +394,19 @@ unsigned g65816_device::g65816i_pull_8()
 {
 	if (FLAG_E)
 	{
-		REGISTER_S = MAKE_UINT_8(REGISTER_S+1) | 0x100;
+		REGISTER_S = MAKE_UINT_8(REGISTER_S + 1) | 0x100;
 	}
 	else
 	{
-		REGISTER_S = MAKE_UINT_16(REGISTER_S+1);
+		REGISTER_S = MAKE_UINT_16(REGISTER_S + 1);
 	}
 	return g65816i_read_8_normal(REGISTER_S);
 }
 
 void g65816_device::g65816i_push_16(unsigned value)
 {
-	g65816i_push_8(value>>8);
-	g65816i_push_8(value&0xff);
+	g65816i_push_8(value >> 8);
+	g65816i_push_8(value & 0xff);
 }
 
 unsigned g65816_device::g65816i_pull_16()
@@ -395,9 +417,9 @@ unsigned g65816_device::g65816i_pull_16()
 
 void g65816_device::g65816i_push_24(unsigned value)
 {
-	g65816i_push_8(value>>16);
-	g65816i_push_8((value>>8)&0xff);
-	g65816i_push_8(value&0xff);
+	g65816i_push_8(value >> 16);
+	g65816i_push_8((value >> 8) & 0xff);
+	g65816i_push_8(value & 0xff);
 }
 
 unsigned g65816_device::g65816i_pull_24()
@@ -407,6 +429,51 @@ unsigned g65816_device::g65816i_pull_24()
 	return ((res + 1) & 0xffff) | (g65816i_pull_8() << 16);
 }
 
+void g65816_device::g65816i_push_8_native(unsigned value)
+{
+	g65816i_write_8_normal(REGISTER_S, value);
+	REGISTER_S = MAKE_UINT_16(REGISTER_S - 1);
+}
+
+unsigned g65816_device::g65816i_pull_8_native()
+{
+	REGISTER_S = MAKE_UINT_16(REGISTER_S + 1);
+	return g65816i_read_8_normal(REGISTER_S);
+}
+
+void g65816_device::g65816i_push_16_native(unsigned value)
+{
+	g65816i_push_8_native(value >> 8);
+	g65816i_push_8_native(value & 0xff);
+}
+
+unsigned g65816_device::g65816i_pull_16_native()
+{
+	unsigned res = g65816i_pull_8_native();
+	return res | (g65816i_pull_8_native() << 8);
+}
+
+void g65816_device::g65816i_push_24_native(unsigned value)
+{
+	g65816i_push_8_native(value >> 16);
+	g65816i_push_8_native((value >> 8) & 0xff);
+	g65816i_push_8_native(value & 0xff);
+}
+
+unsigned g65816_device::g65816i_pull_24_native()
+{
+	unsigned res = g65816i_pull_8_native();
+	res |= g65816i_pull_8_native() << 8;
+	return ((res + 1) & 0xffff) | (g65816i_pull_8_native() << 16);
+}
+
+void g65816_device::g65816i_update_reg_s()
+{
+	if (FLAG_E)
+	{
+		REGISTER_S = MAKE_UINT_8(REGISTER_S) | 0x100;
+	}
+}
 
 /* ======================================================================== */
 /* ============================ PROGRAM COUNTER =========================== */
@@ -420,7 +487,7 @@ void g65816_device::g65816i_jump_16(unsigned address)
 
 void g65816_device::g65816i_jump_24(unsigned address)
 {
-	REGISTER_PB = address&0xff0000;
+	REGISTER_PB = address & 0xff0000;
 	REGISTER_PC = MAKE_UINT_16(address);
 	g65816i_jumping(REGISTER_PC);
 }
@@ -431,7 +498,7 @@ void g65816_device::g65816i_branch_8(unsigned offset)
 	{
 		unsigned old_pc = REGISTER_PC;
 		REGISTER_PC = MAKE_UINT_16(REGISTER_PC + MAKE_INT_8(offset));
-		if((REGISTER_PC^old_pc)&0xff00)
+		if ((REGISTER_PC ^ old_pc) & 0xff00)
 			CLK(1);
 	}
 	else
@@ -456,7 +523,7 @@ void g65816_device::g65816i_set_flag_mx(unsigned value)
 {
 	if (FLAG_M)
 	{
-		if(!(value & FLAGPOS_M))
+		if (!(value & FLAGPOS_M))
 		{
 			REGISTER_A |= REGISTER_B;
 			REGISTER_B = 0;
@@ -465,7 +532,7 @@ void g65816_device::g65816i_set_flag_mx(unsigned value)
 	}
 	else
 	{
-		if(value & FLAGPOS_M)
+		if (value & FLAGPOS_M)
 		{
 			REGISTER_B = REGISTER_A & 0xff00;
 			REGISTER_A = MAKE_UINT_8(REGISTER_A);
@@ -474,28 +541,28 @@ void g65816_device::g65816i_set_flag_mx(unsigned value)
 	}
 	if (FLAG_X)
 	{
-		if(!(value & FLAGPOS_X))
+		if (!(value & FLAGPOS_X))
 		{
 			FLAG_X = XFLAG_CLEAR;
 		}
 	}
 	else
 	{
-		if(value & FLAGPOS_X)
+		if (value & FLAGPOS_X)
 		{
 			REGISTER_X = MAKE_UINT_8(REGISTER_X);
 			REGISTER_Y = MAKE_UINT_8(REGISTER_Y);
 			FLAG_X = XFLAG_SET;
 		}
 	}
-	g65816i_set_execution_mode((FLAG_M>>4) | (FLAG_X>>4));
+	g65816i_set_execution_mode((FLAG_M >> 4) | (FLAG_X >> 4));
 }
 
 void g65816_device::g65816i_set_flag_e(unsigned value)
 {
 	if (FLAG_E)
 	{
-		if(!value)
+		if (!value)
 		{
 			FLAG_E = EFLAG_CLEAR;
 			g65816i_set_execution_mode(EXECUTION_MODE_M1X1);
@@ -538,7 +605,7 @@ void g65816_device::g65816i_set_flag_i(unsigned value)
 /* Get the Processor Status Register */
 unsigned g65816_device::g65816i_get_reg_p()
 {
-	return  (FLAG_N&0x80)       |
+	return  (FLAG_N & 0x80)     |
 			((FLAG_V>>1)&0x40)  |
 			FLAG_M              |
 			FLAG_X              |
@@ -578,6 +645,7 @@ void g65816_device::g65816i_set_reg_p(unsigned value)
 
 void g65816_device::g65816i_interrupt_hardware(unsigned vector)
 {
+	standard_irq_callback(0, g65816_get_pc());
 	if (FLAG_E)
 	{
 		CLK(7);
@@ -587,7 +655,6 @@ void g65816_device::g65816i_interrupt_hardware(unsigned vector)
 		g65816i_set_flag_i(IFLAG_SET);
 		REGISTER_PB = 0;
 		g65816i_jump_16(g65816i_read_16_vector(vector));
-		standard_irq_callback(0);
 	}
 	else
 	{
@@ -599,7 +666,6 @@ void g65816_device::g65816i_interrupt_hardware(unsigned vector)
 		g65816i_set_flag_i(IFLAG_SET);
 		REGISTER_PB = 0;
 		g65816i_jump_16(g65816i_read_16_vector(vector));
-		standard_irq_callback(0);
 	}
 }
 
@@ -618,7 +684,7 @@ void g65816_device::g65816i_interrupt_software(unsigned vector)
 	else
 	{
 		CLK(8);
-		g65816i_push_8(REGISTER_PB>>16);
+		g65816i_push_8(REGISTER_PB >> 16);
 		g65816i_push_16(REGISTER_PC);
 		g65816i_push_8(g65816i_get_reg_p());
 		FLAG_D = DFLAG_CLEAR;
@@ -630,6 +696,7 @@ void g65816_device::g65816i_interrupt_software(unsigned vector)
 
 void g65816_device::g65816i_interrupt_nmi()
 {
+	standard_irq_callback(G65816_LINE_NMI, g65816_get_pc());
 	if (FLAG_E)
 	{
 		CLK(7);
@@ -642,7 +709,7 @@ void g65816_device::g65816i_interrupt_nmi()
 	else
 	{
 		CLK(8);
-		g65816i_push_8(REGISTER_PB>>16);
+		g65816i_push_8(REGISTER_PB >> 16);
 		g65816i_push_16(REGISTER_PC);
 		g65816i_push_8(g65816i_get_reg_p());
 		FLAG_D = DFLAG_CLEAR;
@@ -658,7 +725,6 @@ void g65816_device::g65816i_check_maskable_interrupt()
 	{
 		g65816i_interrupt_hardware((FLAG_E) ? VECTOR_IRQ_E : VECTOR_IRQ_N);
 		CPU_STOPPED &= ~STOP_LEVEL_WAI;
-		LINE_IRQ=0;
 	}
 }
 
@@ -673,17 +739,17 @@ unsigned g65816_device::EA_DX()    {return MAKE_UINT_16(REGISTER_D + g65816i_rea
 unsigned g65816_device::EA_DY()    {return MAKE_UINT_16(REGISTER_D + g65816i_read_8_immediate(EA_IMM8()) + REGISTER_Y);}
 unsigned g65816_device::EA_AX()    {unsigned tmp = EA_A(); if((tmp^(tmp+REGISTER_X))&0xff00) CLK(1); return tmp + REGISTER_X;}
 unsigned g65816_device::EA_ALX()   {return EA_AL() + REGISTER_X;}
-unsigned g65816_device::EA_AY()    {unsigned tmp = EA_A(); if((tmp^(tmp+REGISTER_X))&0xff00) CLK(1); return tmp + REGISTER_Y;}
+unsigned g65816_device::EA_AY()    {unsigned tmp = EA_A(); if((tmp^(tmp+REGISTER_Y))&0xff00) CLK(1); return tmp + REGISTER_Y;}
 unsigned g65816_device::EA_DI()    {return REGISTER_DB | g65816i_read_16_direct(EA_D());}
-unsigned g65816_device::EA_DLI()   {return g65816i_read_24_direct(EA_D());}
+unsigned g65816_device::EA_DLI()   {return g65816i_read_24_normal(EA_D());}
 unsigned g65816_device::EA_AI()    {return g65816i_read_16_normal(g65816i_read_16_immediate(EA_IMM16()));}
 unsigned g65816_device::EA_ALI()   {return g65816i_read_24_normal(EA_A());}
-unsigned g65816_device::EA_DXI()   {return REGISTER_DB | g65816i_read_16_direct(EA_DX());}
-unsigned g65816_device::EA_DIY()   {unsigned tmp = REGISTER_DB | g65816i_read_16_direct(EA_D()); if((tmp^(tmp+REGISTER_X))&0xff00) CLK(1); return tmp + REGISTER_Y;}
-unsigned g65816_device::EA_DLIY()  {return g65816i_read_24_direct(EA_D()) + REGISTER_Y;}
+unsigned g65816_device::EA_DXI()   {return REGISTER_DB | g65816i_read_16_direct_x(EA_DX());}
+unsigned g65816_device::EA_DIY()   {unsigned tmp = REGISTER_DB | g65816i_read_16_direct(EA_D()); if((tmp^(tmp+REGISTER_Y))&0xff00) CLK(1); return tmp + REGISTER_Y;}
+unsigned g65816_device::EA_DLIY()  {return g65816i_read_24_normal(EA_D()) + REGISTER_Y;}
 unsigned g65816_device::EA_AXI()   {return g65816i_read_16_normal(MAKE_UINT_16(g65816i_read_16_immediate(EA_IMM16()) + REGISTER_X));}
 unsigned g65816_device::EA_S()     {return MAKE_UINT_16(REGISTER_S + g65816i_read_8_immediate(EA_IMM8()));}
-unsigned g65816_device::EA_SIY()   {return MAKE_UINT_16(g65816i_read_16_normal(REGISTER_S + g65816i_read_8_immediate(EA_IMM8())) + REGISTER_Y) | REGISTER_DB;}
+unsigned g65816_device::EA_SIY()   {return (g65816i_read_16_normal(REGISTER_S + g65816i_read_8_immediate(EA_IMM8())) | REGISTER_DB) + REGISTER_Y;}
 
 
 
@@ -756,7 +822,7 @@ unsigned g65816_device::g65816_get_pc()
 void g65816_device::g65816_set_pc(unsigned val)
 {
 	REGISTER_PC = MAKE_UINT_16(val);
-	REGISTER_PB = (val >> 16) & 0xFF;
+	REGISTER_PB = (val >> 16) & 0xff;
 	g65816_jumping(REGISTER_PB | REGISTER_PC);
 }
 
@@ -776,7 +842,7 @@ void g65816_device::g65816_set_sp(unsigned val)
 unsigned g65816_device::g65816_get_reg(int regnum)
 {
 	/* Set the function tables to emulation mode if the FTABLE is nullptr */
-	if( FTABLE_GET_REG == nullptr )
+	if (FTABLE_GET_REG == nullptr)
 		g65816i_set_execution_mode(EXECUTION_MODE_E);
 
 	return (this->*FTABLE_GET_REG)(regnum);
@@ -812,7 +878,7 @@ bool g65816_device::get_x_flag() const
 void g65816_device::g65816_restore_state()
 {
 	// restore proper function pointers
-	g65816i_set_execution_mode((FLAG_M>>4) | (FLAG_X>>4));
+	g65816i_set_execution_mode((FLAG_M >> 4) | (FLAG_X >> 4));
 
 	// make sure the memory system can keep up
 	g65816i_jumping(REGISTER_PB | REGISTER_PC);
@@ -860,12 +926,9 @@ void g65816_device::device_start()
 	m_execute = nullptr;
 	m_debugger_temp = 0;
 
-	address_space &program_space = space(AS_PROGRAM);
-	m_data_space = has_space(AS_DATA) ? &space(AS_DATA) : &program_space;
-	m_program_cache = program_space.cache<0, 0, ENDIANNESS_LITTLE>();
-	m_opcode_cache = (has_space(AS_OPCODES) ? space(AS_OPCODES) : program_space).cache<0, 0, ENDIANNESS_LITTLE>();
-
-	m_wdm_w.resolve_safe();
+	space(AS_PROGRAM).cache(m_program);
+	(has_space(AS_OPCODES) ? space(AS_OPCODES) : space(AS_PROGRAM)).cache(m_opcode);
+	(has_space(AS_DATA) ? space(AS_DATA) : space(AS_PROGRAM)).specific(m_data);
 
 	save_item(NAME(m_a));
 	save_item(NAME(m_b));
@@ -912,7 +975,6 @@ void g65816_device::device_start()
 
 	state_add( STATE_GENPC, "GENPC", m_debugger_temp).callimport().callexport().formatstr("%06X").noshow();
 	state_add( STATE_GENPCBASE, "CURPC", m_debugger_temp).callimport().callexport().formatstr("%06X").noshow();
-	state_add( STATE_GENSP, "GENSP", m_debugger_temp).callimport().callexport().formatstr("%06X").noshow();
 	state_add( STATE_GENFLAGS, "GENFLAGS", m_debugger_temp).formatstr("%8s").noshow();
 
 	set_icountptr(m_ICount);
@@ -925,9 +987,6 @@ void g65816_device::state_import(const device_state_entry &entry)
 		case STATE_GENPC:
 		case STATE_GENPCBASE:
 			g65816_set_pc(m_debugger_temp);
-			break;
-		case STATE_GENSP:
-			g65816_set_sp(m_debugger_temp);
 			break;
 		case G65816_PC:
 		case G65816_PB:
@@ -973,9 +1032,6 @@ void g65816_device::state_export(const device_state_entry &entry)
 		case G65816_PC:
 			m_debugger_temp = g65816_get_pc();
 			break;
-		case STATE_GENSP:
-			m_debugger_temp = g65816_get_sp();
-			break;
 		case G65816_PB:
 			m_debugger_temp = m_pb>>16;
 			break;
@@ -983,14 +1039,14 @@ void g65816_device::state_export(const device_state_entry &entry)
 			m_debugger_temp = m_db>>16;
 			break;
 		case G65816_P:
-			m_debugger_temp = (m_flag_n&0x80)         |
-								((m_flag_v>>1)&0x40)    |
+			m_debugger_temp = (m_flag_n & 0x80)         |
+								((m_flag_v >> 1)&0x40)  |
 								m_flag_m                |
 								m_flag_x                |
 								m_flag_d                |
 								m_flag_i                |
-								((!m_flag_z)<<1)        |
-								((m_flag_c>>8)&1);
+								((!m_flag_z) << 1)      |
+								((m_flag_c >> 8) & 1);
 			break;
 		case G65816_A:
 			m_debugger_temp = m_a | m_b;
@@ -1006,10 +1062,9 @@ void g65816_device::state_string_export(const device_state_entry &entry, std::st
 			str = string_format("%c%c%c%c%c%c%c%c",
 				m_flag_n & NFLAG_SET ? 'N':'.',
 				m_flag_v & VFLAG_SET ? 'V':'.',
-				m_flag_m & MFLAG_SET ? 'M':'.',
-				m_flag_x & XFLAG_SET ? 'X':'.',
+				m_flag_m & MFLAG_SET ? (m_flag_e ? ' ':'M'):'.',
+				m_flag_x & XFLAG_SET ? (m_flag_e ? 'B':'X'):'.',
 				m_flag_d & DFLAG_SET ? 'D':'.',
-
 				m_flag_i & IFLAG_SET ? 'I':'.',
 				m_flag_z == 0        ? 'Z':'.',
 				m_flag_c & CFLAG_SET ? 'C':'.');
@@ -1024,7 +1079,7 @@ SNES specific, used to handle master cycles, based off byuu's BSNES code
 
 int g65816_device::bus_5A22_cycle_burst(unsigned addr)
 {
-	if(m_cpu_type == CPU_TYPE_G65816)
+	if(m_cpu_type != CPU_TYPE_5A22)
 		return 0;
 
 	if(addr & 0x408000) {
@@ -1092,29 +1147,29 @@ translation of Breath of Fire 2 to work. More weirdness: we might need to leave
 8 CPU cycles for division at first, since using 16 produces bugs (see e.g.
 Triforce pieces in Zelda 3 intro) */
 
-WRITE8_MEMBER( _5a22_device::wrmpya_w )
+void _5a22_device::wrmpya_w(uint8_t data)
 {
 	m_wrmpya = data;
 }
 
-WRITE8_MEMBER( _5a22_device::wrmpyb_w )
+void _5a22_device::wrmpyb_w(uint8_t data)
 {
 	m_wrmpyb = data;
 	m_rdmpy = m_wrmpya * m_wrmpyb;
 	/* TODO: m_rddiv == 0? */
 }
 
-WRITE8_MEMBER( _5a22_device::wrdivl_w )
+void _5a22_device::wrdivl_w(uint8_t data)
 {
 	m_wrdiv = (data) | (m_wrdiv & 0xff00);
 }
 
-WRITE8_MEMBER( _5a22_device::wrdivh_w )
+void _5a22_device::wrdivh_w(uint8_t data)
 {
 	m_wrdiv = (data << 8) | (m_wrdiv & 0xff);
 }
 
-WRITE8_MEMBER( _5a22_device::wrdvdd_w )
+void _5a22_device::wrdvdd_w(uint8_t data)
 {
 	uint16_t quotient, remainder;
 
@@ -1127,27 +1182,27 @@ WRITE8_MEMBER( _5a22_device::wrdvdd_w )
 	m_rdmpy = remainder;
 }
 
-WRITE8_MEMBER( _5a22_device::memsel_w )
+void _5a22_device::memsel_w(uint8_t data)
 {
 	m_fastROM = data & 1;
 }
 
-READ8_MEMBER( _5a22_device::rddivl_r )
+uint8_t _5a22_device::rddivl_r()
 {
 	return m_rddiv & 0xff;
 }
 
-READ8_MEMBER( _5a22_device::rddivh_r )
+uint8_t _5a22_device::rddivh_r()
 {
 	return m_rddiv >> 8;
 }
 
-READ8_MEMBER( _5a22_device::rdmpyl_r )
+uint8_t _5a22_device::rdmpyl_r()
 {
 	return m_rdmpy & 0xff;
 }
 
-READ8_MEMBER( _5a22_device::rdmpyh_r )
+uint8_t _5a22_device::rdmpyh_r()
 {
 	return m_rdmpy >> 8;
 }
@@ -1155,16 +1210,16 @@ READ8_MEMBER( _5a22_device::rdmpyh_r )
 
 void _5a22_device::set_5a22_map()
 {
-	space(AS_PROGRAM).install_write_handler(0x4202, 0x4202, 0, 0xbf0000, 0, write8_delegate(*this, FUNC(_5a22_device::wrmpya_w)));
-	space(AS_PROGRAM).install_write_handler(0x4203, 0x4203, 0, 0xbf0000, 0, write8_delegate(*this, FUNC(_5a22_device::wrmpyb_w)));
-	space(AS_PROGRAM).install_write_handler(0x4204, 0x4204, 0, 0xbf0000, 0, write8_delegate(*this, FUNC(_5a22_device::wrdivl_w)));
-	space(AS_PROGRAM).install_write_handler(0x4205, 0x4205, 0, 0xbf0000, 0, write8_delegate(*this, FUNC(_5a22_device::wrdivh_w)));
-	space(AS_PROGRAM).install_write_handler(0x4206, 0x4206, 0, 0xbf0000, 0, write8_delegate(*this, FUNC(_5a22_device::wrdvdd_w)));
+	space(AS_PROGRAM).install_write_handler(0x4202, 0x4202, 0, 0xbf0000, 0, write8smo_delegate(*this, FUNC(_5a22_device::wrmpya_w)));
+	space(AS_PROGRAM).install_write_handler(0x4203, 0x4203, 0, 0xbf0000, 0, write8smo_delegate(*this, FUNC(_5a22_device::wrmpyb_w)));
+	space(AS_PROGRAM).install_write_handler(0x4204, 0x4204, 0, 0xbf0000, 0, write8smo_delegate(*this, FUNC(_5a22_device::wrdivl_w)));
+	space(AS_PROGRAM).install_write_handler(0x4205, 0x4205, 0, 0xbf0000, 0, write8smo_delegate(*this, FUNC(_5a22_device::wrdivh_w)));
+	space(AS_PROGRAM).install_write_handler(0x4206, 0x4206, 0, 0xbf0000, 0, write8smo_delegate(*this, FUNC(_5a22_device::wrdvdd_w)));
 
-	space(AS_PROGRAM).install_write_handler(0x420d, 0x420d, 0, 0xbf0000, 0, write8_delegate(*this, FUNC(_5a22_device::memsel_w)));
+	space(AS_PROGRAM).install_write_handler(0x420d, 0x420d, 0, 0xbf0000, 0, write8smo_delegate(*this, FUNC(_5a22_device::memsel_w)));
 
-	space(AS_PROGRAM).install_read_handler(0x4214, 0x4214, 0, 0xbf0000, 0, read8_delegate(*this, FUNC(_5a22_device::rddivl_r)));
-	space(AS_PROGRAM).install_read_handler(0x4215, 0x4215, 0, 0xbf0000, 0, read8_delegate(*this, FUNC(_5a22_device::rddivh_r)));
-	space(AS_PROGRAM).install_read_handler(0x4216, 0x4216, 0, 0xbf0000, 0, read8_delegate(*this, FUNC(_5a22_device::rdmpyl_r)));
-	space(AS_PROGRAM).install_read_handler(0x4217, 0x4217, 0, 0xbf0000, 0, read8_delegate(*this, FUNC(_5a22_device::rdmpyh_r)));
+	space(AS_PROGRAM).install_read_handler(0x4214, 0x4214, 0, 0xbf0000, 0, read8smo_delegate(*this, FUNC(_5a22_device::rddivl_r)));
+	space(AS_PROGRAM).install_read_handler(0x4215, 0x4215, 0, 0xbf0000, 0, read8smo_delegate(*this, FUNC(_5a22_device::rddivh_r)));
+	space(AS_PROGRAM).install_read_handler(0x4216, 0x4216, 0, 0xbf0000, 0, read8smo_delegate(*this, FUNC(_5a22_device::rdmpyl_r)));
+	space(AS_PROGRAM).install_read_handler(0x4217, 0x4217, 0, 0xbf0000, 0, read8smo_delegate(*this, FUNC(_5a22_device::rdmpyh_r)));
 }

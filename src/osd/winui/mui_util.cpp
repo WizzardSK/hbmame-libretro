@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -25,10 +25,12 @@
 #include "winui.h"
 #include "mui_util.h"
 #include "mui_opts.h"
+#include "emu_opts.h"
 #include "drivenum.h"
 #include "machine/ram.h"
-
 #include <shlwapi.h>
+#include "corestr.h"
+#include "path.h"
 
 /***************************************************************************
     function prototypes
@@ -66,17 +68,17 @@ static bool bFirst = true;
 
 enum
 {
-	DRIVER_CACHE_SCREEN		= 0x000F,
-	DRIVER_CACHE_ROMS		= 0x0010,
-	DRIVER_CACHE_CLONE		= 0x0020,
-	DRIVER_CACHE_STEREO		= 0x0040,
-	DRIVER_CACHE_BIOS		= 0x0080,
-	DRIVER_CACHE_TRACKBALL	= 0x0100,
-	DRIVER_CACHE_HARDDISK	= 0x0200,
-	DRIVER_CACHE_SAMPLES	= 0x0400,
-	DRIVER_CACHE_LIGHTGUN	= 0x0800,
-	DRIVER_CACHE_VECTOR		= 0x1000,
-	DRIVER_CACHE_MOUSE		= 0x2000,
+	DRIVER_CACHE_SCREEN     = 0x000F,
+	DRIVER_CACHE_ROMS       = 0x0010,
+	DRIVER_CACHE_CLONE      = 0x0020,
+	DRIVER_CACHE_STEREO     = 0x0040,
+	DRIVER_CACHE_BIOS       = 0x0080,
+	DRIVER_CACHE_TRACKBALL  = 0x0100,
+	DRIVER_CACHE_HARDDISK   = 0x0200,
+	DRIVER_CACHE_SAMPLES    = 0x0400,
+	DRIVER_CACHE_LIGHTGUN   = 0x0800,
+	DRIVER_CACHE_VECTOR     = 0x1000,
+	DRIVER_CACHE_MOUSE      = 0x2000,
 	DRIVER_CACHE_RAM        = 0x4000,
 };
 
@@ -164,7 +166,7 @@ void ErrorMessageBox(const char *fmt, ...)
 	va_list ptr;
 
 	va_start(ptr, fmt);
-	vsnprintf(buf, ARRAY_LENGTH(buf), fmt, ptr);
+	vsnprintf(buf, std::size(buf), fmt, ptr);
 	winui_message_box_utf8(GetMainWindow(), buf, MAMEUINAME, MB_ICONERROR | MB_OK);
 	va_end(ptr);
 }
@@ -259,9 +261,9 @@ LONG GetCommonControlVersion()
 				pDllGetVersion = (DLLGETVERSIONPROC)GetProcAddress(hModule, "DllGetVersion");
 
 				/* Because some DLLs might not implement this function, you
-                   must test for it explicitly. Depending on the particular
-                   DLL, the lack of a DllGetVersion function can be a useful
-                   indicator of the version. */
+				   must test for it explicitly. Depending on the particular
+				   DLL, the lack of a DllGetVersion function can be a useful
+				   indicator of the version. */
 
 				if(pDllGetVersion)
 				{
@@ -381,20 +383,23 @@ char * ConvertToWindowsNewlines(const char *source)
 }
 
 /* Lop off path and extention from a source file name
- * This assumes their is a pathname passed to the function
+ * This assumes there is a pathname passed to the function
  * like src\drivers\blah.c
  */
-const char * GetDriverFilename(uint32_t nIndex)
+const char * GetDriverFilename(int drvindex)
 {
-	static char tmp[2048];
-	std::string driver = core_filename_extract_base(driver_list::driver(nIndex).type.source());
-	strcpy(tmp, driver.c_str());
+	static char tmp[2048] = { };
+	if (drvindex >= 0)
+	{
+		string driver = string(core_filename_extract_base(driver_list::driver(drvindex).type.source()));
+		strcpy(tmp, driver.c_str());
+	}
 	return tmp;
 }
 
 BOOL isDriverVector(const machine_config *config)
 {
-	const screen_device *screen = screen_device_iterator(config->root_device()).first();
+	const screen_device *screen = screen_device_enumerator(config->root_device()).first();
 
 	if (screen)
 		if (SCREEN_TYPE_VECTOR == screen->screen_type())
@@ -405,13 +410,13 @@ BOOL isDriverVector(const machine_config *config)
 
 int numberOfScreens(const machine_config *config)
 {
-	screen_device_iterator scriter(config->root_device());
+	screen_device_enumerator scriter(config->root_device());
 	return scriter.count();
 }
 
 int numberOfSpeakers(const machine_config *config)
 {
-	speaker_device_iterator iter(config->root_device());
+	speaker_device_enumerator iter(config->root_device());
 	return iter.count();
 }
 
@@ -487,10 +492,10 @@ static void InitDriversInfo(void)
 		gameinfo->isHarddisk = false;
 		gameinfo->isVertical = BIT(cache, 2);  //ORIENTATION_SWAP_XY
 
-		ram_device_iterator iter1(config.root_device());
+		ram_device_enumerator iter1(config.root_device());
 		gameinfo->hasRam = (iter1.first() );
 
-		for (device_t &device : device_iterator(config.root_device()))
+		for (device_t &device : device_enumerator(config.root_device()))
 			for (region = rom_first_region(device); region; region = rom_next_region(region))
 				if (ROMREGION_ISDISKDATA(region))
 					gameinfo->isHarddisk = true;
@@ -510,12 +515,12 @@ static void InitDriversInfo(void)
 		gameinfo->screenCount = numberOfScreens(&config);
 		gameinfo->isVector = isDriverVector(&config); // ((drv.video_attributes & VIDEO_TYPE_VECTOR) != 0);
 		gameinfo->usesRoms = false;
-		for (device_t &device : device_iterator(config.root_device()))
+		for (device_t &device : device_enumerator(config.root_device()))
 			for (region = rom_first_region(device); region; region = rom_next_region(region))
 				for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
 					gameinfo->usesRoms = true;
 
-		samples_device_iterator iter(config.root_device());
+		samples_device_enumerator iter(config.root_device());
 		gameinfo->usesSamples = iter.count() ? true : false;
 
 		gameinfo->usesTrackball = false;
@@ -525,8 +530,8 @@ static void InitDriversInfo(void)
 		if (gamedrv->ipt)
 		{
 			ioport_list portlist;
-			std::string errors;
-			for (device_t &cfg : device_iterator(config.root_device()))
+			std::ostringstream errors;
+			for (device_t &cfg : device_enumerator(config.root_device()))
 				if (cfg.input_ports())
 					portlist.append(cfg, errors);
 
@@ -607,6 +612,7 @@ static struct DriversInfo* GetDriversInfo(uint32_t driver_index)
 		std::fill(drivers_info.begin(), drivers_info.end(), DriversInfo{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
 		printf("DriversInfo: B\n");fflush(stdout);
 		InitDriversCache();
+		printf("DriversInfo: C\n");fflush(stdout);
 	}
 
 	return &drivers_info[driver_index];
@@ -781,7 +787,7 @@ TCHAR* win_tstring_strdup(LPCTSTR str)
 }
 
 //============================================================
-//  win_create_file_utf8
+//  win_create_file_utf8 - used by dirwatch
 //============================================================
 
 HANDLE win_create_file_utf8(const char* filename, DWORD desiredmode, DWORD sharemode, LPSECURITY_ATTRIBUTES securityattributes,
@@ -793,64 +799,6 @@ HANDLE win_create_file_utf8(const char* filename, DWORD desiredmode, DWORD share
 		return result;
 
 	result = CreateFile(t_filename, desiredmode, sharemode, securityattributes, creationdisposition, flagsandattributes, templatehandle);
-
-	free(t_filename);
-
-	return result;
-}
-
-//============================================================
-//  win_get_current_directory_utf8
-//============================================================
-
-DWORD win_get_current_directory_utf8(DWORD bufferlength, char* buffer)
-{
-	DWORD result = 0;
-	TCHAR* t_buffer = NULL;
-
-	if( bufferlength > 0 )
-	{
-		t_buffer = (TCHAR*)malloc((bufferlength * sizeof(TCHAR)) + 1);
-		if( !t_buffer )
-			return result;
-	}
-
-	result = GetCurrentDirectory(bufferlength, t_buffer);
-
-	char* utf8_buffer = NULL;
-	if( bufferlength > 0 )
-	{
-		utf8_buffer = ui_utf8_from_wstring(t_buffer);
-		if( !utf8_buffer )
-		{
-			free(t_buffer);
-			return result;
-		}
-	}
-
-	strncpy(buffer, utf8_buffer, bufferlength);
-
-	if( utf8_buffer )
-		free(utf8_buffer);
-
-	if( t_buffer )
-		free(t_buffer);
-
-	return result;
-}
-
-//============================================================
-//  win_find_first_file_utf8
-//============================================================
-
-HANDLE win_find_first_file_utf8(const char* filename, LPWIN32_FIND_DATA findfiledata)
-{
-	HANDLE result = 0;
-	TCHAR* t_filename = ui_wstring_from_utf8(filename);
-	if( !t_filename )
-		return result;
-
-	result = FindFirstFile(t_filename, findfiledata);
 
 	free(t_filename);
 

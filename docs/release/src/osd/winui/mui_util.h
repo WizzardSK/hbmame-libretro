@@ -1,8 +1,8 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 //****************************************************************************
 
-#ifndef MUI_UTIL_H
-#define MUI_UTIL_H
+#ifndef WINUI_MUI_UTIL_H
+#define WINUI_MUI_UTIL_H
 
 #include "emucore.h"
 
@@ -66,10 +66,11 @@ HANDLE win_create_file_utf8(const char* filename, DWORD desiredmode, DWORD share
 							DWORD flagsandattributes, HANDLE templatehandle);
 DWORD win_get_current_directory_utf8(DWORD bufferlength, char* buffer);
 HANDLE win_find_first_file_utf8(const char* filename, LPWIN32_FIND_DATA findfiledata);
+void ErrorMessageBox(const char *fmt, ...);
 
  //  wstring_from_utf8
  //============================================================
- 
+
 WCHAR *ui_wstring_from_utf8(const char *utf8string)
 {
 	int char_count;
@@ -80,7 +81,7 @@ WCHAR *ui_wstring_from_utf8(const char *utf8string)
 	result = (WCHAR *)malloc(char_count * sizeof(*result));
 	if (result != nullptr)
 		MultiByteToWideChar(CP_UTF8, 0, utf8string, -1, result, char_count);
- 
+
 	return result;
 }
 

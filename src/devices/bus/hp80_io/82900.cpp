@@ -10,7 +10,6 @@
 
 #include "emu.h"
 #include "82900.h"
-#include "coreutil.h"
 
 // Debugging
 #define VERBOSE 0
@@ -44,7 +43,7 @@ hp82900_io_card_device::~hp82900_io_card_device()
 
 void hp82900_io_card_device::install_read_write_handlers(address_space& space , uint16_t base_addr)
 {
-	space.install_readwrite_handler(base_addr, base_addr + 1, read8_delegate(*m_translator, FUNC(hp_1mb5_device::cpu_r)), write8_delegate(*m_translator, FUNC(hp_1mb5_device::cpu_w)));
+	space.install_readwrite_handler(base_addr, base_addr + 1, read8sm_delegate(*m_translator, FUNC(hp_1mb5_device::cpu_r)), write8sm_delegate(*m_translator, FUNC(hp_1mb5_device::cpu_w)));
 }
 
 void hp82900_io_card_device::inten()
@@ -86,7 +85,7 @@ ROM_START(hp82900)
 	ROM_LOAD("82900-60002.bin" , 0 , 0x800 , CRC(48745bbb) SHA1(fb4427f729eedba5ac01809718b841c7bdd85e1f))
 ROM_END
 
-WRITE_LINE_MEMBER(hp82900_io_card_device::reset_w)
+void hp82900_io_card_device::reset_w(int state)
 {
 	LOG("reset_w %d\n" , state);
 	m_cpu->set_input_line(INPUT_LINE_RESET , state);
@@ -96,7 +95,7 @@ WRITE_LINE_MEMBER(hp82900_io_card_device::reset_w)
 	}
 }
 
-READ8_MEMBER(hp82900_io_card_device::cpu_mem_r)
+uint8_t hp82900_io_card_device::cpu_mem_r(offs_t offset)
 {
 	if (m_rom_enabled) {
 		return m_rom[ offset & 0x7ff ];
@@ -105,29 +104,29 @@ READ8_MEMBER(hp82900_io_card_device::cpu_mem_r)
 	}
 }
 
-WRITE8_MEMBER(hp82900_io_card_device::cpu_mem_w)
+void hp82900_io_card_device::cpu_mem_w(offs_t offset, uint8_t data)
 {
 	m_ram[ offset ] = data;
 }
 
-READ8_MEMBER(hp82900_io_card_device::cpu_io_r)
+uint8_t hp82900_io_card_device::cpu_io_r(offs_t offset)
 {
 	m_rom_enabled = false;
 
 	uint8_t res;
 	if (BIT(offset , 6) && (m_addr_latch & 0x82) == 0) {
-		res = m_translator->uc_r(space , m_addr_latch & 1 , mem_mask);
+		res = m_translator->uc_r(m_addr_latch & 1);
 	} else {
 		res = ~0;
 	}
 	return res;
 }
 
-WRITE8_MEMBER(hp82900_io_card_device::cpu_io_w)
+void hp82900_io_card_device::cpu_io_w(offs_t offset, uint8_t data)
 {
 	m_rom_enabled = false;
 	if (BIT(offset , 6) && (m_addr_latch & 0x82) == 0) {
-		m_translator->uc_w(space , m_addr_latch & 1 , data , mem_mask);
+		m_translator->uc_w(m_addr_latch & 1 , data);
 	} else if (BIT(offset , 7)) {
 		m_addr_latch = data;
 	}
@@ -146,7 +145,7 @@ void hp82900_io_card_device::cpu_io_map(address_map &map)
 	map(0x00 , 0xff).rw(FUNC(hp82900_io_card_device::cpu_io_r) , FUNC(hp82900_io_card_device::cpu_io_w));
 }
 
-WRITE8_MEMBER(hp82900_io_card_device::z80_m1_w)
+void hp82900_io_card_device::z80_m1_w(uint8_t data)
 {
 	// 1 wait state on each M1 cycle
 	m_cpu->adjust_icount(-1);
@@ -164,7 +163,7 @@ void hp82900_io_card_device::device_add_mconfig(machine_config &config)
 	m_cpu->set_addrmap(AS_IO , &hp82900_io_card_device::cpu_io_map);
 	m_cpu->refresh_cb().set(FUNC(hp82900_io_card_device::z80_m1_w));
 
-	HP_1MB5(config, m_translator, 0);
+	HP_1MB5(config, m_translator);
 	m_translator->irl_handler().set(FUNC(hp82900_io_card_device::irl_w));
 	m_translator->halt_handler().set(FUNC(hp82900_io_card_device::halt_w));
 	m_translator->reset_handler().set(FUNC(hp82900_io_card_device::reset_w));

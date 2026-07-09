@@ -35,24 +35,24 @@ public:
 	typedef device_delegate<ioport_value ()> port_read_delegate;
 
 	// construction/destruction
-	msm6253_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
+	msm6253_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock = 0);
 
 	// configuration
 	template <unsigned P> void set_input_tag(const char *tag) { m_analog_ports[P].set_tag(tag); }
 	template <unsigned P, typename... T> void set_input_cb(T &&... args) { m_analog_input_cb[P].set(std::forward<T>(args)...); }
 
 	// write handlers
-	WRITE8_MEMBER(address_w);
-	WRITE8_MEMBER(select_w);
+	void address_w(offs_t offset, u8 data);
+	void select_w(offs_t offset, u8 data);
 
 	// read handlers
 	bool shift_out();
-	READ8_MEMBER(d0_r);
-	READ8_MEMBER(d7_r);
+	u8 d0_r(address_space &space);
+	u8 d7_r(address_space &space);
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 private:
 	// helpers

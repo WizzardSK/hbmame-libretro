@@ -34,11 +34,11 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	// optional information overrides
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	// device_adamnet_card_interface overrides
 	virtual void adamnet_reset_w(int state) override;
@@ -46,10 +46,10 @@ protected:
 private:
 	required_device<m6801_cpu_device> m_maincpu;
 
-	DECLARE_READ8_MEMBER( p2_r );
-	DECLARE_WRITE8_MEMBER( p2_w );
+	uint8_t p2_r();
+	void p2_w(uint8_t data);
 
-	void adam_spi_mem(address_map &map);
+	void adam_spi_mem(address_map &map) ATTR_COLD;
 };
 
 

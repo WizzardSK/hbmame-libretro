@@ -106,11 +106,12 @@
     The format string type can be a pointer to a NUL-terminated string,
     an array containing a NUL-terminated or non-terminated string, or a
     STL contiguous container holding a string (e.g. std::string,
-    std::vector or std::array).  Note that NUL characters characters are
-    only treated as terminators for pointers and arrays, they are
-    treated as normal characters for other containers.  A non-contiguous
-    container (e.g. std::list or std::deque) will result in undesirable
-    behaviour likely culminating in a crash.
+    std::string_view, std::vector or std::array).  Note that NUL
+    characters characters are only treated as terminators for pointers
+    and arrays, they are treated as normal characters for other
+    containers.  Using a non-contiguous container (e.g. std::list or
+    std::deque) will result in undesirable behaviour likely culminating
+    in a crash.
 
     The value type of the format string and the character type of the
     output stream/string need to match.  You can't use a wchar_t format
@@ -131,6 +132,7 @@
     - Inappropriate type for parameterised width/precision
     - Positional width/precision specifier not terminated with $
     - Inappropriate type for n conversion
+    - Default conversion for type that lacks stream out operator
 
     Some limitations have been described in passing.  Major limitations
     and bugs include:
@@ -171,8 +173,6 @@
 
 #pragma once
 
-#include "vecstream.h"
-
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -184,8 +184,17 @@
 #include <locale>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
+
+#if !defined(MAME_UTIL_STRFORMAT_ALLOW_CHAR8_AS_CHAR)
+#if __cplusplus > 201703L
+#define MAME_UTIL_STRFORMAT_ALLOW_CHAR8_AS_CHAR 1
+#else
+#define MAME_UTIL_STRFORMAT_ALLOW_CHAR8_AS_CHAR 0
+#endif
+#endif
 
 namespace util {
 
@@ -357,52 +366,54 @@ public:
 	{
 	}
 
-	template <typename Stream> void apply(Stream &stream) const
+	template <typename Character, typename Traits = std::char_traits<Character> >
+	void apply(std::basic_ostream<Character, Traits> &stream) const
 	{
-		typedef format_chars<typename Stream::char_type> chars;
+		using stream_type = std::basic_ostream<Character, Traits>;
+		using chars = format_chars<Character>;
 
 		stream.unsetf(
-				Stream::basefield |
-				Stream::adjustfield |
-				Stream::floatfield |
-				Stream::boolalpha |
-				Stream::showbase |
-				Stream::showpoint |
-				Stream::showpos |
-				Stream::uppercase);
+				stream_type::basefield |
+				stream_type::adjustfield |
+				stream_type::floatfield |
+				stream_type::boolalpha |
+				stream_type::showbase |
+				stream_type::showpoint |
+				stream_type::showpos |
+				stream_type::uppercase);
 
-		if (get_alternate_format()) stream.setf(Stream::showbase | Stream::showpoint);
+		if (get_alternate_format()) stream.setf(stream_type::showbase | stream_type::showpoint);
 		stream.fill(get_zero_pad() ? chars::zero : chars::space);
-		stream.setf(get_left_align() ? Stream::left : get_zero_pad() ? Stream::internal : Stream::right);
-		if (positive_sign::plus == get_positive_sign()) stream.setf(Stream::showpos);
+		stream.setf(get_left_align() ? stream_type::left : get_zero_pad() ? stream_type::internal : stream_type::right);
+		if (positive_sign::plus == get_positive_sign()) stream.setf(stream_type::showpos);
 		stream.precision((get_precision() < 0) ? 6 : get_precision());
 		stream.width(get_field_width());
-		if (get_uppercase()) stream.setf(Stream::uppercase);
+		if (get_uppercase()) stream.setf(stream_type::uppercase);
 		switch (get_conversion())
 		{
 		case conversion::unspecified:
 			break;
 		case conversion::signed_decimal:
 		case conversion::unsigned_decimal:
-			stream.setf(Stream::dec);
+			stream.setf(stream_type::dec);
 			break;
 		case conversion::octal:
-			stream.setf(Stream::oct);
+			stream.setf(stream_type::oct);
 			break;
 		case conversion::hexadecimal:
-			stream.setf(Stream::hex | Stream::scientific | Stream::fixed);
+			stream.setf(stream_type::hex | stream_type::scientific | stream_type::fixed);
 			break;
 		case conversion::scientific_decimal:
-			stream.setf(Stream::dec | Stream::scientific);
+			stream.setf(stream_type::dec | stream_type::scientific);
 			break;
 		case conversion::fixed_decimal:
-			stream.setf(Stream::dec | Stream::fixed);
+			stream.setf(stream_type::dec | stream_type::fixed);
 			break;
 		case conversion::floating_decimal:
-			stream.setf(Stream::dec);
+			stream.setf(stream_type::dec);
 			break;
 		case conversion::scientific_hexadecimal:
-			stream.setf(Stream::hex | Stream::scientific | Stream::fixed);
+			stream.setf(stream_type::hex | stream_type::scientific | stream_type::fixed);
 			break;
 		case conversion::character:
 		case conversion::string:
@@ -543,6 +554,7 @@ public:
 		case conversion::octal:
 		case conversion::hexadecimal:
 			m_positive_sign = positive_sign::none;
+			[[fallthrough]];
 		case conversion::signed_decimal:
 			if (0 <= m_precision)
 				m_zero_pad = false;
@@ -575,294 +587,293 @@ template <typename Stream, typename T>
 class format_output
 {
 private:
-	template <typename U> struct signed_integer_semantics
-	{ static constexpr bool value = std::is_integral<U>::value && std::is_signed<U>::value; };
-	template <typename U> struct unsigned_integer_semantics
-	{ static constexpr bool value = std::is_integral<U>::value && !std::is_signed<U>::value; };
-	template <typename U> struct default_semantics
-	{ static constexpr bool value = !signed_integer_semantics<U>::value && !unsigned_integer_semantics<U>::value; };
+	template <typename U>
+	struct string_semantics : public std::false_type { };
+	template <typename CharT, typename Traits, typename Allocator>
+	struct string_semantics<std::basic_string<CharT, Traits, Allocator> > : public std::true_type { };
+	template <typename CharT, typename Traits>
+	struct string_semantics<std::basic_string_view<CharT, Traits> > : public std::true_type { };
+	template <typename U>
+	using signed_integer_semantics = std::bool_constant<std::is_integral_v<U> && std::is_signed_v<U> >;
+	template <typename U>
+	using unsigned_integer_semantics = std::bool_constant<std::is_integral_v<U> && !std::is_signed_v<U> >;
 
-	static void apply_signed(Stream &str, char16_t const &value)
-	{
-		str << std::make_signed_t<std::uint_least16_t>(std::uint_least16_t(value));
-	}
-	static void apply_signed(Stream &str, char32_t const &value)
-	{
-		str << std::make_signed_t<std::uint_least32_t>(std::uint_least32_t(value));
-	}
 	template <typename U>
-	static std::enable_if_t<std::is_same<std::make_signed_t<U>, std::make_signed_t<char> >::value> apply_signed(Stream &str, U const &value)
+	static U const &launder_string(U const &value) requires std::is_same_v<typename Stream::char_type, typename U::value_type>
 	{
-		str << int(std::make_signed_t<U>(value));
+		return value;
 	}
+#if MAME_UTIL_STRFORMAT_ALLOW_CHAR8_AS_CHAR
 	template <typename U>
-	static std::enable_if_t<!std::is_same<std::make_signed_t<U>, std::make_signed_t<char> >::value && signed_integer_semantics<U>::value> apply_signed(Stream &str, U const &value)
+	static std::basic_string_view<typename Stream::char_type> launder_string(U const &value) requires (std::is_same_v<typename Stream::char_type, char> && std::is_same_v<typename U::value_type, char8_t>)
 	{
-		str << value;
+		return std::basic_string_view<typename Stream::char_type>(reinterpret_cast<typename Stream::char_type const *>(value.data()), value.length());
 	}
-	template <typename U>
-	static std::enable_if_t<!std::is_same<std::make_signed_t<U>, std::make_signed_t<char> >::value && unsigned_integer_semantics<U>::value> apply_signed(Stream &str, U const &value)
+#endif
+
+	static void apply_signed(Stream &str, T const &value) requires (std::is_same_v<std::make_signed_t<std::remove_cv_t<T> >, std::make_signed_t<char> > || std::is_integral_v<T>)
 	{
-		str << std::make_signed_t<U>(value);
+		if constexpr (std::is_same_v<std::make_signed_t<std::remove_cv_t<T> >, std::make_signed_t<char> >)
+			str << int(std::make_signed_t<T>(value));
+		else if constexpr (!std::is_signed_v<T> || std::is_same_v<typename Stream::char_type, std::remove_cv_t<T> >)
+			str << std::make_signed_t<T>(value);
+		else if constexpr (!std::is_invocable_v<decltype([] (auto &x, auto &y) -> decltype(x << y) { return x << y; }), Stream &, T const &>)
+			str << std::make_signed_t<T>(value);
+		else
+			str << value;
 	}
 
-	static void apply_unsigned(Stream &str, char16_t const &value)
+	static void apply_unsigned(Stream &str, T const &value) requires (std::is_same_v<std::make_unsigned_t<std::remove_cv_t<T> >, std::make_unsigned_t<char> > || std::is_integral_v<T>)
 	{
-		str << std::uint_least16_t(value);
-	}
-	static void apply_unsigned(Stream &str, char32_t const &value)
-	{
-		str << std::uint_least32_t(value);
-	}
-	template <typename U>
-	static std::enable_if_t<std::is_same<std::make_unsigned_t<U>, std::make_unsigned_t<char> >::value> apply_unsigned(Stream &str, U const &value)
-	{
-		str << unsigned(std::make_unsigned_t<U>(value));
-	}
-	template <typename U>
-	static std::enable_if_t<!std::is_same<std::make_unsigned_t<U>, std::make_unsigned_t<char> >::value && signed_integer_semantics<U>::value> apply_unsigned(Stream &str, U const &value)
-	{
-		str << std::make_unsigned_t<U>(value);
-	}
-	template <typename U>
-	static std::enable_if_t<!std::is_same<std::make_unsigned_t<U>, std::make_unsigned_t<char> >::value && unsigned_integer_semantics<U>::value> apply_unsigned(Stream &str, U const &value)
-	{
-		str << value;
+		if constexpr (std::is_same_v<std::make_unsigned_t<std::remove_cv_t<T> >, std::make_unsigned_t<char> >)
+			str << unsigned(std::make_unsigned_t<T>(value));
+		else if constexpr (!std::is_unsigned_v<T> || std::is_same_v<typename Stream::char_type, std::remove_cv_t<T> >)
+			str << std::make_unsigned_t<T>(value);
+		else if constexpr (!std::is_invocable_v<decltype([] (auto &x, auto &y) -> decltype(x << y) { return x << y; }), Stream &, T const &>)
+			str << std::make_unsigned_t<T>(value);
+		else
+			str << value;
 	}
 
 public:
-	template <typename U>
-	static void apply(std::enable_if_t<signed_integer_semantics<U>::value, Stream> &str, format_flags const &flags, U const &value)
+	static void apply(Stream &str, format_flags const &flags, T const &value)
 	{
-		switch (flags.get_conversion())
+		if constexpr (std::is_same_v<std::remove_cv_t<T>, bool>)
 		{
-		case format_flags::conversion::signed_decimal:
-			switch (flags.get_length())
+			switch (flags.get_conversion())
 			{
-			case format_flags::length::character:
-				str << int(static_cast<signed char>(value));
-				break;
-			case format_flags::length::short_integer:
-				str << short(value);
-				break;
-			case format_flags::length::long_integer:
-				str << long(value);
-				break;
-			case format_flags::length::long_long_integer:
-				str << static_cast<long long>(value);
-				break;
-			case format_flags::length::integer_maximum:
-				str << std::intmax_t(value);
-				break;
-			case format_flags::length::size_type:
-				str << std::make_signed_t<std::size_t>(value);
-				break;
-			case format_flags::length::pointer_difference:
-				str << std::make_signed_t<std::ptrdiff_t>(value);
-				break;
-			case format_flags::length::integer_32:
-				str << std::uint32_t(std::int32_t(value));
-				break;
-			case format_flags::length::integer_64:
-				str << std::int64_t(value);
+			case format_flags::conversion::signed_decimal:
+			case format_flags::conversion::unsigned_decimal:
+			case format_flags::conversion::octal:
+			case format_flags::conversion::hexadecimal:
+			case format_flags::conversion::scientific_decimal:
+			case format_flags::conversion::fixed_decimal:
+			case format_flags::conversion::floating_decimal:
+			case format_flags::conversion::scientific_hexadecimal:
+			case format_flags::conversion::character:
+			case format_flags::conversion::pointer:
+				format_output<Stream, unsigned>().apply(str, flags, unsigned(value));
 				break;
 			default:
-				apply_signed(str, value);
+				if (flags.get_alternate_format()) str.setf(Stream::boolalpha);
+				str << value;
 			}
-			break;
-		case format_flags::conversion::unsigned_decimal:
-		case format_flags::conversion::octal:
-		case format_flags::conversion::hexadecimal:
-			switch (flags.get_length())
+		}
+		else if constexpr (string_semantics<std::remove_cv_t<T> >::value)
+		{
+			auto const &laundered(launder_string(value));
+			int const precision(flags.get_precision());
+			if ((0 <= precision) && (laundered.size() > unsigned(precision)))
 			{
-			case format_flags::length::character:
-				str << unsigned(static_cast<unsigned char>(static_cast<signed char>(value)));
-				break;
-			case format_flags::length::short_integer:
-				str << static_cast<unsigned short>(short(value));
-				break;
-			case format_flags::length::long_integer:
-				str << static_cast<unsigned long>(long(value));
-				break;
-			case format_flags::length::long_long_integer:
-				str << static_cast<unsigned long long>(static_cast<long long>(value));
-				break;
-			case format_flags::length::integer_maximum:
-				str << std::uintmax_t(std::intmax_t(value));
-				break;
-			case format_flags::length::size_type:
-				str << std::make_unsigned_t<std::size_t>(std::make_signed_t<std::size_t>(value));
-				break;
-			case format_flags::length::pointer_difference:
-				str << std::make_unsigned_t<std::ptrdiff_t>(std::make_signed_t<std::ptrdiff_t>(value));
-				break;
-			case format_flags::length::integer_32:
-				str << std::uint32_t(std::int32_t(value));
-				break;
-			case format_flags::length::integer_64:
-				str << std::uint64_t(std::int64_t(value));
-				break;
-			default:
-				apply_unsigned(str, value);
+				if constexpr (std::is_same_v<typename std::remove_reference_t<decltype(laundered)>::value_type, typename Stream::char_type>)
+				{
+					unsigned width(flags.get_field_width());
+					bool const pad(unsigned(precision) < width);
+					typename Stream::fmtflags const adjust(str.flags() & Stream::adjustfield);
+					if (!pad || (Stream::left == adjust)) str.write(&*laundered.begin(), unsigned(precision));
+					if (pad)
+					{
+						for (width -= precision; 0U < width; --width) str.put(str.fill());
+						if (Stream::left != adjust) str.write(&*laundered.begin(), unsigned(precision));
+					}
+					str.width(0);
+				}
+				else
+				{
+					str << laundered.substr(0, unsigned(precision));
+				}
 			}
-			break;
-		case format_flags::conversion::character:
-			if (std::is_signed<typename Stream::char_type>::value)
-				str << typename Stream::char_type(value);
 			else
-				str << typename Stream::char_type(std::make_signed_t<typename Stream::char_type>(value));
-			break;
-		case format_flags::conversion::pointer:
-			str << reinterpret_cast<void const *>(std::uintptr_t(std::intptr_t(value)));
-			break;
-		default:
-			str << value;
-		}
-	}
-	template <typename U>
-	static void apply(std::enable_if_t<unsigned_integer_semantics<U>::value, Stream> &str, format_flags const &flags, U const &value)
-	{
-		switch (flags.get_conversion())
-		{
-		case format_flags::conversion::signed_decimal:
-			switch (flags.get_length())
 			{
-			case format_flags::length::character:
-				str << int(static_cast<signed char>(static_cast<unsigned char>(value)));
+				str << laundered;
+			}
+		}
+		else if constexpr (signed_integer_semantics<std::remove_cv_t<T> >::value)
+		{
+			switch (flags.get_conversion())
+			{
+			case format_flags::conversion::signed_decimal:
+				switch (flags.get_length())
+				{
+				case format_flags::length::character:
+					str << int(static_cast<signed char>(value));
+					break;
+				case format_flags::length::short_integer:
+					str << short(value);
+					break;
+				case format_flags::length::long_integer:
+					str << long(value);
+					break;
+				case format_flags::length::long_long_integer:
+					str << static_cast<long long>(value);
+					break;
+				case format_flags::length::integer_maximum:
+					str << std::intmax_t(value);
+					break;
+				case format_flags::length::size_type:
+					str << std::make_signed_t<std::size_t>(value);
+					break;
+				case format_flags::length::pointer_difference:
+					str << std::make_signed_t<std::ptrdiff_t>(value);
+					break;
+				case format_flags::length::integer_32:
+					str << std::uint32_t(std::int32_t(value));
+					break;
+				case format_flags::length::integer_64:
+					str << std::int64_t(value);
+					break;
+				default:
+					apply_signed(str, value);
+				}
 				break;
-			case format_flags::length::short_integer:
-				str << short(static_cast<unsigned short>(value));
+			case format_flags::conversion::unsigned_decimal:
+			case format_flags::conversion::octal:
+			case format_flags::conversion::hexadecimal:
+				switch (flags.get_length())
+				{
+				case format_flags::length::character:
+					str << unsigned(static_cast<unsigned char>(static_cast<signed char>(value)));
+					break;
+				case format_flags::length::short_integer:
+					str << static_cast<unsigned short>(short(value));
+					break;
+				case format_flags::length::long_integer:
+					str << static_cast<unsigned long>(long(value));
+					break;
+				case format_flags::length::long_long_integer:
+					str << static_cast<unsigned long long>(static_cast<long long>(value));
+					break;
+				case format_flags::length::integer_maximum:
+					str << std::uintmax_t(std::intmax_t(value));
+					break;
+				case format_flags::length::size_type:
+					str << std::make_unsigned_t<std::size_t>(std::make_signed_t<std::size_t>(value));
+					break;
+				case format_flags::length::pointer_difference:
+					str << std::make_unsigned_t<std::ptrdiff_t>(std::make_signed_t<std::ptrdiff_t>(value));
+					break;
+				case format_flags::length::integer_32:
+					str << std::uint32_t(std::int32_t(value));
+					break;
+				case format_flags::length::integer_64:
+					str << std::uint64_t(std::int64_t(value));
+					break;
+				default:
+					apply_unsigned(str, value);
+				}
 				break;
-			case format_flags::length::long_integer:
-				str << long(static_cast<unsigned long>(value));
+			case format_flags::conversion::character:
+				if (std::is_signed<typename Stream::char_type>::value)
+					str << typename Stream::char_type(value);
+				else
+					str << typename Stream::char_type(std::make_signed_t<typename Stream::char_type>(value));
 				break;
-			case format_flags::length::long_long_integer:
-				str << static_cast<long long>(static_cast<unsigned long long>(value));
-				break;
-			case format_flags::length::integer_maximum:
-				str << std::intmax_t(std::uintmax_t(value));
-				break;
-			case format_flags::length::size_type:
-				str << std::make_signed_t<std::size_t>(std::make_unsigned_t<std::size_t>(value));
-				break;
-			case format_flags::length::pointer_difference:
-				str << std::make_signed_t<std::ptrdiff_t>(std::make_unsigned_t<std::ptrdiff_t>(value));
-				break;
-			case format_flags::length::integer_32:
-				str << std::int32_t(std::uint32_t(value));
-				break;
-			case format_flags::length::integer_64:
-				str << std::int64_t(std::uint64_t(value));
+			case format_flags::conversion::pointer:
+				str << reinterpret_cast<void const *>(std::uintptr_t(std::intptr_t(value)));
 				break;
 			default:
-				apply_signed(str, value);
+				str << value;
 			}
-			break;
-		case format_flags::conversion::unsigned_decimal:
-		case format_flags::conversion::octal:
-		case format_flags::conversion::hexadecimal:
-			switch (flags.get_length())
+		}
+		else if constexpr (unsigned_integer_semantics<std::remove_cv_t<T> >::value)
+		{
+			switch (flags.get_conversion())
 			{
-			case format_flags::length::character:
-				str << unsigned(static_cast<unsigned char>(value));
+			case format_flags::conversion::signed_decimal:
+				switch (flags.get_length())
+				{
+				case format_flags::length::character:
+					str << int(static_cast<signed char>(static_cast<unsigned char>(value)));
+					break;
+				case format_flags::length::short_integer:
+					str << short(static_cast<unsigned short>(value));
+					break;
+				case format_flags::length::long_integer:
+					str << long(static_cast<unsigned long>(value));
+					break;
+				case format_flags::length::long_long_integer:
+					str << static_cast<long long>(static_cast<unsigned long long>(value));
+					break;
+				case format_flags::length::integer_maximum:
+					str << std::intmax_t(std::uintmax_t(value));
+					break;
+				case format_flags::length::size_type:
+					str << std::make_signed_t<std::size_t>(std::make_unsigned_t<std::size_t>(value));
+					break;
+				case format_flags::length::pointer_difference:
+					str << std::make_signed_t<std::ptrdiff_t>(std::make_unsigned_t<std::ptrdiff_t>(value));
+					break;
+				case format_flags::length::integer_32:
+					str << std::int32_t(std::uint32_t(value));
+					break;
+				case format_flags::length::integer_64:
+					str << std::int64_t(std::uint64_t(value));
+					break;
+				default:
+					apply_signed(str, value);
+				}
 				break;
-			case format_flags::length::short_integer:
-				str << static_cast<unsigned short>(value);
+			case format_flags::conversion::unsigned_decimal:
+			case format_flags::conversion::octal:
+			case format_flags::conversion::hexadecimal:
+				switch (flags.get_length())
+				{
+				case format_flags::length::character:
+					str << unsigned(static_cast<unsigned char>(value));
+					break;
+				case format_flags::length::short_integer:
+					str << static_cast<unsigned short>(value);
+					break;
+				case format_flags::length::long_integer:
+					str << static_cast<unsigned long>(value);
+					break;
+				case format_flags::length::long_long_integer:
+					str << static_cast<unsigned long long>(value);
+					break;
+				case format_flags::length::integer_maximum:
+					str << std::uintmax_t(value);
+					break;
+				case format_flags::length::size_type:
+					str << std::make_unsigned_t<std::size_t>(value);
+					break;
+				case format_flags::length::pointer_difference:
+					str << std::make_unsigned_t<std::ptrdiff_t>(value);
+					break;
+				case format_flags::length::integer_32:
+					str << std::uint32_t(std::int32_t(value));
+					break;
+				case format_flags::length::integer_64:
+					str << std::int64_t(value);
+					break;
+				default:
+					apply_unsigned(str, value);
+				}
 				break;
-			case format_flags::length::long_integer:
-				str << static_cast<unsigned long>(value);
+			case format_flags::conversion::character:
+				if (std::is_signed<typename Stream::char_type>::value)
+					str << typename Stream::char_type(value);
+				else
+					str << typename Stream::char_type(std::make_signed_t<typename Stream::char_type>(value));
 				break;
-			case format_flags::length::long_long_integer:
-				str << static_cast<unsigned long long>(value);
-				break;
-			case format_flags::length::integer_maximum:
-				str << std::uintmax_t(value);
-				break;
-			case format_flags::length::size_type:
-				str << std::make_unsigned_t<std::size_t>(value);
-				break;
-			case format_flags::length::pointer_difference:
-				str << std::make_unsigned_t<std::ptrdiff_t>(value);
-				break;
-			case format_flags::length::integer_32:
-				str << std::uint32_t(std::int32_t(value));
-				break;
-			case format_flags::length::integer_64:
-				str << std::int64_t(value);
+			case format_flags::conversion::pointer:
+				str << reinterpret_cast<void const *>(std::uintptr_t(value));
 				break;
 			default:
-				apply_unsigned(str, value);
+				if constexpr (!std::is_invocable_v<decltype([] (auto &x, auto &y) -> decltype(x << y) { return x << y; }), Stream &, T const &>)
+				{
+					assert(false); // stream out operator not declared or declared deleted
+					str << '?';
+				}
+				else
+				{
+					str << value;
+				}
 			}
-			break;
-		case format_flags::conversion::character:
-			if (std::is_signed<typename Stream::char_type>::value)
-				str << typename Stream::char_type(value);
-			else
-				str << typename Stream::char_type(std::make_signed_t<typename Stream::char_type>(value));
-			break;
-		case format_flags::conversion::pointer:
-			str << reinterpret_cast<void const *>(std::uintptr_t(value));
-			break;
-		default:
-			str << value;
-		}
-	}
-	template <typename U>
-	static void apply(std::enable_if_t<default_semantics<U>::value, Stream> &str, format_flags const &flags, U const &value)
-	{
-		str << value;
-	}
-	static void apply(Stream &str, format_flags const &flags, bool value)
-	{
-		switch (flags.get_conversion())
-		{
-		case format_flags::conversion::signed_decimal:
-		case format_flags::conversion::unsigned_decimal:
-		case format_flags::conversion::octal:
-		case format_flags::conversion::hexadecimal:
-		case format_flags::conversion::scientific_decimal:
-		case format_flags::conversion::fixed_decimal:
-		case format_flags::conversion::floating_decimal:
-		case format_flags::conversion::scientific_hexadecimal:
-		case format_flags::conversion::character:
-		case format_flags::conversion::pointer:
-			apply(str, flags, unsigned(value));
-			break;
-		default:
-			if (flags.get_alternate_format()) str.setf(Stream::boolalpha);
-			str << value;
-		}
-	}
-	template <typename CharT, typename Traits, typename Allocator>
-	static void apply(std::enable_if_t<std::is_same<CharT, typename Stream::char_type>::value, Stream> &str, format_flags const &flags, std::basic_string<CharT, Traits, Allocator> const &value)
-	{
-		int const precision(flags.get_precision());
-		if ((0 <= precision) && (value.size() > unsigned(precision)))
-		{
-			unsigned width(flags.get_field_width());
-			bool const pad(unsigned(precision) < width);
-			typename Stream::fmtflags const adjust(str.flags() & Stream::adjustfield);
-			if (!pad || (Stream::left == adjust)) str.write(&*value.begin(), unsigned(precision));
-			if (pad)
-			{
-				for (width -= precision; 0U < width; --width) str.put(str.fill());
-				if (Stream::left != adjust) str.write(&*value.begin(), unsigned(precision));
-			}
-			str.width(0);
 		}
 		else
 		{
 			str << value;
 		}
-	}
-	template <typename CharT, typename Traits, typename Allocator>
-	static void apply(std::enable_if_t<!std::is_same<CharT, typename Stream::char_type>::value, Stream> &str, format_flags const &flags, std::basic_string<CharT, Traits, Allocator> const &value)
-	{
-		int const precision(flags.get_precision());
-		if ((0 <= precision) && (value.size() > unsigned(precision)))
-			str << value.substr(0, unsigned(precision));
-		else
-			str << value;
 	}
 };
 
@@ -870,50 +881,66 @@ template <typename Stream, typename T>
 class format_output<Stream, T *>
 {
 protected:
-	template <typename U> struct string_semantics
-	{ static constexpr bool value = std::is_same<std::remove_const_t<U>, typename Stream::char_type>::value; };
+	template <typename CharT, typename U>
+	struct string_semantics : public std::bool_constant<std::is_same_v<std::remove_cv_t<U>, CharT> > { };
+#if MAME_UTIL_STRFORMAT_ALLOW_CHAR8_AS_CHAR
+	template <typename U>
+	struct string_semantics<char, U> : public std::bool_constant<std::is_same_v<std::remove_cv_t<U>, char> || std::is_same_v<std::remove_cv_t<U>, char8_t> > { };
+#endif
+
+	static T const *launder_string(T const *value) requires (std::is_same_v<typename Stream::char_type, std::remove_cv_t<T> >)
+	{
+		return value;
+	}
+#if MAME_UTIL_STRFORMAT_ALLOW_CHAR8_AS_CHAR
+	static char const *launder_string(T const *value) requires(std::is_same_v<typename Stream::char_type, char> && std::is_same_v<std::remove_cv_t<T>, char8_t>)
+	{
+		return reinterpret_cast<char const *>(value);
+	}
+#endif
 
 public:
-	template <typename U>
-	static void apply(std::enable_if_t<string_semantics<U>::value, Stream> &str, format_flags const &flags, U const *value)
+	static void apply(Stream &str, format_flags const &flags, T const *value)
 	{
-		switch (flags.get_conversion())
+		if constexpr (string_semantics<typename Stream::char_type, T>::value)
 		{
-		case format_flags::conversion::string:
+			switch (flags.get_conversion())
 			{
-				int precision(flags.get_precision());
-				if (0 <= flags.get_precision())
+			case format_flags::conversion::string:
 				{
-					std::streamsize cnt(0);
-					for ( ; (0 < precision) && (U(format_chars<U>::nul) != value[cnt]); --precision, ++cnt) { }
-					unsigned width(flags.get_field_width());
-					bool const pad(std::make_unsigned_t<std::streamsize>(cnt) < width);
-					typename Stream::fmtflags const adjust(str.flags() & Stream::adjustfield);
-					if (!pad || (Stream::left == adjust)) str.write(value, cnt);
-					if (pad)
+					int precision(flags.get_precision());
+					if (0 <= flags.get_precision())
 					{
-						for (width -= cnt; 0U < width; --width) str.put(str.fill());
-						if (Stream::left != adjust) str.write(value, cnt);
+						std::streamsize cnt(0);
+						for ( ; (0 < precision) && (format_chars<std::remove_cv_t<T> >::nul != value[cnt]); --precision, ++cnt) { }
+						unsigned width(flags.get_field_width());
+						bool const pad(std::make_unsigned_t<std::streamsize>(cnt) < width);
+						typename Stream::fmtflags const adjust(str.flags() & Stream::adjustfield);
+						if (!pad || (Stream::left == adjust)) str.write(launder_string(value), cnt);
+						if (pad)
+						{
+							for (width -= cnt; 0U < width; --width) str.put(str.fill());
+							if (Stream::left != adjust) str.write(launder_string(value), cnt);
+						}
+						str.width(0);
 					}
-					str.width(0);
+					else
+					{
+						str << launder_string(value);
+					}
 				}
-				else
-				{
-					str << value;
-				}
+				break;
+			case format_flags::conversion::pointer:
+				str << reinterpret_cast<void const *>(const_cast<std::remove_volatile_t<T> *>(value));
+				break;
+			default:
+				str << launder_string(value);
 			}
-			break;
-		case format_flags::conversion::pointer:
-			str << reinterpret_cast<void const *>(const_cast<std::remove_volatile_t<U> *>(value));
-			break;
-		default:
-			str << value;
 		}
-	}
-	template <typename U>
-	static void apply(std::enable_if_t<!string_semantics<U>::value, Stream> &str, format_flags const &flags, U const *value)
-	{
-		str << reinterpret_cast<void const *>(const_cast<std::remove_volatile_t<U> *>(value));
+		else
+		{
+			str << reinterpret_cast<void const *>(const_cast<std::remove_volatile_t<T> *>(value));
+		}
 	}
 };
 
@@ -921,14 +948,13 @@ template <typename Stream, typename T, std::size_t N>
 class format_output<Stream, T[N]> : protected format_output<Stream, T *>
 {
 public:
-	template <typename U>
-	static void apply(Stream &str, format_flags const &flags, U const *value)
+	static void apply(Stream &str, format_flags const &flags, T const *value)
 	{
 		static_assert(
-				!format_output::template string_semantics<U>::value || (N <= size_t(unsigned((std::numeric_limits<int>::max)()))),
+				!format_output::template string_semantics<typename Stream::char_type, T>::value || (N <= size_t(unsigned((std::numeric_limits<int>::max)()))),
 				"C string array length must not exceed maximum integer value");
 		format_flags f(flags);
-		if (format_output::template string_semantics<U>::value && ((0 > f.get_precision()) || (N < unsigned(f.get_precision()))))
+		if (format_output::template string_semantics<typename Stream::char_type, T>::value && ((0 > f.get_precision()) || (N < unsigned(f.get_precision()))))
 			f.set_precision(int(unsigned(N)));
 		format_output<Stream, T *>::apply(str, f, value);
 	}
@@ -943,27 +969,28 @@ template <typename T>
 class format_make_integer
 {
 private:
-	template <typename U> struct use_unsigned_cast
-	{ static constexpr bool value = std::is_convertible<U const, unsigned>::value && std::is_unsigned<U>::value; };
-	template <typename U> struct use_signed_cast
-	{ static constexpr bool value = !use_unsigned_cast<U>::value && std::is_convertible<U const, int>::value; };
-	template <typename U> struct disable
-	{ static constexpr bool value = !use_unsigned_cast<U>::value && !use_signed_cast<U>::value; };
+	template <typename U>
+	using use_unsigned_cast = std::bool_constant<std::is_convertible_v<U const, unsigned> && std::is_unsigned_v<U> >;
+	template <typename U>
+	using use_signed_cast = std::bool_constant<!use_unsigned_cast<U>::value && std::is_convertible_v<U const, int> >;
 
 public:
-	template <typename U> static std::enable_if_t<use_unsigned_cast<U>::value, bool> apply(U const &value, int &result)
+	static bool apply(T const &value, int &result)
 	{
-		result = int(unsigned(value));
-		return true;
-	}
-	template <typename U> static std::enable_if_t<use_signed_cast<U>::value, bool> apply(U const &value, int &result)
-	{
-		result = int(value);
-		return true;
-	}
-	template <typename U> static std::enable_if_t<disable<U>::value, bool> apply(U const &value, int &result)
-	{
-		return false;
+		if constexpr (use_unsigned_cast<std::remove_cv_t<T> >::value)
+		{
+			result = int(unsigned(value));
+			return true;
+		}
+		else if constexpr (use_signed_cast<std::remove_cv_t<T> >::value)
+		{
+			result = int(value);
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 };
 
@@ -976,32 +1003,33 @@ template <typename T>
 class format_store_integer
 {
 private:
-	template <typename U> struct is_non_const_ptr
-	{ static constexpr bool value = std::is_pointer<U>::value && !std::is_const<std::remove_pointer_t<U> >::value; };
-	template <typename U> struct is_unsigned_ptr
-	{ static constexpr bool value = std::is_pointer<U>::value && std::is_unsigned<std::remove_pointer_t<U> >::value; };
-	template <typename U> struct use_unsigned_cast
-	{ static constexpr bool value = is_non_const_ptr<U>::value && is_unsigned_ptr<U>::value && std::is_convertible<std::make_unsigned_t<std::streamoff>, std::remove_pointer_t<U> >::value; };
-	template <typename U> struct use_signed_cast
-	{ static constexpr bool value = is_non_const_ptr<U>::value && !use_unsigned_cast<U>::value && std::is_convertible<std::streamoff, std::remove_pointer_t<U> >::value; };
-	template <typename U> struct disable
-	{ static constexpr bool value = !use_unsigned_cast<U>::value && !use_signed_cast<U>::value; };
+	template <typename U>
+	using is_non_const_ptr = std::bool_constant<std::is_pointer_v<U> && !std::is_const_v<std::remove_pointer_t<U> > >;
+	template <typename U>
+	using is_unsigned_ptr = std::bool_constant<std::is_pointer_v<U> && std::is_unsigned_v<std::remove_pointer_t<U> > >;
+	template <typename U>
+	using use_unsigned_cast = std::bool_constant<is_non_const_ptr<U>::value && is_unsigned_ptr<U>::value && std::is_convertible_v<std::make_unsigned_t<std::streamoff>, std::remove_pointer_t<U> > >;
+	template <typename U>
+	using use_signed_cast = std::bool_constant<is_non_const_ptr<U>::value && !use_unsigned_cast<U>::value && std::is_convertible_v<std::streamoff, std::remove_pointer_t<U> > >;
 
 public:
-	template <typename U> static std::enable_if_t<use_unsigned_cast<U>::value, bool> apply(U const &value, std::streamoff data)
+	static bool apply(T const &value, std::streamoff data)
 	{
-		*value = std::remove_pointer_t<U>(std::make_unsigned_t<std::streamoff>(data));
-		return true;
-	}
-	template <typename U> static std::enable_if_t<use_signed_cast<U>::value, bool> apply(U const &value, std::streamoff data)
-	{
-		*value = std::remove_pointer_t<U>(std::make_signed_t<std::streamoff>(data));
-		return true;
-	}
-	template <typename U> static std::enable_if_t<disable<U>::value, bool> apply(U const &value, std::streamoff data)
-	{
-		assert(false); // inappropriate type for storing characters written so far
-		return false;
+		if constexpr (use_unsigned_cast<T>::value)
+		{
+			*value = std::remove_pointer_t<T>(std::make_unsigned_t<std::streamoff>(data));
+			return true;
+		}
+		else if constexpr (use_signed_cast<T>::value)
+		{
+			*value = std::remove_pointer_t<T>(std::make_signed_t<std::streamoff>(data));
+			return true;
+		}
+		else
+		{
+			assert(false); // inappropriate type for storing characters written so far
+			return false;
+		}
 	}
 };
 
@@ -1010,10 +1038,12 @@ public:
 //  NON-POLYMORPHIC ARGUMENT WRAPPER
 //**************************************************************************
 
-template <typename Stream>
+template <typename Character, typename Traits = std::char_traits<Character> >
 class format_argument
 {
 public:
+	using stream_type = std::basic_ostream<Character, Traits>;
+
 	format_argument()
 		: m_value(nullptr)
 		, m_output_function(nullptr)
@@ -1031,18 +1061,18 @@ public:
 	{
 	}
 
-	void output(Stream &str, format_flags const &flags) const { m_output_function(str, flags, m_value); }
+	void output(stream_type &str, format_flags const &flags) const { m_output_function(str, flags, m_value); }
 	bool make_integer(int &result) const { return m_make_integer_function(m_value, result); }
 	void store_integer(std::streamoff data) const { m_store_integer_function(m_value, data); }
 
 private:
-	typedef void (*output_function)(Stream &str, format_flags const &flags, void const *value);
+	typedef void (*output_function)(stream_type &str, format_flags const &flags, void const *value);
 	typedef bool (*make_integer_function)(void const *value, int &result);
 	typedef void (*store_integer_function)(void const *value, std::streamoff data);
 
-	template <typename T> static void static_output(Stream &str, format_flags const &flags, void const *value)
+	template <typename T> static void static_output(stream_type &str, format_flags const &flags, void const *value)
 	{
-		format_output<Stream, T>::apply(str, flags, *reinterpret_cast<T const *>(value));
+		format_output<stream_type, T>::apply(str, flags, *reinterpret_cast<T const *>(value));
 	}
 
 	template <typename T> static bool static_make_integer(void const *value, int &result)
@@ -1066,11 +1096,12 @@ private:
 //  NON-POLYMORPHIC ARGUMENT PACK WRAPPER BASE
 //**************************************************************************
 
-template <typename Stream = std::ostream>
+template <typename Character = char, typename Traits = std::char_traits<Character> >
 class format_argument_pack
 {
 public:
-	typedef typename Stream::char_type char_type;
+	using stream_type = std::basic_ostream<Character, Traits>;
+	using char_type = Character;
 	typedef char_type const *iterator;
 	iterator format_begin() const
 	{
@@ -1084,60 +1115,54 @@ public:
 	{
 		return m_argument_count;
 	}
-	format_argument<Stream> const &operator[](std::size_t index) const
+	format_argument<char_type, Traits> const &operator[](std::size_t index) const
 	{
 		assert(m_argument_count > index);
 		return m_arguments[index];
 	}
 
 protected:
+	struct char_launderer
+	{
+	protected:
+		static Character const *launder(Character const *ptr) { return ptr; }
+#if MAME_UTIL_STRFORMAT_ALLOW_CHAR8_AS_CHAR
+		template <typename T>
+		static Character const *launder(T const *ptr) requires (std::is_same_v<Character, char> && std::is_same_v<T, char8_t>) { return reinterpret_cast<Character const *>(ptr); }
+#endif
+	};
+	template <typename Format>
+	struct format_handling : public char_launderer
+	{
+		static constexpr bool check_nul = false;
+		static Character const *begin(Format const &fmt) { return !fmt.empty() ? char_launderer::launder(&*std::cbegin(fmt)) : nullptr; }
+		static Character const *end(Format const &fmt) { return !fmt.empty() ? char_launderer::launder(&*std::cbegin(fmt) + std::distance(std::cbegin(fmt), std::cend(fmt))) : nullptr; }
+	};
+	template <typename T, std::size_t N>
+	struct format_handling<T [N]> : public char_launderer
+	{
+		static constexpr bool check_nul = true;
+		static Character const *begin(T const (&fmt)[N]) { return char_launderer::launder(&fmt[0]); }
+		static Character const *end(T const (&fmt)[N]) { return char_launderer::launder(&fmt[N]); }
+	};
 	template <typename T>
-	struct handle_char_ptr { static constexpr bool value = std::is_pointer<T>::value && std::is_same<std::remove_cv_t<std::remove_pointer_t<T> >, char_type>::value; };
-	template <typename T>
-	struct handle_char_array { static constexpr bool value = std::is_array<T>::value && std::is_same<std::remove_cv_t<std::remove_extent_t<T> >, char_type>::value; };
-	template <typename T>
-	struct handle_container { static constexpr bool value = !handle_char_ptr<T>::value && !handle_char_array<T>::value; };
+	struct format_handling<T *> : public char_launderer
+	{
+		static constexpr bool check_nul = true;
+		static Character const *begin(T *fmt) { return char_launderer::launder(fmt); }
+		static Character const *end(T *fmt) { return char_launderer::launder(static_cast<T *>(nullptr)); }
+	};
+
+	template <typename Format> struct format_helper : public format_handling<std::remove_cv_t<std::remove_reference_t<Format> > > { };
 
 	template <typename Format>
 	format_argument_pack(
 			Format &&fmt,
-			format_argument<Stream> const *arguments,
-			std::enable_if_t<handle_char_ptr<std::remove_reference_t<Format> >::value, std::size_t> argument_count)
-		: m_begin(fmt)
-		, m_end(nullptr)
-		, m_check_nul(true)
-		, m_arguments(arguments)
-		, m_argument_count(argument_count)
-	{
-		assert(m_begin);
-		assert(m_end || m_check_nul);
-		assert(!m_end || (m_end > m_begin));
-		assert(m_arguments || !m_argument_count);
-	}
-	template <typename Format>
-	format_argument_pack(
-			Format &&fmt,
-			format_argument<Stream> const *arguments,
-			std::enable_if_t<handle_char_array<std::remove_reference_t<Format> >::value, std::size_t> argument_count)
-		: m_begin(std::cbegin(fmt))
-		, m_end(std::cend(fmt))
-		, m_check_nul(true)
-		, m_arguments(arguments)
-		, m_argument_count(argument_count)
-	{
-		assert(m_begin);
-		assert(m_end || m_check_nul);
-		assert(!m_end || (m_end > m_begin));
-		assert(m_arguments || !m_argument_count);
-	}
-	template <typename Format>
-	format_argument_pack(
-			Format &&fmt,
-			format_argument<Stream> const *arguments,
-			std::enable_if_t<handle_container<std::remove_reference_t<Format> >::value, std::size_t> argument_count)
-		: m_begin(fmt.empty() ? nullptr : &*std::cbegin(fmt))
-		, m_end(fmt.empty() ? nullptr : (m_begin + std::distance(std::cbegin(fmt), std::cend(fmt))))
-		, m_check_nul(true)
+			format_argument<char_type, Traits> const *arguments,
+			std::size_t argument_count)
+		: m_begin(format_helper<Format>::begin(fmt))
+		, m_end(format_helper<Format>::end(fmt))
+		, m_check_nul(format_helper<Format>::check_nul)
 		, m_arguments(arguments)
 		, m_argument_count(argument_count)
 	{
@@ -1147,17 +1172,17 @@ protected:
 		assert(m_arguments || !m_argument_count);
 	}
 
-	format_argument_pack(format_argument_pack<Stream> const &) = default;
-	format_argument_pack(format_argument_pack<Stream> &&) = default;
-	format_argument_pack &operator=(format_argument_pack<Stream> const &) = default;
-	format_argument_pack &operator=(format_argument_pack<Stream> &&) = default;
+	format_argument_pack(format_argument_pack<char_type, Traits> const &) = default;
+	format_argument_pack(format_argument_pack<char_type, Traits> &&) = default;
+	format_argument_pack &operator=(format_argument_pack<char_type, Traits> const &) = default;
+	format_argument_pack &operator=(format_argument_pack<char_type, Traits> &&) = default;
 
 private:
-	iterator                        m_begin;
-	iterator                        m_end;
-	bool                            m_check_nul;
-	format_argument<Stream> const   *m_arguments;
-	std::size_t                     m_argument_count;
+	iterator                                    m_begin;
+	iterator                                    m_end;
+	bool                                        m_check_nul;
+	format_argument<char_type, Traits> const    *m_arguments;
+	std::size_t                                 m_argument_count;
 };
 
 
@@ -1165,27 +1190,27 @@ private:
 //  ARGUMENT PACK WRAPPER IMPLEMENTATION
 //**************************************************************************
 
-template <typename Stream, std::size_t Count>
+template <typename Character, typename Traits, std::size_t Count>
 class format_argument_pack_impl
-	: private std::array<format_argument<Stream>, Count>
-	, public format_argument_pack<Stream>
+	: private std::array<format_argument<Character, Traits>, Count>
+	, public format_argument_pack<Character, Traits>
 {
 public:
-	using typename format_argument_pack<Stream>::iterator;
-	using format_argument_pack<Stream>::operator[];
+	using typename format_argument_pack<Character, Traits>::iterator;
+	using format_argument_pack<Character, Traits>::operator[];
 
 	template <typename Format, typename... Params>
 	format_argument_pack_impl(Format &&fmt, Params &&... args)
-		: std::array<format_argument<Stream>, Count>({ { format_argument<Stream>(std::forward<Params>(args))... } })
-		, format_argument_pack<Stream>(std::forward<Format>(fmt), Count ? &*this->cbegin() : nullptr, Count)
+		: std::array<format_argument<Character, Traits>, Count>({ { format_argument<Character, Traits>(std::forward<Params>(args))... } })
+		, format_argument_pack<Character, Traits>(std::forward<Format>(fmt), Count ? &*this->cbegin() : nullptr, Count)
 	{
 		static_assert(sizeof...(Params) == Count, "Wrong number of constructor arguments");
 	}
 
-	format_argument_pack_impl(format_argument_pack_impl<Stream, Count> const &) = default;
-	format_argument_pack_impl(format_argument_pack_impl<Stream, Count> &&) = default;
-	format_argument_pack_impl &operator=(format_argument_pack_impl<Stream, Count> const &) = default;
-	format_argument_pack_impl &operator=(format_argument_pack_impl<Stream, Count> &&) = default;
+	format_argument_pack_impl(format_argument_pack_impl<Character, Traits, Count> const &) = default;
+	format_argument_pack_impl(format_argument_pack_impl<Character, Traits, Count> &&) = default;
+	format_argument_pack_impl &operator=(format_argument_pack_impl<Character, Traits, Count> const &) = default;
+	format_argument_pack_impl &operator=(format_argument_pack_impl<Character, Traits, Count> &&) = default;
 };
 
 
@@ -1194,9 +1219,9 @@ public:
 //**************************************************************************
 
 template <typename Stream = std::ostream, typename Format, typename... Params>
-inline format_argument_pack_impl<Stream, sizeof...(Params)> make_format_argument_pack(Format &&fmt, Params &&... args)
+inline auto make_format_argument_pack(Format &&fmt, Params &&... args)
 {
-	return format_argument_pack_impl<Stream, sizeof...(Params)>(std::forward<Format>(fmt), std::forward<Params>(args)...);
+	return format_argument_pack_impl<typename Stream::char_type, typename Stream::traits_type, sizeof...(Params)>(std::forward<Format>(fmt), std::forward<Params>(args)...);
 }
 
 
@@ -1429,38 +1454,45 @@ public:
 			break;
 		case format_helper::X:
 			flags.set_uppercase();
+			[[fallthrough]];
 		case format_helper::x:
 			flags.set_conversion(format_flags::conversion::hexadecimal);
 			break;
 		case format_helper::E:
 			flags.set_uppercase();
+			[[fallthrough]];
 		case format_helper::e:
 			flags.set_conversion(format_flags::conversion::scientific_decimal);
 			break;
 		case format_helper::F:
 			flags.set_uppercase();
+			[[fallthrough]];
 		case format_helper::f:
 			flags.set_conversion(format_flags::conversion::fixed_decimal);
 			break;
 		case format_helper::G:
 			flags.set_uppercase();
+			[[fallthrough]];
 		case format_helper::g:
 			flags.set_conversion(format_flags::conversion::floating_decimal);
 			break;
 		case format_helper::A:
 			flags.set_uppercase();
+			[[fallthrough]];
 		case format_helper::a:
 			flags.set_conversion(format_flags::conversion::scientific_hexadecimal);
 			break;
 		case format_helper::C:
 			if (format_flags::length::unspecified == flags.get_length())
 				flags.set_length(format_flags::length::long_integer);
+			[[fallthrough]];
 		case format_helper::c:
 			flags.set_conversion(format_flags::conversion::character);
 			break;
 		case format_helper::S:
 			if (format_flags::length::unspecified == flags.get_length())
 				flags.set_length(format_flags::length::long_integer);
+			[[fallthrough]];
 		case format_helper::s:
 			flags.set_conversion(format_flags::conversion::string);
 			break;
@@ -1537,15 +1569,16 @@ private:
 //  CORE FORMATTING FUNCTION
 //**************************************************************************
 
-template <typename Stream, typename Base>
-typename Stream::off_type stream_format(Stream &str, format_argument_pack<Base> const &args)
+template <typename Character, typename Traits = std::char_traits<Character> >
+typename std::basic_ostream<Character, Traits>::off_type stream_format(std::basic_ostream<Character, Traits> &str, format_argument_pack<Character, Traits> const &args)
 {
-	typedef format_helper<format_argument_pack<Base> > format_helper;
-	typedef typename format_argument_pack<Base>::iterator iterator;
+	using stream_type = std::basic_ostream<Character, Traits>;
+	using format_helper = format_helper<format_argument_pack<Character, Traits> >;
+	using iterator = typename format_argument_pack<Character, Traits>::iterator;
 	class stream_preserver
 	{
 	public:
-		stream_preserver(Stream &stream)
+		stream_preserver(stream_type &stream)
 			: m_stream(stream)
 			, m_fill(stream.fill())
 			, m_flags(stream.flags())
@@ -1561,14 +1594,14 @@ typename Stream::off_type stream_format(Stream &str, format_argument_pack<Base> 
 			m_stream.fill(m_fill);
 		}
 	private:
-		Stream                      &m_stream;
-		typename Stream::char_type  m_fill;
-		typename Stream::fmtflags   m_flags;
-		std::streamsize             m_precision;
-		std::streamsize             m_width;
+		stream_type                     &m_stream;
+		typename stream_type::char_type m_fill;
+		typename stream_type::fmtflags  m_flags;
+		std::streamsize                 m_precision;
+		std::streamsize                 m_width;
 	};
 
-	typename Stream::pos_type const begin(str.tellp());
+	typename stream_type::pos_type const begin(str.tellp());
 	stream_preserver const preserver(str);
 	int next_pos(1);
 	iterator start = args.format_begin();
@@ -1641,7 +1674,7 @@ typename Stream::off_type stream_format(Stream &str, format_argument_pack<Base> 
 			}
 			else if (format_flags::conversion::percent == flags.get_conversion())
 			{
-				str << typename Stream::char_type(format_chars<typename Stream::char_type>::percent);
+				str << Character(format_chars<Character>::percent);
 				start = it;
 			}
 			else
@@ -1652,10 +1685,10 @@ typename Stream::off_type stream_format(Stream &str, format_argument_pack<Base> 
 					continue;
 				if (format_flags::conversion::tell == flags.get_conversion())
 				{
-					typename Stream::pos_type const current(str.tellp());
+					typename stream_type::pos_type const current(str.tellp());
 					args[arg_pos - 1].store_integer(
-							((typename Stream::pos_type(-1) == begin) || (typename Stream::pos_type(-1) == current))
-								? typename Stream::off_type(-1)
+							((typename stream_type::pos_type(-1) == begin) || (typename stream_type::pos_type(-1) == current))
+								? typename stream_type::off_type(-1)
 								: (current - begin));
 				}
 				else
@@ -1666,9 +1699,9 @@ typename Stream::off_type stream_format(Stream &str, format_argument_pack<Base> 
 			}
 		}
 	}
-	typename Stream::pos_type const end(str.tellp());
-	return ((typename Stream::pos_type(-1) == begin) || (typename Stream::pos_type(-1) == end))
-			? typename Stream::off_type(-1)
+	typename stream_type::pos_type const end(str.tellp());
+	return ((typename stream_type::pos_type(-1) == begin) || (typename stream_type::pos_type(-1) == end))
+			? typename stream_type::off_type(-1)
 			: (end - begin);
 }
 
@@ -1685,14 +1718,14 @@ inline typename Stream::off_type stream_format(Stream &str, Format const &fmt, P
 	return detail::stream_format(str, detail::make_format_argument_pack<Stream>(fmt, std::forward<Params>(args)...));
 }
 
-template <typename Stream, typename Base>
-inline typename Stream::off_type stream_format(Stream &str, detail::format_argument_pack<Base> const &args)
+template <typename Stream, typename Character, typename Traits>
+inline typename Stream::off_type stream_format(Stream &str, detail::format_argument_pack<Character, Traits> const &args)
 {
 	return detail::stream_format(str, args);
 }
 
-template <typename Stream, typename Base>
-inline typename Stream::off_type stream_format(Stream &str, detail::format_argument_pack<Base> &&args)
+template <typename Stream, typename Character, typename Traits>
+inline typename Stream::off_type stream_format(Stream &str, detail::format_argument_pack<Character, Traits> &&args)
 {
 	return detail::stream_format(str, args);
 }
@@ -1705,7 +1738,7 @@ inline typename Stream::off_type stream_format(Stream &str, detail::format_argum
 template <typename String = std::string, typename Format, typename... Params>
 inline String string_format(Format &&fmt, Params &&... args)
 {
-	typedef std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type> ostream;
+	using ostream = std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type>;
 	ostream str;
 	stream_format(str, fmt, std::forward<Params>(args)...);
 	return str.str();
@@ -1714,45 +1747,45 @@ inline String string_format(Format &&fmt, Params &&... args)
 template <typename String = std::string, typename Format, typename... Params>
 inline String string_format(std::locale const &locale, Format &&fmt, Params &&... args)
 {
-	typedef std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type> ostream;
+	using ostream = std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type>;
 	ostream str;
 	str.imbue(locale);
 	stream_format(str, fmt, std::forward<Params>(args)...);
 	return str.str();
 };
 
-template <typename String = std::string, typename Stream>
-inline String string_format(detail::format_argument_pack<Stream> const &args)
+template <typename String = std::string>
+inline String string_format(detail::format_argument_pack<typename String::value_type, typename String::traits_type> const &args)
 {
-	typedef std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type> ostream;
+	using ostream = std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type>;
 	ostream str;
 	detail::stream_format(str, args);
 	return str.str();
 };
 
-template <typename String = std::string, typename Stream>
-inline String string_format(detail::format_argument_pack<Stream> &&args)
+template <typename String = std::string>
+inline String string_format(detail::format_argument_pack<typename String::value_type, typename String::traits_type> &&args)
 {
-	typedef std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type> ostream;
+	using ostream = std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type>;
 	ostream str;
 	detail::stream_format(str, std::move(args));
 	return str.str();
 };
 
-template <typename String = std::string, typename Stream>
-inline String string_format(std::locale const &locale, detail::format_argument_pack<Stream> const &args)
+template <typename String = std::string>
+inline String string_format(std::locale const &locale, detail::format_argument_pack<typename String::value_type, typename String::traits_type> const &args)
 {
-	typedef std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type> ostream;
+	using ostream = std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type>;
 	ostream str;
 	str.imbue(locale);
 	detail::stream_format(str, args);
 	return str.str();
 };
 
-template <typename String = std::string, typename Stream>
-inline String string_format(std::locale const &locale, detail::format_argument_pack<Stream> &&args)
+template <typename String = std::string>
+inline String string_format(std::locale const &locale, detail::format_argument_pack<typename String::value_type, typename String::traits_type> &&args)
 {
-	typedef std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type> ostream;
+	using ostream = std::basic_ostringstream<typename String::value_type, typename String::traits_type, typename String::allocator_type>;
 	ostream str;
 	str.imbue(locale);
 	detail::stream_format(str, std::move(args));
@@ -1769,8 +1802,6 @@ using detail::make_format_argument_pack;
 
 } // namespace util
 
-using util::string_format;
-
 
 //**************************************************************************
 //  EXTERNAL TEMPLATE INSTANTIATIONS
@@ -1785,69 +1816,115 @@ extern template class format_chars<wchar_t>;
 
 extern template void format_flags::apply(std::ostream &) const;
 extern template void format_flags::apply(std::wostream &) const;
-extern template void format_flags::apply(std::iostream &) const;
-extern template void format_flags::apply(std::wiostream &) const;
-extern template void format_flags::apply(std::ostringstream &) const;
-extern template void format_flags::apply(std::wostringstream &) const;
-extern template void format_flags::apply(std::stringstream &) const;
-extern template void format_flags::apply(std::wstringstream &) const;
-extern template void format_flags::apply(ovectorstream &) const;
-extern template void format_flags::apply(wovectorstream &) const;
-extern template void format_flags::apply(vectorstream &) const;
-extern template void format_flags::apply(wvectorstream &) const;
 
-extern template class format_argument<std::ostream>;
-extern template class format_argument<std::wostream>;
-extern template class format_argument<std::iostream>;
-extern template class format_argument<std::wiostream>;
-extern template class format_argument<std::ostringstream>;
-extern template class format_argument<std::wostringstream>;
-extern template class format_argument<std::stringstream>;
-extern template class format_argument<std::wstringstream>;
-extern template class format_argument<ovectorstream>;
-extern template class format_argument<wovectorstream>;
-extern template class format_argument<vectorstream>;
-extern template class format_argument<wvectorstream>;
+extern template class format_argument<char>;
+extern template void format_argument<char>::static_output<bool>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<char>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<signed char>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<unsigned char>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<short>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<unsigned short>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<int>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<unsigned int>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<long>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<unsigned long>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<long long>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<unsigned long long>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<char *>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<char const *>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<std::string>(std::ostream &, format_flags const &, void const *);
+extern template void format_argument<char>::static_output<std::string_view>(std::ostream &, format_flags const &, void const *);
+extern template bool format_argument<char>::static_make_integer<bool>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<char>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<signed char>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<unsigned char>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<short>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<unsigned short>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<int>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<unsigned int>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<long>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<unsigned long>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<long long>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<unsigned long long>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<char *>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<char const *>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<std::string>(void const *, int &);
+extern template bool format_argument<char>::static_make_integer<std::string_view>(void const *, int &);
+extern template void format_argument<char>::static_store_integer<bool>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<char>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<signed char>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<unsigned char>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<short>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<unsigned short>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<int>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<unsigned int>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<long>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<unsigned long>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<long long>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<unsigned long long>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<char *>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<char const *>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<std::string>(void const *, std::streamoff);
+extern template void format_argument<char>::static_store_integer<std::string_view>(void const *, std::streamoff);
 
-extern template class format_argument_pack<std::ostream>;
-extern template class format_argument_pack<std::wostream>;
-extern template class format_argument_pack<std::iostream>;
-extern template class format_argument_pack<std::wiostream>;
-extern template class format_argument_pack<std::ostringstream>;
-extern template class format_argument_pack<std::wostringstream>;
-extern template class format_argument_pack<std::stringstream>;
-extern template class format_argument_pack<std::wstringstream>;
-extern template class format_argument_pack<ovectorstream>;
-extern template class format_argument_pack<wovectorstream>;
-extern template class format_argument_pack<vectorstream>;
-extern template class format_argument_pack<wvectorstream>;
+extern template class format_argument<wchar_t>;
+extern template void format_argument<wchar_t>::static_output<bool>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<char>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<signed char>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<unsigned char>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<wchar_t>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<short>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<unsigned short>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<int>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<unsigned int>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<long>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<unsigned long>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<long long>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<unsigned long long>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<wchar_t *>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<wchar_t const *>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<std::wstring>(std::wostream &, format_flags const &, void const *);
+extern template void format_argument<wchar_t>::static_output<std::wstring_view>(std::wostream &, format_flags const &, void const *);
+extern template bool format_argument<wchar_t>::static_make_integer<bool>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<char>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<signed char>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<unsigned char>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<wchar_t>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<short>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<unsigned short>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<int>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<unsigned int>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<long>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<unsigned long>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<long long>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<unsigned long long>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<wchar_t *>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<wchar_t const *>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<std::wstring>(void const *, int &);
+extern template bool format_argument<wchar_t>::static_make_integer<std::wstring_view>(void const *, int &);
+extern template void format_argument<wchar_t>::static_store_integer<bool>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<char>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<signed char>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<unsigned char>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<wchar_t>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<short>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<unsigned short>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<int>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<unsigned int>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<long>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<unsigned long>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<long long>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<unsigned long long>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<wchar_t *>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<wchar_t const *>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<std::wstring>(void const *, std::streamoff);
+extern template void format_argument<wchar_t>::static_store_integer<std::wstring_view>(void const *, std::streamoff);
 
-extern template std::ostream::off_type stream_format(std::ostream &, format_argument_pack<std::ostream> const &);
-extern template std::wostream::off_type stream_format(std::wostream &, format_argument_pack<std::wostream> const &);
-extern template std::iostream::off_type stream_format(std::iostream &, format_argument_pack<std::ostream> const &);
-extern template std::iostream::off_type stream_format(std::iostream &, format_argument_pack<std::iostream> const &);
-extern template std::wiostream::off_type stream_format(std::wiostream &, format_argument_pack<std::wostream> const &);
-extern template std::wiostream::off_type stream_format(std::wiostream &, format_argument_pack<std::wiostream> const &);
-extern template std::ostringstream::off_type stream_format(std::ostringstream &, format_argument_pack<std::ostream> const &);
-extern template std::ostringstream::off_type stream_format(std::ostringstream &, format_argument_pack<std::ostringstream> const &);
-extern template std::wostringstream::off_type stream_format(std::wostringstream &, format_argument_pack<std::wostream> const &);
-extern template std::wostringstream::off_type stream_format(std::wostringstream &, format_argument_pack<std::wostringstream> const &);
-extern template std::stringstream::off_type stream_format(std::stringstream &, format_argument_pack<std::ostream> const &);
-extern template std::stringstream::off_type stream_format(std::stringstream &, format_argument_pack<std::iostream> const &);
-extern template std::stringstream::off_type stream_format(std::stringstream &, format_argument_pack<std::stringstream> const &);
-extern template std::wstringstream::off_type stream_format(std::wstringstream &, format_argument_pack<std::wostream> const &);
-extern template std::wstringstream::off_type stream_format(std::wstringstream &, format_argument_pack<std::wiostream> const &);
-extern template std::wstringstream::off_type stream_format(std::wstringstream &, format_argument_pack<std::wstringstream> const &);
-extern template ovectorstream::off_type stream_format(ovectorstream &, format_argument_pack<std::ostream> const &);
-extern template ovectorstream::off_type stream_format(ovectorstream &, format_argument_pack<ovectorstream> const &);
-extern template wovectorstream::off_type stream_format(wovectorstream &, format_argument_pack<std::wostream> const &);
-extern template wovectorstream::off_type stream_format(wovectorstream &, format_argument_pack<wovectorstream> const &);
-extern template vectorstream::off_type stream_format(vectorstream &, format_argument_pack<std::ostream> const &);
-extern template vectorstream::off_type stream_format(vectorstream &, format_argument_pack<std::iostream> const &);
-extern template vectorstream::off_type stream_format(vectorstream &, format_argument_pack<vectorstream> const &);
-extern template wvectorstream::off_type stream_format(wvectorstream &, format_argument_pack<std::wostream> const &);
-extern template wvectorstream::off_type stream_format(wvectorstream &, format_argument_pack<std::wiostream> const &);
-extern template wvectorstream::off_type stream_format(wvectorstream &, format_argument_pack<wvectorstream> const &);
+extern template class format_argument_pack<char>;
+extern template class format_argument_pack<wchar_t>;
+
+extern template std::ostream::off_type stream_format(std::ostream &, format_argument_pack<char> const &);
+extern template std::wostream::off_type stream_format(std::wostream &, format_argument_pack<wchar_t> const &);
 
 } // namespace detail
 

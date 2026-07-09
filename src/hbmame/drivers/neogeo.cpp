@@ -5,283 +5,6 @@
 
     Neo-Geo hardware
 
-    Credits:
-        * This driver was made possible by the research done by
-          Charles MacDonald.  For a detailed description of the Neo-Geo
-          hardware, please visit his page at:
-          http://cgfm2.emuviews.com/txt/mvstech.txt
-        * Presented to you by the Shin Emu Keikaku team.
-        * The following people have all spent probably far
-          too much time on this:
-          AVDB
-          Bryan McPhail
-          Fuzz
-          Ernesto Corvi
-          Andrew Prime
-          Zsolt Vasvari
-
-
-    Known driver issues/to-do's:
-    ============================
-
-        * Fatal Fury 3 crashes during the ending - this doesn't occur if
-          the language is set to Japanese, maybe the English endings
-          are incomplete / buggy?
-        * Graphical Glitches caused by incorrect timing?
-          - Some raster effects are imperfect (off by a couple of lines)
-        * Multi-cart support not implemented - the MVS can take up to
-          6 cartridges depending on the board being used
-        * 68000 waitstates on ROM region access, determined by jumpers on cart
-          (garou train stage 3 background bug is probably related to this)
-
-
-    Confirmed non-bugs:
-
-        * Bad zooming in the Kof2003 bootlegs - this is what happens
-          if you try and use the normal bios with a pcb set, it
-          looks like the bootleggers didn't care.
-        * Glitches at the edges of the screen - the real hardware
-          can display 320x224 but most of the games seem designed
-          to work with a width of 304, some less.
-        * Distorted jumping sound in Nightmare in the Dark
-        * Ninja Combat sometimes glitches
-
-
-*****************************************************************************
-
-    The Neo-Geo Multi Video System (MVS), is an arcade system board, being
-    the first product in the Neo-Geo family, designed by Alpha Denshi(ADK)
-    and released in 1990 by SNK. It was known to the coin-op industry, and
-    offered arcade operators the ability to put up to 6 different arcade
-    titles into a single cabinet, a key economic consideration for operators
-    with limited floorspace (games for the Neo-Geo are cartridge based and are
-    easily exchangeable). It comes in many different cabinets but basically
-    consists of an add on board that can be linked to a standard Jamma system.
-    The system was discontinued in 2004.
-    Source (modified): http://en.wikipedia.org/wiki/Neo_Geo
-
-
-    MVS motherboards were produced in 1 / 2 / 4 and 6 Slot versions.
-
-    Known motherboards:
-    ===================
-
-    1 Slot:
-    NEO-MVH MV1
-    NEO-MVH MV1-1
-    NEO-MVH MV1A
-     . NEO-MVH MV1A CHX ??
-    NEO-MVH MV1B (1996.1.19)
-     . NEO-MVH MV1B CHX (1996.1.19) ??
-    NEO-MVH MV1B1 (1998.6.17)
-    NEO-MVH MV1C (1999.4.30)
-    NEO-MVH MV1F
-    NEO-MVH MV1FS
-    NEO-MVH MV1FT
-    NEO-MVH MV1FZ
-    NEO-MVH MV1FZS
-
-    2 Slot:
-    NEO-MVH MV2
-    NEO-MVH MV2F
-    NEO-MVH MV2F-01
-
-    4 Slot:
-    NEO-MVH MV4
-    NEO-MVH MV4F
-    NEO-MVH MV4FS
-    NEO-MVH MV4FT
-    NEO-MVH MV4FT2
-
-    6 Slot:
-    NEO-MVH MV6
-    NEO-MVH MV6F
-
-
-    Neo-Geo Motherboard (info - courtesy of Guru):
-
-          NEO-MVH MV1
-          |---------------------------------------------------------------------|
-          |       4558                                                          |
-          |                                          HC04  HC32                 |
-          |                      SP-S2.SP1  NEO-E0   000-L0.L0   LS244  AS04    |
-          |             YM2610                                                  |
-          | 4558                                                                |
-          |       4558                        5814  HC259   SFIX.SFIX           |
-          |                                                             NEO-I0  |
-          | HA13001 YM3016                    5814                              |
-          --|                                                                   |
-            |     4558                                                          |
-          --|                                                 SM1.SM1   LS32    |
-          |                                                                     |
-          |                           LSPC-A0         PRO-C0            LS244   |
-          |                                                                     |
-          |J              68000                                                 |
-          |A                                                                    |
-          |M                                                                    |
-          |M                                                      NEO-ZMC2      |
-          |A                                                                    |
-          |   LS273  NEO-G0                          58256  58256     Z80A      |
-          |                           58256  58256   58256  58256     6116      |
-          |   LS273 5864                                                        |
-          --| LS05  5864  PRO-B0                                                |
-            |                                                                   |
-          --|             LS06   HC32           D4990A    NEO-F0   24.000MHz    |
-          |                      DSW1    BATT3.6V 32.768kHz       NEO-D0        |
-          |                                           2003  2003                |
-          |---------------------------------------------------------------------|
-
-
-*****************************************************************************
-
-    Neo-Geo game PCB infos:
-    =======================
-
-    The Neo-Geo games for AES (home) and MVS (arcade) systems are cartridge based.
-
-    Each cartridge consists of two PCBs: CHA and PROG.
-    .CHA PCB contains gfx data ('C' - rom), text layer data ('S' - rom) and sound driver ('M' - rom).
-    .PROG PCB contains sample data ('V' - rom) and program code ('P' - rom).
-
-    On most PCBs various custom/protection chips can also be found:
-    (Custom chip detail information (modified) from: http://wiki.neogeodev.org)
-
-    CHA:
-    . NEO-273  (C and S-ROM address latch)
-    . NEO-CMC 90G06CF7042 (NEO-273 logic / NEO-ZMC logic / C-ROM decryption / C and S-ROM multiplexer / S-ROM bankswitching)
-    . NEO-CMC 90G06CF7050 (NEO-273 logic / NEO-ZMC logic / C-ROM decryption / M-ROM decryption / C and S-ROM multiplexer / S-ROM bankswitching)
-    . NEO-ZMC  (Z80 memory controller)
-    . NEO-ZMC2 (Z80 memory controller / Tile serializer)
-    . PRO-CT0  (C-ROM serializer and multiplexer?; used on early AES-CHA boards)
-    . SNK-9201 (C-ROM serializer and multiplexer?; used on early AES-CHA boards)
-
-    PROG:
-    . 0103 (QFP144) (Only found on Metal Slug X NEO-MVS PROGEOP board; function unknown)
-    . ALTERA   (EPM7128SQC100-15) (P-ROM protection chip used for KOF98 NEO-MVS PROGSF1 board and Metal Slug X NEO-MVS PROGEOP board)
-    . NEO-COMA (Microcontroller; used for MULTI PLAY MODE, boards and sets see below)
-    . NEO-PCM2 (SNK 1999) (PCM functionality / V-ROM decryption / P-ROM decoding and bankswitching)
-    . NEO-PCM2 (PLAYMORE 2002) (PCM functionality / V-ROM decryption / P-ROM decoding and bankswitching)
-    . NEO-PVC  (P-ROM decryption and bankswitching) / RAM
-    . NEO-SMA  (P-ROM decryption and bankswitching / RNG / Storage of 256kb game data)
-    . PCM      (ADPCM bus latches / V-ROM multiplexer)
-    . PRO-CT0  (On PROG board used for P-ROM protection -> Fatal Fury 2)
-    . SNK-9201 (On PROG board used for P-ROM protection -> Fatal Fury 2)
-
-
-
-    Known PCBs:
-    ============
-
-    MVS CHA:
-    -- SNK --
-    . NEO-MVS CHA-32
-    . NEO-MVS CHA-8M
-    . NEO-MVS CHA42G
-    . NEO-MVS CHA42G-1
-    . NEO-MVS CHA 42G-2
-    . NEO-MVS CHA 42G-3
-    . NEO-MVS CHA42G-3B
-    . NEO-MVS CHA256
-    . NEO-MVS CHA256B
-    . NEO-MVS CHA512Y
-    . NEO-MVS CHAFIO (1999.6.14) - used with NEO-CMC 90G06C7042 or NEO-CMC 90G06C7050
-    . MVS CHAFIO REV1.0 (KOF-2001)
-    . NEO-MVS CHAFIO (SNK 2002) - MADE IN KOREA
-    -- SNKPLAYMORE --
-    . NEO-MVS CHAFIO (2003.7.24) - used only with NEO-CMC 90G06C7050
-
-    -- SNK development boards --
-    . NEO-MVS CHAMC2
-
-    MVS PROG:
-    -- SNK --
-    . NEO-MVS PROG-NAM
-    . NEO-MVS PROG-HERO
-    . NEO-MVS PROG-EP
-    . NEO-MVS PROG-8MB
-    . NEO-MVS PROGEP8M
-    . NEO-MVS PROG8M42
-    . NEO-MVS PROG16
-    . NEO-MVS PROG42G
-    . NEO-MVS PROG42G-COM
-    . NEO-MVS PROG42G-1
-    . NEO-MVS PROG-G2
-    . NEO-MVS PROG 4096
-    . NEO-MVS PROG 4096 B
-    . NEO-MVS PROGGSC
-    . NEO-MVS PROGSM
-    . NEO-MVS PROGSS3
-    . NEO-MVS PROGTOP
-    . NEO-MVS PROGSF1 (1998.6.17)
-    . NEO-MVS PROGSF1E (1998.6.18)
-    . NEO-MVS PROGEOP (1999.2.2)
-    . NEO-MVS PROGLBA (1999.4.12) - LBA-SUB (2000.2.24)
-    . NEO-MVS PROGBK1 (1994)
-    . NEO-MVS PROGBK1 (2001)
-    . NEO-MVS PROGBK2 (2000.3.21) - used with NEO-PCM2 (1999 SNK) or NEO-PCM2 (2002 PLAYMORE)
-    . MVS PROGBK2 REV1.0 (KOF-2001)
-    . NEO-MVS PROGBK2 (SNK 2002) - MADE IN KOREA
-    -- SNKPLAYMORE --
-    . NEO-MVS PROGBK2R (2003.8.26) - NEO-HYCS (2003.9.29)
-    . NEO-MVS PROGBK3R (2003.9.2) - NEO-HYCS (2003.9.29)
-    . NEO-MVS PROGBK3S (2003.10.1)
-    . NEO-MVS PROGBK2S (2003.10.18)
-
-    -- SNK development boards --
-    . NEO-MVS PROGMC2
-
-
-    AES CHA:
-    -- SNK --
-    . NEO-AEG CHA-32
-    . NEO-AEG CHA-8M
-    . NEO-AEG CHA42G
-    . NEO-AEG CHA42G-1
-    . NEO-AEG CHA42G-2B
-    . NEO-AEG CHA42G-3
-    . NEO-AEG CHA42G-4
-    . NEO-AEG CHA256
-    . NEO-AEG CHA256 B
-    . NEO-AEG CHA256[B]
-    . NEO-AEG CHA256BY
-    . NEO-AEG CHA256RY
-    . NEO-AEG CHA512Y
-    . NEO-AEG CHAFIO (1999.8.10) - used with NEO-CMC 90G06C7042 or NEO-CMC 90G06C7050
-    -- SNKPLAYMORE --
-    . NEO-AEG CHAFIO (2003.7.24) - used only with NEO-CMC 90G06C7050
-
-    AES PROG:
-    -- SNK --
-    . NEO-AEG PROG-NAM
-    . NEO-AEG PROG-HERO
-    . NEO-AEG PROG-4A
-    . NEO-AEG PROG-4B
-    . NEO-AEG PROG 8M42
-    . NEO-AEG PROG B
-    . NEO-AEG PROG16
-    . NEO-AEG PROG42G
-    . NEO-AEG PROG42G-COM
-    . NEO-AEG PROG42G-1
-    . NEO-AEG PROG-G2
-    . NEO-AEG PROG4096 B
-    . NEO-AEG PROGGS
-    . NEO-AEG PROGTOP2
-    . NEO-AEG PROGTOP2Y
-    . NEO-AEG PROGEOP (1999.4.2)
-    . NEO-AEG PROGLBA (1999.7.6)
-    . NEO-AEG PROGRK
-    . NEO-AEG PROGRKB
-    . NEO-AEG PROGBK1Y
-    . NEO-AEG PROGBK1F
-    -- PLAYMORE --
-    . NEO-AEG PROGBK2 (2002.4.1) - used with NEO-PCM2 (1999 SNK) or NEO-PCM2 (2002 PLAYMORE)
-    -- SNKPLAYMORE --
-    . NEO-AEG PROGBK3R (2003.8.29) - NEO-HYCS (2003.9.29)
-    . NEO-AEG PROGBK3S (2003.10.6)
-    . NEO-AEG PROGBK2S (2003.10.16)
-
-
-
     Cartridge colours:
     ==================
 
@@ -301,113 +24,6 @@
 
     The above listed only covers SNK / PLAYMORE / SNKPLAYMORE PCBs. There also exists a
     wide range of 'bootleg' PCBs.
-
-
-    Unofficial pcb's from NG:DEV.TEAM:
-
-    MVS CHA:
-    GIGA CHAR Board 1.0 Rev. A
-    GIGA CHAR Board 1.5 Rev. 0
-    GIGA CHAR Board 1.5 Rev. C
-
-    MVS PROG:
-    GIGA PROG Board 1.0 Rev. B
-    GIGA PROG Board 1.5 Rev. A
-    GIGA PROG Board 1.5 Rev. C
-
-
-    Unofficial pcb's from NEOBITZ:
-
-    MVS CHA:
-    CHARBITZ1 2013.12.01
-
-    MVS PROG:
-    PROGBITZ1 2013.12.01
-
-
-    Neo-Geo game PCB infos by Johnboy
-
-
-
-    MVS cart pinout:
-    ================
-
-    Kindly submitted by Apollo69 (apollo69@columbus.rr.com)
-    =================================================================
-                CTRG1                            CTRG2
-    =================================================================
-         GND = 01A | 01B = GND            GND = 01A | 01B = GND
-         GND = 02A | 02B = GND            GND = 02A | 02B = GND
-          P0 = 03A | 03B = P1             GND = 03A | 03B = GND
-          P2 = 04A | 04B = P3             GND = 04A | 04B = GND
-          P4 = 05A | 05B = P5              D0 = 05A | 05B = A1
-          P6 = 06A | 06B = P7              D1 = 06A | 06B = A2
-          P8 = 07A | 07B = P9              D2 = 07A | 07B = A3
-         P10 = 08A | 08B = P11             D3 = 08A | 08B = A4
-         P12 = 09A | 09B = P13             D4 = 09A | 09B = A5
-         P14 = 10A | 10B = P15             D5 = 10A | 10B = A6
-         P16 = 11A | 11B = P17             D6 = 11A | 11B = A7
-         P18 = 12A | 12B = P19             D7 = 12A | 12B = A8
-         P20 = 13A | 13B = P21             D8 = 13A | 13B = A9
-         P22 = 14A | 14B = P23             D9 = 14A | 14B = A10
-       PCK1B = 15A | 15B = 24M            D10 = 15A | 15B = A11
-       PCK2B = 16A | 16B = 12M            D11 = 16A | 16B = A12
-         2H1 = 17A | 17B = 8M             D12 = 17A | 17B = A13
-         CA4 = 18A | 18B = RESET          D13 = 18A | 18B = A14
-         CR0 = 19A | 19B = CR1            D14 = 19A | 19B = A15
-         CR2 = 20A | 20B = CR3            D15 = 20A | 20B = A16
-         CR4 = 21A | 21B = CR5            R/W = 21A | 21B = A17
-         CR6 = 22A | 22B = CR7             AS = 22A | 22B = A18
-         CR8 = 23A | 23B = CR9         ROMOEU = 23A | 23B = A19
-        CR10 = 24A | 24B = CR11        ROMOEL = 24A | 24B = 68KCLKB
-        CR12 = 25A | 25B = CR13       PORTOEU = 25A | 25B = ROMWAIT
-        CR14 = 26A | 26B = CR15       PORTOEL = 26A | 26B = PWAIT0
-        CR16 = 27A | 27B = CR17       PORTWEU = 27A | 27B = PWAIT1
-        CR18 = 28A | 28B = CR19       PORTWEL = 28A | 28B = PDTACT
-         VCC = 29A | 29B = VCC            VCC = 29A | 29B = VCC
-         VCC = 30A | 30B = VCC            VCC = 30A | 30B = VCC
-         VCC = 31A | 31B = VCC            VCC = 31A | 31B = VCC
-         VCC = 32A | 32B = VCC            VCC = 32A | 32B = VCC
-        CR20 = 33A | 33B = CR21      PORTADRS = 33A | 33B = 4MB
-        CR22 = 34A | 34B = CR23            NC = 34A | 34B = ROMOE
-        CR24 = 35A | 35B = CR25            NC = 35A | 35B = RESET
-        CR26 = 36A | 36B = CR27            NC = 36A | 36B = NC
-        CR28 = 37A | 37B = CR29            NC = 37A | 37B = NC
-        CR30 = 38A | 38B = CR31            NC = 38A | 38B = NC
-          NC = 39A | 39B = FIX00           NC = 39A | 39B = NC
-          NC = 40A | 40B = FIX01           NC = 40A | 40B = NC
-          NC = 41A | 41B = FIX02           NC = 41A | 41B = SDPAD0
-     SYSTEMB = 42A | 42B = FIX03      SYSTEMB = 42A | 42B = SDPAD1
-        SDA0 = 43A | 43B = FIX04        SDPA8 = 43A | 43B = SDPAD2
-        SDA1 = 44A | 44B = FIX05        SDPA9 = 44A | 44B = SDPAD3
-        SDA2 = 45A | 45B = FIX06       SDPA10 = 45A | 45B = SDPAD4
-        SDA3 = 46A | 46B = FIX07       SDPA11 = 46A | 46B = SDPAD5
-        SDA4 = 47A | 47B = SDRD0       SDPMPX = 47A | 47B = SDPAD6
-        SDA5 = 48A | 48B = SDRD1        SDPOE = 48A | 48B = SDPAD7
-        SDA6 = 49A | 49B = SDROM        SDRA8 = 49A | 49B = SDRA00
-        SDA7 = 50A | 50B = SDMRD        SDRA9 = 50A | 50B = SDRA01
-        SDA8 = 51A | 51B = SDDO        SDRA20 = 51A | 51B = SDRA02
-        SDA9 = 52A | 52B = SDD1        SDRA21 = 52A | 52B = SDRA03
-       SDA10 = 53A | 53B = SDD2        SDRA22 = 53A | 53B = SDRA04
-       SDA11 = 54A | 54B = SDD3        SDRA23 = 54A | 54B = SDRA05
-       SDA12 = 55A | 55B = SDD4        SDRMPX = 55A | 55B = SDRA06
-       SDA13 = 56A | 56B = SDD5         SDROE = 56A | 56B = SDRA07
-       SDA14 = 57A | 57B = SDD6           GND = 57A | 57B = GND
-       SDA15 = 58A | 58B = SDD7           GND = 58A | 58B = GND
-         GND = 59A | 59B = GND            GND = 59A | 59B = GND
-         GND = 60A | 60B = GND            GND = 60A | 60B = GND
-
-    CTRG1 (CHA)  = Contains gfx data ('C' - rom), text layer data ('S' - rom) and sound driver ('M' - rom)
-    CTRG2 (PROG) = Contains sample data ('V' - rom) and program code ('P' - rom)
-
-    NOTE: On CTRG2-B, The "A" lines start at "A1". If you trace this on an
-    actual cart, you will see that this is actually "A0" (A0 - A18).
-
-    These are from a very hard to read copy of the schematics, so
-    I hope that I got the pin names correct.
-
-    Apollo69 10/19/99
-
 
 *****************************************************************************
 
@@ -454,6 +70,8 @@
 ****************************************************************************/
 
 #include "includes/neogeo.h"
+#include "unzip.h"
+#include "softlist_dev.h"
 #include "neogeo.lh"
 
 
@@ -482,28 +100,28 @@
 
 void neogeo_state::adjust_display_position_interrupt_timer()
 {
-	attotime period = attotime::from_ticks((uint64_t)m_display_counter + 1, NEOGEO_PIXEL_CLOCK);
+	attotime period = attotime::from_ticks((u64)m_display_counter + 1, NEOGEO_PIXEL_CLOCK);
 	if (LOG_VIDEO_SYSTEM) logerror("adjust_display_position_interrupt_timer  current y: %02x  current x: %02x   target y: %x  target x: %x\n", m_screen->vpos(), m_screen->hpos(), (m_display_counter + 1) / NEOGEO_HTOTAL, (m_display_counter + 1) % NEOGEO_HTOTAL);
 
 	m_display_position_interrupt_timer->adjust(period);
 }
 
 
-void neogeo_state::neogeo_set_display_position_interrupt_control( uint16_t data )
+void neogeo_state::neogeo_set_display_position_interrupt_control( u16  data )
 {
 	m_display_position_interrupt_control = data;
 }
 
 
-void neogeo_state::neogeo_set_display_counter_msb( uint16_t data )
+void neogeo_state::neogeo_set_display_counter_msb( u16  data )
 {
-	m_display_counter = (m_display_counter & 0x0000ffff) | ((uint32_t)data << 16);
+	m_display_counter = (m_display_counter & 0x0000ffff) | ((u32)data << 16);
 
 	if (LOG_VIDEO_SYSTEM) logerror("PC %06x: set_display_counter %08x\n", m_maincpu->pc(), m_display_counter);
 }
 
 
-void neogeo_state::neogeo_set_display_counter_lsb( uint16_t data )
+void neogeo_state::neogeo_set_display_counter_lsb( u16  data )
 {
 	m_display_counter = (m_display_counter & 0xffff0000) | data;
 
@@ -525,7 +143,7 @@ void neogeo_state::update_interrupts()
 }
 
 
-void neogeo_state::neogeo_acknowledge_interrupt( uint16_t data )
+void neogeo_state::neogeo_acknowledge_interrupt( u16  data )
 {
 	if (data & 0x01)
 		m_irq3_pending = 0;
@@ -610,7 +228,7 @@ void neogeo_state::audio_cpu_check_nmi()
 	m_audiocpu->set_input_line(INPUT_LINE_NMI, (m_audio_cpu_nmi_enabled && m_audio_cpu_nmi_pending) ? ASSERT_LINE : CLEAR_LINE);
 }
 
-WRITE8_MEMBER(neogeo_state::audio_cpu_enable_nmi_w)
+void neogeo_state::audio_cpu_enable_nmi_w(offs_t offset, u8 data)
 {
 	// out ($08) enables the nmi, out ($18) disables it
 	m_audio_cpu_nmi_enabled = !(offset & 0x10);
@@ -625,22 +243,22 @@ WRITE8_MEMBER(neogeo_state::audio_cpu_enable_nmi_w)
  *
  *************************************/
 
-READ16_MEMBER(neogeo_state::in0_r)
+u16 neogeo_state::in0_r()
 {
 	return ((m_edge->in0_r() & m_ctrl1->read_ctrl()) << 8) | m_dsw->read();
 }
 
-READ16_MEMBER(neogeo_state::in1_r)
+u16 neogeo_state::in1_r()
 {
 	return ((m_edge->in1_r() & m_ctrl2->read_ctrl()) << 8) | 0xff;
 }
 
-CUSTOM_INPUT_MEMBER(neogeo_state::kizuna4p_start_r)
+ioport_value neogeo_state::kizuna4p_start_r()
 {
 	return (m_edge->read_start_sel() & 0x05) | ~0x05;
 }
 
-WRITE8_MEMBER(neogeo_state::io_control_w)
+void neogeo_state::io_control_w(offs_t offset, u8 data)
 {
 	switch (offset)
 	{
@@ -690,9 +308,9 @@ WRITE8_MEMBER(neogeo_state::io_control_w)
  *
  *************************************/
 
-READ16_MEMBER(neogeo_state::neogeo_unmapped_r)
+u16 neogeo_state::neogeo_unmapped_r(address_space &space)
 {
-	uint16_t ret;
+	u16  ret = 0U;
 
 	/* unmapped memory returns the last word on the data bus, which is almost always the opcode
 	   of the next instruction due to prefetch */
@@ -717,13 +335,13 @@ READ16_MEMBER(neogeo_state::neogeo_unmapped_r)
  *
  *************************************/
 
-void neogeo_state::set_save_ram_unlock( uint8_t data )
+void neogeo_state::set_save_ram_unlock( u8 data )
 {
 	m_save_ram_unlocked = data;
 }
 
 
-WRITE16_MEMBER(neogeo_state::save_ram_w)
+void neogeo_state::save_ram_w(offs_t offset, u16 data, u16 mem_mask)
 {
 	if (m_save_ram_unlocked)
 		COMBINE_DATA(&m_save_ram[offset]);
@@ -737,7 +355,7 @@ WRITE16_MEMBER(neogeo_state::save_ram_w)
  *
  *************************************/
 
-CUSTOM_INPUT_MEMBER(neogeo_state::get_memcard_status)
+ioport_value neogeo_state::get_memcard_status()
 {
 	// D0 and D1 are memcard 1 and 2 presence indicators, D2 indicates memcard
 	// write protect status (we are always write enabled)
@@ -745,14 +363,14 @@ CUSTOM_INPUT_MEMBER(neogeo_state::get_memcard_status)
 }
 
 
-READ16_MEMBER(neogeo_state::memcard_r)
+u16 neogeo_state::memcard_r(offs_t offset)
 {
 	m_maincpu->eat_cycles(2); // insert waitstate
 
-	uint16_t ret;
+	u16  ret = 0U;
 
 	if (m_memcard->present() != -1)
-		ret = m_memcard->read(space, offset) | 0xff00;
+		ret = m_memcard->read(offset) | 0xff00;
 	else
 		ret = 0xffff;
 
@@ -760,14 +378,14 @@ READ16_MEMBER(neogeo_state::memcard_r)
 }
 
 
-WRITE16_MEMBER(neogeo_state::memcard_w)
+void neogeo_state::memcard_w(offs_t offset, u16 data, u16 mem_mask)
 {
 	m_maincpu->eat_cycles(2); // insert waitstate
 
 	if (ACCESSING_BITS_0_7)
 	{
 		if (m_memcard->present() != -1)
-				m_memcard->write(space, offset, data);
+				m_memcard->write(offset, data);
 	}
 }
 
@@ -777,7 +395,7 @@ WRITE16_MEMBER(neogeo_state::memcard_w)
  *
  *************************************/
 
-WRITE8_MEMBER(neogeo_state::audio_command_w)
+void neogeo_state::audio_command_w(u8 data)
 {
 	m_soundlatch->write(data);
 
@@ -785,13 +403,13 @@ WRITE8_MEMBER(neogeo_state::audio_command_w)
 	audio_cpu_check_nmi();
 
 	/* boost the interleave to let the audio CPU read the command */
-	machine().scheduler().boost_interleave(attotime::zero, attotime::from_usec(50));
+	machine().scheduler().perfect_quantum(attotime::from_usec(50));
 }
 
 
-READ8_MEMBER(neogeo_state::audio_command_r)
+u8 neogeo_state::audio_command_r()
 {
-	uint8_t ret = m_soundlatch->read();
+	u8 ret = m_soundlatch->read();
 
 	m_audio_cpu_nmi_pending = false;
 	audio_cpu_check_nmi();
@@ -800,9 +418,9 @@ READ8_MEMBER(neogeo_state::audio_command_r)
 }
 
 
-CUSTOM_INPUT_MEMBER(neogeo_state::get_audio_result)
+ioport_value neogeo_state::get_audio_result()
 {
-	uint8_t ret = m_soundlatch2->read();
+	u8 ret = m_soundlatch2->read();
 
 	return ret;
 }
@@ -827,7 +445,7 @@ void neogeo_state::neogeo_main_cpu_banking_init()
  *
  *************************************/
 
-READ8_MEMBER(neogeo_state::audio_cpu_bank_select_r)
+u8 neogeo_state::audio_cpu_bank_select_r(offs_t offset)
 {
 	m_bank_audio_cart[offset & 3]->set_entry(offset >> 8);
 
@@ -839,12 +457,7 @@ void neogeo_state::neogeo_audio_cpu_banking_init(int set_entry)
 {
 	if (m_type == NEOGEO_CD) return;
 
-	int region;
-	int bank;
-	uint8_t *rgn;
-	uint32_t address_mask;
-
-	rgn = memregion("audiocpu")->base();
+	u8 *rgn = memregion("audiocpu")->base();
 
 	/* audio bios/cartridge selection */
 	m_bank_audio_main->configure_entry(1, memregion("audiocpu")->base());
@@ -861,14 +474,14 @@ void neogeo_state::neogeo_audio_cpu_banking_init(int set_entry)
 	m_bank_audio_cart[2] = membank("audio_c000");
 	m_bank_audio_cart[3] = membank("audio_8000");
 
-	address_mask = (memregion("audiocpu")->bytes() - 0x10000 - 1) & 0x3ffff;
+	u32 address_mask = (memregion("audiocpu")->bytes() - 0x10000 - 1) & 0x3ffff;
 
 
-	for (region = 0; region < 4; region++)
+	for (u8 region = 0; region < 4; region++)
 	{
-		for (bank = 0xff; bank >= 0; bank--)
+		for (int bank = 0xff; bank >= 0; bank--)
 		{
-			uint32_t bank_address = 0x10000 + ((bank << (11 + region)) & address_mask);
+			u32 bank_address = 0x10000 + ((bank << (11 + region)) & address_mask);
 			m_bank_audio_cart[region]->configure_entry(bank, &rgn[bank_address]);
 		}
 	}
@@ -894,9 +507,9 @@ void neogeo_state::neogeo_audio_cpu_banking_init(int set_entry)
  *
  *************************************/
 
-WRITE8_MEMBER(neogeo_state::system_control_w)
+void neogeo_state::system_control_w(offs_t offset, u8 data)
 {
-	uint8_t bit = (offset >> 3) & 0x01;
+	u8 bit = (offset >> 3) & 0x01;
 
 	switch (offset & 0x07)
 	{
@@ -950,7 +563,7 @@ WRITE8_MEMBER(neogeo_state::system_control_w)
 
 void neogeo_state::set_outputs(  )
 {
-	static const uint8_t led_map[0x10] =
+	static const u8 led_map[0x10] =
 		{ 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x58,0x4c,0x62,0x69,0x78,0x00 };
 
 	/* EL */
@@ -966,11 +579,11 @@ void neogeo_state::set_outputs(  )
 }
 
 
-void neogeo_state::set_output_latch( uint8_t data )
+void neogeo_state::set_output_latch( u8 data )
 {
 	/* looks like the LEDs are set on the
 	   falling edge */
-	uint8_t falling_bits = m_output_latch & ~data;
+	u8 falling_bits = m_output_latch & ~data;
 
 	if (falling_bits & 0x08)
 		m_el_value = 16 - (m_output_data & 0x0f);
@@ -990,7 +603,7 @@ void neogeo_state::set_output_latch( uint8_t data )
 }
 
 
-void neogeo_state::set_output_data( uint8_t data )
+void neogeo_state::set_output_data( u8 data )
 {
 	m_output_data = data;
 }
@@ -1010,8 +623,10 @@ void neogeo_state::init_neogeo()
 	m_sprgen->m_fixed_layer_bank_type = 0;
 
 	// install controllers
-	m_maincpu->space(AS_PROGRAM).install_read_handler(0x300000, 0x300001, 0, 0x01ff7e, 0, read16_delegate(*this, FUNC(neogeo_state::in0_r)));
-	m_maincpu->space(AS_PROGRAM).install_read_handler(0x340000, 0x340001, 0, 0x01fffe, 0, read16_delegate(*this, FUNC(neogeo_state::in1_r)));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x300000, 0x300001, 0, 0x01ff7e, 0, read16smo_delegate(*this, FUNC(neogeo_state::in0_r)));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x340000, 0x340001, 0, 0x01fffe, 0, read16smo_delegate(*this, FUNC(neogeo_state::in1_r)));
+	m_sprgen->set_sprite_region(m_region_sprites->base(), m_region_sprites->bytes());
+	m_sprgen->set_fixed_regions(m_region_fixed->base(), m_region_fixed->bytes(), m_region_fixedbios);
 }
 
 
@@ -1025,7 +640,6 @@ void neogeo_state::neogeo_postload()
 
 void neogeo_state::machine_start()
 {
-	m_out_digit.resolve();
 	m_type = NEOGEO_MVS;
 
 	/* set the initial main CPU bank */
@@ -1071,9 +685,8 @@ void neogeo_state::machine_start()
 	machine().save().register_postload(save_prepost_delegate(FUNC(neogeo_state::neogeo_postload), this));
 
 	m_sprgen->set_screen(m_screen);
-	m_sprgen->set_sprite_region(m_region_sprites->base(), m_region_sprites->bytes());
-	m_sprgen->set_fixed_regions(m_region_fixed->base(), m_region_fixed->bytes(), m_region_fixedbios);
-
+//	m_sprgen->set_sprite_region(m_region_sprites->base(), m_region_sprites->bytes());
+//	m_sprgen->set_fixed_regions(m_region_fixed->base(), m_region_fixed->bytes(), m_region_fixedbios);
 }
 
 
@@ -1086,12 +699,9 @@ void neogeo_state::machine_start()
 
 void neogeo_state::machine_reset()
 {
-	offs_t offs;
-	address_space &space = m_maincpu->space(AS_PROGRAM);
-
 	/* reset system control registers */
-	for (offs = 0; offs < 8; offs++)
-		system_control_w(space, offs, 0);
+	for (offs_t offs = 0; offs < 8; offs++)
+		system_control_w(offs, 0);
 
 	// disable audiocpu nmi
 	m_audio_cpu_nmi_enabled = false;
@@ -1106,33 +716,36 @@ void neogeo_state::machine_reset()
 	update_interrupts();
 
 	m_recurse = false;
+
+	u16 game = cpuregion[0x109] * 256 + cpuregion[0x108];
+	printf("Game number = %04X\n", game);
 }
 
-READ16_MEMBER(neogeo_state::banked_vectors_r)
+u16 neogeo_state::banked_vectors_r(offs_t offset)
 {
 	if (!m_use_cart_vectors)
 	{
-		uint16_t* bios = (uint16_t*)memregion("mainbios")->base();
+		u16 * bios = (u16 *)memregion("mainbios")->base();
 		return bios[offset];
 	}
 	else
 	{
-		uint16_t* game = (uint16_t*)m_region_maincpu->base();
+		u16 * game = (u16 *)m_region_maincpu->base();
 		return game[offset];
 	}
 
 }
 
-READ16_MEMBER(neogeo_state::neogeo_slot_rom_low_r)
+u16 neogeo_state::neogeo_slot_rom_low_r()
 {
 	return 0;
 }
 
-READ16_MEMBER(neogeo_state::neogeo_slot_rom_low_vectors_r)
+u16 neogeo_state::neogeo_slot_rom_low_vectors_r(offs_t offset)
 {
 	if (!m_use_cart_vectors)
 	{
-		uint16_t* bios = (uint16_t*)memregion("mainbios")->base();
+		u16 * bios = (u16 *)memregion("mainbios")->base();
 		return bios[offset];
 	}
 	else
@@ -1155,7 +768,7 @@ void neogeo_state::neogeo_main_map(address_map &map)
 	/* some games have protection devices in the 0x200000 region, it appears to map to cart space, not surprising, the ROM is read here too */
 	map(0x300080,0x300081).mirror(0x01ff7e).portr("TEST");
 	map(0x300000,0x300001).mirror(0x01fffe).w("watchdog",FUNC(watchdog_timer_device::reset_w)).umask16(0x00ff);
-	map(0x320000,0x320001).mirror(0x01fffe).portr("AUDIO/COIN");
+	map(0x320000,0x320001).mirror(0x01fffe).portr("AUDIO_COIN");
 	map(0x320000,0x320001).mirror(0x01fffe).w(FUNC(neogeo_state::audio_command_w)).umask16(0xff00);
 	map(0x360000,0x37ffff).r(FUNC(neogeo_state::neogeo_unmapped_r));
 	map(0x380000,0x380001).mirror(0x01fffe).portr("SYSTEM");
@@ -1256,19 +869,19 @@ INPUT_PORTS_START( neogeo )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Next Game") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Previous Game") PORT_CODE(KEYCODE_4)
-	PORT_BIT( 0x7000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(neogeo_state, get_memcard_status)
+	PORT_BIT( 0x7000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(neogeo_state::get_memcard_status))
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_CUSTOM ) /* Hardware type (AES=0, MVS=1). Some games check this and show a piracy warning screen if the hardware and BIOS don't match */
 
-	PORT_START("AUDIO/COIN")
+	PORT_START("AUDIO_COIN")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_COIN3 ) /* What is this? "us-e" BIOS uses it as a coin input; Universe BIOS uses it to detect MVS or AES hardware */
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_COIN4 ) /* What is this? "us-e" BIOS uses it as a coin input; Universe BIOS uses it to detect MVS or AES hardware */
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_CUSTOM ) /* what is this? When ACTIVE_HIGH + IN4 bit 6 ACTIVE_LOW MVS-4 slot is detected */
-	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("upd4990a", upd1990a_device, tp_r)
-	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("upd4990a", upd1990a_device, data_out_r)
-	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(neogeo_state,get_audio_result)
+	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("upd4990a", FUNC(upd1990a_device::tp_r))
+	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("upd4990a", FUNC(upd1990a_device::data_out_r))
+	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(neogeo_state::get_audio_result))
 
 	PORT_START("TEST")
 	PORT_BIT( 0x003f, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -1290,25 +903,25 @@ INPUT_PORTS_END
 // Fixed
 const gfx_layout charlayout =
 {
-	8,8,			/* 8 x 8 chars */
+	8,8,            /* 8 x 8 chars */
 	RGN_FRAC(1,1),
-	4,				/* 4 bits per pixel */
+	4,              /* 4 bits per pixel */
 	{ 0, 1, 2, 3 },    /* planes are packed in a nibble */
 	{ 33*4, 32*4, 49*4, 48*4, 1*4, 0*4, 17*4, 16*4 },
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	32*8	/* 32 bytes per char */
+	32*8    /* 32 bytes per char */
 };
 
 // Sprites
 const gfx_layout tilelayout =
 {
-	16,16,	 /* 16*16 sprites */
+	16,16,   /* 16*16 sprites */
 	RGN_FRAC(1,1),
 	4,
 	{ GFX_RAW },
-	{ 0 },		/* org displacement */
-	{ 8*8 },	/* line modulo */
-	128*8		/* char modulo */
+	{ 0 },      /* org displacement */
+	{ 8*8 },    /* line modulo */
+	128*8       /* char modulo */
 };
 
 GFXDECODE_START( gfx_neogeo )
@@ -1356,8 +969,8 @@ void neogeo_state::neogeo_base(machine_config &config)
 
 	YM2610(config, m_ym, NEOGEO_YM2610_CLOCK);
 	m_ym->irq_handler().set_inputline(m_audiocpu, 0);
-	m_ym->add_route(0, "lspeaker", 0.28);
-	m_ym->add_route(0, "rspeaker", 0.28);
+	m_ym->add_route(0, "lspeaker", 0.84);
+	m_ym->add_route(0, "rspeaker", 0.84);
 	m_ym->add_route(1, "lspeaker", 0.98);
 	m_ym->add_route(2, "rspeaker", 0.98);
 	NEOGEO_BANKED_CART(config, "banked_cart");
@@ -1478,6 +1091,41 @@ void neogeo_state::no_watchdog(machine_config &config)
 	subdevice<watchdog_timer_device>("watchdog")->set_time(attotime::from_seconds(0.0));
 }
 
+void neogeo_state::nggno(machine_config &config)
+{
+	mvs(config);
+	m_maincpu->set_addrmap(AS_PROGRAM, &neogeo_state::main_map_noslot);
+
+	// quickload
+	quickload_image_device &quickload(QUICKLOAD(config, "quickload", "gno", attotime::from_seconds(1)));
+	quickload.set_load_callback(FUNC(neogeo_state::gno_q_cb));
+	quickload.set_interface("gno_quik");
+	SOFTWARE_LIST(config, "quik_list").set_original("gno_quik");
+}
+
+void neogeo_state::ngneo(machine_config &config)
+{
+	mvs(config);
+	m_maincpu->set_addrmap(AS_PROGRAM, &neogeo_state::main_map_noslot);
+
+	// quickload
+	quickload_image_device &quickload(QUICKLOAD(config, "quickload", "neo", attotime::from_seconds(1)));
+	quickload.set_load_callback(FUNC(neogeo_state::neo_q_cb));
+	quickload.set_interface("neo_quik");
+	SOFTWARE_LIST(config, "quik_list").set_original("neo_quik");
+}
+
+void neogeo_state::ngmvs(machine_config &config)
+{
+	mvs(config);
+	m_maincpu->set_addrmap(AS_PROGRAM, &neogeo_state::main_map_noslot);
+
+	// quickload
+	quickload_image_device &quickload(QUICKLOAD(config, "quickload", "7z", attotime::from_seconds(1)));
+	quickload.set_load_callback(FUNC(neogeo_state::mvs_q_cb));
+	quickload.set_interface("mvs_quik");
+	//SOFTWARE_LIST(config, "quik_list").set_original("mvs_quik");    // not working
+}
 
 void neogeo_state::gsc_map(address_map &map)
 {
@@ -1489,6 +1137,18 @@ void neogeo_state::gsc(machine_config &config)
 {
 	neogeo_noslot(config);
 	m_maincpu->set_addrmap(AS_PROGRAM, &neogeo_state::gsc_map);
+}
+
+void neogeo_state::gsc1_map(address_map &map)
+{
+	main_map_noslot(map);
+	map(0x900000,0x9fffff).rom().region("gsc", 0);  // extra rom
+}
+
+void neogeo_state::gsc1(machine_config &config)
+{
+	neogeo_noslot(config);
+	m_maincpu->set_addrmap(AS_PROGRAM, &neogeo_state::gsc1_map);
 }
 
 
@@ -1798,6 +1458,11 @@ void neogeo_state::init_samsho5()
 
 void neogeo_state::init_samsh5sp()
 {
+	// fix sound crackling
+	if (ym_region[0] == 0xE0) ym_region[0] = 0x43; // [6bc0] becomes 08
+	if (ym_region[1] == 0x25) ym_region[1] = 0xC9; // [16bc0] becomes 82
+	if (ym_region[0x18180] == 0xAC) ym_region[0x18180] = 0x2D; // [ed41] becomes 89
+	if (ym_region[0x18181] == 0x7E) ym_region[0x18181] = 0x2B; // [1ed41] becomes 8f
 	init_neogeo();
 	m_kof2002_prot->samsh5sp_decrypt_68k(cpuregion, cpuregion_size);
 	m_pcm2_prot->neo_pcm2_swap(ym_region, ym_region_size, 6);
@@ -1956,7 +1621,9 @@ void neogeo_state::init_jockeygp()
 	m_cmc_prot->neogeo_sfix_decrypt(spr_region, spr_region_size, fix_region, fix_region_size);
 
 	/* install some extra RAM */
-	m_maincpu->space(AS_PROGRAM).install_ram(0x200000, 0x201fff);
+	m_extra_ram = std::make_unique<uint16_t[]>(0x1000);
+	m_maincpu->space(AS_PROGRAM).install_ram(0x200000, 0x201fff, m_extra_ram.get());
+	save_pointer(NAME(m_extra_ram), 0x1000);
 
 //  m_maincpu->space(AS_PROGRAM).install_read_port(0x280000, 0x280001, "IN5");
 //  m_maincpu->space(AS_PROGRAM).install_read_port(0x2c0000, 0x2c0001, "IN6");
@@ -1968,7 +1635,12 @@ void neogeo_state::init_vliner()
 
 	m_sprgen->m_fixed_layer_bank_type = 0;
 
-	m_maincpu->space(AS_PROGRAM).install_ram(0x200000, 0x201fff);
+	m_sprgen->set_sprite_region(m_region_sprites->base(), m_region_sprites->bytes());
+	m_sprgen->set_fixed_regions(m_region_fixed->base(), m_region_fixed->bytes(), m_region_fixedbios);
+
+	m_extra_ram = std::make_unique<uint16_t[]>(0x1000);
+	m_maincpu->space(AS_PROGRAM).install_ram(0x200000, 0x201fff, m_extra_ram.get());
+	save_pointer(NAME(m_extra_ram), 0x1000);
 
 	m_maincpu->space(AS_PROGRAM).install_read_port(0x300000, 0x300001, 0x01ff7e, "DSW");
 	m_maincpu->space(AS_PROGRAM).install_read_port(0x280000, 0x280001, "IN5");
@@ -2106,7 +1778,7 @@ void neogeo_state::init_ms4plus()
 /*********************************************** bootleg hybrid */
 
 
-void neogeo_state::init_mslug3b6()
+void neogeo_state::init_mslug6()
 {
 	init_neogeo();
 	m_bootleg_prot->neogeo_bootleg_sx_decrypt(fix_region, fix_region_size,2);
@@ -2207,22 +1879,18 @@ void neogeo_state::init_kf2k3upl()
 }
 
 
-
-
-
-
 /*********************************************** non-carts */
 
 void neogeo_state::install_banked_bios()
 {
-	m_maincpu->space(AS_PROGRAM).install_read_bank(0xc00000, 0xc1ffff, 0x0e0000, "bankedbios");
-	membank("bankedbios")->configure_entries(0, 2, memregion("mainbios")->base(), 0x20000);
-	membank("bankedbios")->set_entry(1);
+	m_maincpu->space(AS_PROGRAM).install_read_bank(0xc00000, 0xc1ffff, 0x0e0000, m_bios_bank);
+	m_bios_bank->configure_entries(0, 2, memregion("mainbios")->base(), 0x20000);
+	m_bios_bank->set_entry(1);
 }
 
 INPUT_CHANGED_MEMBER(neogeo_state::select_bios)
 {
-	membank("bankedbios")->set_entry(newval ? 0 : 1);
+	m_bios_bank->set_entry(newval ? 0 : 1);
 }
 
 void neogeo_state::init_ms5pcb()
@@ -2264,14 +1932,14 @@ void neogeo_state::init_kf2k3pcb()
 	init_neogeo();
 	m_pvc_prot->kf2k3pcb_decrypt_68k(cpuregion, cpuregion_size);
 	m_sma_prot->kf2k3pcb_gfx_decrypt(spr_region, spr_region_size);
-	m_sma_prot->kf2k3pcb_sp1_decrypt((uint16_t*)memregion("mainbios")->base());
+	m_sma_prot->kf2k3pcb_sp1_decrypt((u16 *)memregion("mainbios")->base());
 	m_cmc_prot->neogeo_cmc50_m1_decrypt(audiocrypt_region, audiocrypt_region_size, audiocpu_region,audio_region_size);
 
 	/* extra little swap on the m1 - this must be performed AFTER the m1 decrypt
 	   or the m1 checksum (used to generate the key) for decrypting the m1 is
 	   incorrect */
 	{
-		uint8_t* rom = memregion("audiocpu")->base();
+		u8* rom = memregion("audiocpu")->base();
 		for (int i = 0; i < 0x90000; i++)
 			rom[i] = bitswap<8>(rom[i], 5, 6, 1, 4, 3, 0, 7, 2);
 	}
@@ -2290,6 +1958,492 @@ void neogeo_state::init_cmc42sfix()
 	init_neogeo();
 	m_sprgen->m_fixed_layer_bank_type = 1;
 	m_cmc_prot->neogeo_sfix_decrypt(spr_region, spr_region_size, fix_region, fix_region_size);
+}
+
+void neogeo_state::init_cdc()
+{
+	u8 a,b,c,d;
+	init_neogeo();
+	// decrypt sprites extracted from CD to MVS format
+	for (u32 i = 0; i < spr_region_size; i+=4)
+	{
+		a = spr_region[i];
+		b = spr_region[i+1];
+		c = spr_region[i+2];
+		d = spr_region[i+3];
+		spr_region[i] = b;
+		spr_region[i+1] = d;
+		spr_region[i+2] = a;
+		spr_region[i+3] = c;
+	}
+}
+
+
+// Problems:
+// - Protected sets either won't load, or get address error
+// - Need to find out what "c-usage" and "s-usage" are for: (regions 10 and 11).
+// - Gfx are broken; need to unscramble FIX and SPR
+QUICKLOAD_LOAD_MEMBER(neogeo_state::gno_q_cb)
+{
+	if (image.length() < 0x60000)
+	{
+		printf("File too short\n");
+		return std::make_pair(image_error::INVALIDLENGTH, "File too short");
+	}
+
+	// main header
+	// 8 bytes = "gnodmpv1"
+	// 8 bytes = game name (we don't use)
+	// 4 bytes = flags (we don't use)
+	// 1 byte  = number of regions
+	u8 header[21];
+	image.fread( &header, 21);
+
+	if ((header[0] == 'g') && (header[1] == 'n') && (header[2] == 'o') && (header[3] == 'd')
+		&& (header[4] == 'm') && (header[5] == 'p') && (header[6] == 'v') && (header[7] == '1'))
+	{
+	}
+	else
+	{
+		printf("GNO header missing\n");
+		return std::make_pair(image_error::UNSPECIFIED, "GNO header missing");
+	}
+
+	u32 region_size = 0, csize = 0, ssize = 0, ym2_region_size = 0, offset = 21;
+
+	for (uint8_t regions = 0; regions < header[20]; regions++)
+	{
+		// Get a region header
+		// 4 bytes = size
+		// 1 byte  = region code
+		// 1 byte  = type (we don't use, 00 assumed)
+		// size bytes = data
+		u8 region_code = 0, region_type = 0;
+		image.fread( &region_size, 4);
+		image.fread( &region_code, 1);
+		image.fread( &region_type, 1);
+		offset += 6;
+		// choose region, check size, and write to it
+		printf ("region code = %d with size %d at offset %08X\n",region_code,region_size,offset);
+		offset += region_size;
+		switch (region_code)
+		{
+			case 1:
+				if (region_size > (audio_region_size - 0x10000))
+				{
+					printf("AUDIO region (%08X) in GNO file is larger than supported\n",region_size);
+					return std::make_pair(image_error::UNSPECIFIED, "AUDIO region in GNO file is larger than supported");
+				}
+				else
+				{
+					image.fread(&audiocpu_region[0x10000], region_size);
+					std::copy(&audiocpu_region[0x10000], &audiocpu_region[0x1ffff], &audiocpu_region[0]);
+				}
+				break;
+
+			case 3:
+				if (region_size > ym_region_size)
+				{
+					printf("ADPCMA size requested (%08X) is greater than available (%08X)\n",region_size,ym_region_size);
+					return std::make_pair(image_error::UNSPECIFIED, "ADPCMA region in GNO file is larger than supported");
+				}
+				else
+				{
+					image.fread(&ym_region[0], region_size);
+					std::copy(&ym_region[0], &ym_region[region_size-1], &memregion("ymsnd:adpcmb")->base()[0]); // fix totc,rotd
+				}
+				break;
+
+			case 4:
+				ym2_region_size = memregion("ymsnd:adpcmb")->bytes();
+				if ((region_size > ym2_region_size) || (ym_region_size > ym2_region_size))
+				{
+					printf("ADPCMB size requested (%08X) is greater than available (%08X)\n",region_size,ym2_region_size);
+					return std::make_pair(image_error::UNSPECIFIED, "ADPCMB region in GNO file is larger than supported");
+				}
+				else
+				{
+					image.fread(&memregion("ymsnd:adpcmb")->base()[0],region_size);
+				}
+				break;
+
+			case 6:
+				if (region_size > fix_region_size)
+				{
+					printf("FIX size requested (%08X) is greater than available (%08X)\n",region_size,fix_region_size);
+					return std::make_pair(image_error::UNSPECIFIED, "FIX region in GNO file is larger than supported");
+				}
+				else
+				{
+					image.fread(&fix_region[0],region_size);
+					ssize = region_size;
+				}
+				break;
+
+			case 8:
+				if (region_size > cpuregion_size)
+				{
+					printf("CPU size requested (%08X) is greater than available (%08X)\n",region_size,cpuregion_size);
+					return std::make_pair(image_error::UNSPECIFIED, "CPU region in GNO file is larger than supported");
+				}
+				else
+				{
+					image.fread(&cpuregion[0],region_size);
+				}
+				break;
+
+			case 9:
+				if (region_size > spr_region_size)
+				{
+					printf("SPR size requested (%08X) is greater than available (%08X)\n",region_size,spr_region_size);
+					return std::make_pair(image_error::UNSPECIFIED, "SPR region in GNO file is larger than supported");
+				}
+				else
+				{
+					image.fread(&spr_region[0],region_size);
+					csize = region_size;
+				}
+				break;
+
+			default:
+				// Unsupported regions:
+				// 0  - audio bios (not used)
+				// 2  - audio encrypted (not used)
+				// 5  - fix bios (not used)
+				// 7  - 68k bios (not used)
+				// 10 - C(SPR) usage
+				// 11 - S(FIX) usage
+				printf("...ignored\n");
+				// jump past this region, point to next one
+				image.fseek(region_size, SEEK_CUR);
+		}
+	}
+
+	// Prepare the system
+	printf("Ready to start\n");fflush(stdout);
+	init_neogeo();
+	m_sprgen->set_sprite_region(m_region_sprites->base(), csize); // fix wh2
+	m_sprgen->set_fixed_regions(m_region_fixed->base(), ssize, m_region_fixedbios);
+	m_sprgen->optimize_sprite_data(); // fix sprites
+
+	// Fix the 512k text with horrible game-specific stuff
+	if (ssize > 0x20000)
+	{
+		u16 game = cpuregion[0x109] * 256 + cpuregion[0x108];
+		// identify kof2000, matrim, svc, kof2003
+		if ((game == 0x257) || (game == 0x266) || (game == 0x269) || (game == 0x271))
+			m_sprgen->m_fixed_layer_bank_type = 2;
+		else
+			m_sprgen->m_fixed_layer_bank_type = 1;
+	}
+
+	m_audiocpu->reset();
+	machine_reset();
+
+	return std::make_pair(std::error_condition(), std::string());
+}
+
+QUICKLOAD_LOAD_MEMBER(neogeo_state::neo_q_cb)
+{
+	if (image.length() < 0x60000)
+	{
+		printf("File too short\n");
+		return std::make_pair(image_error::INVALIDLENGTH, "File too short");
+	}
+
+	// check header
+	u8 header[0x1000];
+	image.fread( &header, 0x1000);
+
+	if ((header[0] == 'N') && (header[1] == 'E') && (header[2] == 'O'))
+	{
+	}
+	else
+	{
+		printf("NEO header missing\n");
+		return std::make_pair(image_error::UNSPECIFIED, "NEO header missing");
+	}
+
+	// Get file sizes
+	u32 psize = header[4] + header[5]*0x100 + header[6]*0x10000 + header[7]*0x1000000;
+	u32 ssize = header[8] + header[9]*0x100 + header[10]*0x10000 + header[11]*0x1000000;
+	u32 msize = header[12] + header[13]*0x100 + header[14]*0x10000 + header[15]*0x1000000;
+	u32 vsize = header[16] + header[17]*0x100 + header[18]*0x10000 + header[19]*0x1000000;
+	u32 v2size = header[20] + header[21]*0x100 + header[22]*0x10000 + header[23]*0x1000000;
+	u32 csize = header[24] + header[25]*0x100 + header[26]*0x10000 + header[27]*0x1000000;
+
+	// Make sure file is big enough
+	u64 total = 0x1000 + psize + ssize + msize + vsize + v2size + csize;
+	if (total > image.length())
+	{
+		printf("File is corrupt.\n");
+		return std::make_pair(image_error::UNSPECIFIED, "File is corrupt");
+	}
+
+	// Make sure regions are big enough
+	if (psize > cpuregion_size)
+	{
+		printf("CPU size requested (%08X) is greater than available (%08X)\n",psize,cpuregion_size);
+		return std::make_pair(image_error::UNSPECIFIED, "CPU region in NEO file is larger than supported");
+	}
+
+	if (ssize > fix_region_size)
+	{
+		printf("FIX size requested (%08X) is greater than available (%08X)\n",ssize,fix_region_size);
+		return std::make_pair(image_error::UNSPECIFIED, "FIX region in NEO file is larger than supported");
+	}
+
+	if (vsize > ym_region_size)
+	{
+		printf("ADPCMA size requested (%08X) is greater than available (%08X)\n",vsize,ym_region_size);
+		return std::make_pair(image_error::UNSPECIFIED, "ADPCMA region in NEO file is larger than supported");
+	}
+
+	u32 ym2_region_size = memregion("ymsnd:adpcmb")->bytes();
+	if ((v2size > ym2_region_size) || (ym_region_size > ym2_region_size))
+	{
+		printf("ADPCMB size requested (%08X) is greater than available (%08X)\n",v2size,ym2_region_size);
+		return std::make_pair(image_error::UNSPECIFIED, "ADPCMB region in NEO file is larger than supported");
+	}
+
+	if (msize > (audio_region_size - 0x10000))
+	{
+		printf("AUDIO region (%08X) in NEO file is larger than supported\n",msize);
+		return std::make_pair(image_error::UNSPECIFIED, "AUDIO region in NEO file is larger than supported");
+	}
+
+	if (csize > spr_region_size)
+	{
+		printf("SPR size requested (%08X) is greater than available (%08X)\n",csize,spr_region_size);
+		return std::make_pair(image_error::UNSPECIFIED, "SPR region in NEO file is larger than supported");
+	}
+
+	// copy the data from the NEO file to the regions
+	printf("psize=%X\n",psize);fflush(stdout);
+	if (psize)
+		image.fread(&cpuregion[0],psize);
+
+	printf("ssize=%X\n",ssize);fflush(stdout);
+	if (ssize)
+		image.fread(&fix_region[0],ssize);
+
+	printf("msize=%X\n",msize);fflush(stdout);
+	if (msize)
+	{
+		image.fread(&audiocpu_region[0x10000],msize);
+		std::copy(&audiocpu_region[0x10000], &audiocpu_region[0x1ffff], &audiocpu_region[0]);
+	}
+
+	printf("vsize=%X\n",vsize);fflush(stdout);
+	if (vsize)
+	{
+		image.fread(&ym_region[0],vsize);
+		std::copy(&ym_region[0], &ym_region[vsize-1], &memregion("ymsnd:adpcmb")->base()[0]); // fix totc,rotd
+	}
+
+	printf("v2size=%X\n",v2size);fflush(stdout);
+	if (v2size)
+		image.fread(&memregion("ymsnd:adpcmb")->base()[0],v2size);
+
+	printf("csize=%X\n",csize);fflush(stdout);
+	if (csize)
+		image.fread(&spr_region[0],csize);
+
+// Save the file parts if needed
+#if 0
+	FILE *f;
+	if (psize)
+	{
+		f = fopen("555.p1", "wb");
+		if (!f)
+		{
+			printf("Error opening file '555.p1'\n");
+			return std::make_pair(image_error::UNSPECIFIED, " ");
+		}
+		fwrite(&cpuregion[0], 1, psize, f);
+		fclose(f);
+	}
+
+	if (ssize)
+	{
+		f = fopen("555.s1", "wb");
+		if (!f)
+		{
+			printf("Error opening file '555.s1'\n");
+			return std::make_pair(image_error::UNSPECIFIED, " ");
+		}
+		fwrite(&fix_region[0], 1, ssize, f);
+		fclose(f);
+	}
+
+	if (msize)
+	{
+		f = fopen("555.m1", "wb");
+		if (!f)
+		{
+			printf("Error opening file '555.m1'\n");
+			return std::make_pair(image_error::UNSPECIFIED, " ");
+		}
+		fwrite(&audiocpu_region[0x10000], 1, msize, f);
+		fclose(f);
+	}
+
+	if (vsize)
+	{
+		f = fopen("555.v1", "wb");
+		if (!f)
+		{
+			printf("Error opening file '555.v1'\n");
+			return std::make_pair(image_error::UNSPECIFIED, " ");
+		}
+		fwrite(&ym_region[0], 1, vsize, f);
+		fclose(f);
+	}
+
+	if (v2size)
+	{
+		f = fopen("555.v21", "wb");
+		if (!f)
+		{
+			printf("Error opening file '555.v21'\n");
+			return std::make_pair(image_error::UNSPECIFIED, " ");
+		}
+		fwrite(&memregion("ymsnd:adpcmb")->base()[0], 1, v2size, f);
+		fclose(f);
+	}
+
+	if (csize)
+	{
+		f = fopen("555.c1", "wb");
+		if (!f)
+		{
+			printf("Error opening file '555.c1'\n");
+			return std::make_pair(image_error::UNSPECIFIED, " ");
+		}
+		fwrite(&spr_region[0], 1, csize, f);
+		fclose(f);
+	}
+#endif
+
+	// Prepare the system
+	printf("Ready to start\n");fflush(stdout);
+	init_neogeo();
+	m_sprgen->set_sprite_region(m_region_sprites->base(), csize); // fix wh2
+	m_sprgen->set_fixed_regions(m_region_fixed->base(), ssize, m_region_fixedbios);
+	m_sprgen->optimize_sprite_data(); // fix sprites
+
+	// Fix the 512k text with horrible game-specific stuff
+	if (ssize > 0x20000)
+	{
+		u16 game = cpuregion[0x109] * 256 + cpuregion[0x108];
+		// identify kof2000, matrim, svc, kof2003
+		if ((game == 0x257) || (game == 0x266) || (game == 0x269) || (game == 0x271))
+			m_sprgen->m_fixed_layer_bank_type = 2;
+		else
+			m_sprgen->m_fixed_layer_bank_type = 1;
+	}
+
+	m_audiocpu->reset();
+	machine_reset();
+
+	return std::make_pair(std::error_condition(), std::string());
+}
+
+u32 neogeo_state::mvs_open7z(std::string zip_name, std::string filename, uint8_t *region_name, u32 region_size)
+{
+	u32 file_size = 0U;
+	util::archive_file::ptr zip;
+	std::error_condition ziperr{};
+
+	// look into 7z file
+	ziperr = util::archive_file::open_7z(zip_name, zip);
+
+	if (!ziperr)
+	{
+		int found = zip->search(filename, false);
+
+		if (found >= 0)
+		{
+			ziperr = zip->decompress(&region_name[0], region_size);
+
+			if (!ziperr)
+				file_size = zip->current_uncompressed_length();
+		}
+
+		zip.reset();
+	}
+
+	return file_size;
+}
+
+QUICKLOAD_LOAD_MEMBER(neogeo_state::mvs_q_cb)
+{
+	u32 psize = 0U, ssize = 0U, msize = 0U, vsize = 0U, csize = 0U, fsize = 0U;
+	std::string fname = "prom", sstr = ".7z", zipname = image.filename();
+	// assuming that first .7z is the only occurence
+	std::size_t found = zipname.find(sstr);
+	if (found != std::string::npos)
+	{
+		zipname.erase(found+3);
+		//printf("%s\n",zipname.c_str());fflush(stdout);
+
+		// The protected sets also have "prom1", but we don't support it.
+		psize = mvs_open7z(zipname, fname, &cpuregion[0], cpuregion_size);
+	}
+	if (!psize)
+	{
+		printf("File is missing or unusable\n");
+		return std::make_pair(image_error::UNSPECIFIED, "File is missing or unusable");
+	}
+
+	fname = "srom";
+	ssize = mvs_open7z(zipname, fname, &fix_region[0], fix_region_size);
+
+	fname = "m1rom";
+	msize = mvs_open7z(zipname, fname, &audiocpu_region[0x10000], audio_region_size - 0x10000);
+	if (msize)
+		std::copy(&audiocpu_region[0x10000], &audiocpu_region[0x1ffff], &audiocpu_region[0]);
+
+	fname = "vroma0";
+	vsize = mvs_open7z(zipname, fname, &ym_region[0], ym_region_size);
+	if (vsize)
+		std::copy(&ym_region[0], &ym_region[ym_region_size-1], &memregion("ymsnd:adpcmb")->base()[0]);
+	// Assume that the ADPCMB rom would be called "vromb0", but no current sets use it.
+
+	fname = "crom0";
+	csize = mvs_open7z(zipname, fname, &spr_region[0], spr_region_size);
+	if (csize)
+		for (u32 i = 0; i < csize; i+=4)
+			std::swap(spr_region[i+1], spr_region[i+2]);
+
+	init_neogeo();
+	m_sprgen->set_sprite_region(m_region_sprites->base(), csize);
+	m_sprgen->set_fixed_regions(m_region_fixed->base(), ssize, m_region_fixedbios);
+	m_sprgen->optimize_sprite_data();
+
+	// Fix the 512k text with horrible game-specific stuff
+	if (ssize > 0x20000)
+	{
+		u16 game = cpuregion[0x109] * 256 + cpuregion[0x108];
+		// identify kof2000, matrim, svc, kof2003
+		if ((game == 0x257) || (game == 0x266) || (game == 0x269) || (game == 0x271))
+			m_sprgen->m_fixed_layer_bank_type = 2;
+		else
+			m_sprgen->m_fixed_layer_bank_type = 1;
+	}
+
+	// This file is optionally included, perhaps to signify how to handle protection?
+	// The contents are an ascii number, so for now just print it out.
+	fname = "fpga";
+	unsigned char buffer[8] = {};
+	fsize = mvs_open7z(zipname, fname, &buffer[0], 4);
+	if (fsize)
+		printf("FPGA code = %s\n",buffer);
+
+	m_audiocpu->reset();
+	machine_reset();
+
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 
@@ -2315,6 +2469,85 @@ ROM_START( neogeo )
 	ROM_REGION( 0x100000, "sprites", ROMREGION_ERASEFF )
 ROM_END
 
+ROM_START( nggno )
+	NEOGEO_BIOS
+
+	ROM_REGION( 0x900000, "maincpu", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x20000, "audiobios", 0 )
+	ROM_LOAD( "sm1.sm1", 0x00000, 0x20000, CRC(94416d67) SHA1(42f9d7ddd6c0931fd64226a60dc73602b2819dcf) )
+
+	ROM_REGION( 0x90000, "audiocpu", 0 )
+	ROM_LOAD( "sm1.sm1", 0x00000, 0x20000, CRC(94416d67) SHA1(42f9d7ddd6c0931fd64226a60dc73602b2819dcf) )
+
+	ROM_Y_ZOOM
+
+	ROM_REGION( 0x80000, "fixed", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x20000, "fixedbios", 0 )
+	ROM_LOAD( "sfix.sfix", 0x000000, 0x20000, CRC(c2ea0cfd) SHA1(fd4a618cdcdbf849374f0a50dd8efe9dbab706c3) )
+
+	ROM_REGION( 0x1000000, "ymsnd:adpcma", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x1000000, "ymsnd:adpcmb", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x4000000, "sprites", ROMREGION_ERASEFF )
+ROM_END
+
+ROM_START( ngneo )
+	NEOGEO_BIOS
+
+	ROM_REGION( 0x900000, "maincpu", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x20000, "audiobios", 0 )
+	ROM_LOAD( "sm1.sm1", 0x00000, 0x20000, CRC(94416d67) SHA1(42f9d7ddd6c0931fd64226a60dc73602b2819dcf) )
+
+	ROM_REGION( 0x90000, "audiocpu", 0 )
+	ROM_LOAD( "sm1.sm1", 0x00000, 0x20000, CRC(94416d67) SHA1(42f9d7ddd6c0931fd64226a60dc73602b2819dcf) )
+
+	ROM_Y_ZOOM
+
+	ROM_REGION( 0x80000, "fixed", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x20000, "fixedbios", 0 )
+	ROM_LOAD( "sfix.sfix", 0x000000, 0x20000, CRC(c2ea0cfd) SHA1(fd4a618cdcdbf849374f0a50dd8efe9dbab706c3) )
+
+	ROM_REGION( 0x1000000, "ymsnd:adpcma", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x1000000, "ymsnd:adpcmb", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x8000000, "sprites", ROMREGION_ERASEFF )
+ROM_END
+
+ROM_START( ngmvs )
+	NEOGEO_BIOS
+
+	ROM_REGION( 0x900000, "maincpu", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x20000, "audiobios", 0 )
+	ROM_LOAD( "sm1.sm1", 0x00000, 0x20000, CRC(94416d67) SHA1(42f9d7ddd6c0931fd64226a60dc73602b2819dcf) )
+
+	ROM_REGION( 0x90000, "audiocpu", 0 )
+	ROM_LOAD( "sm1.sm1", 0x00000, 0x20000, CRC(94416d67) SHA1(42f9d7ddd6c0931fd64226a60dc73602b2819dcf) )
+
+	ROM_Y_ZOOM
+
+	ROM_REGION( 0x80000, "fixed", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x20000, "fixedbios", 0 )
+	ROM_LOAD( "sfix.sfix", 0x000000, 0x20000, CRC(c2ea0cfd) SHA1(fd4a618cdcdbf849374f0a50dd8efe9dbab706c3) )
+
+	ROM_REGION( 0x1000000, "ymsnd:adpcma", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x1000000, "ymsnd:adpcmb", ROMREGION_ERASEFF )
+
+	ROM_REGION( 0x4000000, "sprites", ROMREGION_ERASEFF )
+ROM_END
+
 
 /*    YEAR  NAME        PARENT    MACHINE   INPUT            CLASS         INIT    */
-GAME( 1990, neogeo,     0,        mvs,      neogeo_6slot,   neogeo_state, init_neogeo,  ROT0, "SNK", "Neo-Geo", MACHINE_IS_BIOS_ROOT | MACHINE_SUPPORTS_SAVE )
+GAME( 1990, neogeo,      0,        mvs,     neogeo_6slot,   neogeo_state, init_neogeo,  ROT0, "SNK", "Neo-Geo", MACHINE_IS_BIOS_ROOT | MACHINE_SUPPORTS_SAVE )
+GAME( 1990, nggno,  neogeo,      nggno,     neogeo,         neogeo_state, empty_init,  ROT0, "SNK", "Neo-Geo .gno support", 0 )
+GAME( 1990, ngneo,  neogeo,      ngneo,     neogeo,         neogeo_state, empty_init,  ROT0, "SNK", "Neo-Geo .neo support", 0 )
+GAME( 1990, ngmvs,  neogeo,      ngmvs,     neogeo,         neogeo_state, empty_init,  ROT0, "SNK", "Neo-Geo MultiMVS support", 0 )
+

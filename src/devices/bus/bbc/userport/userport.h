@@ -49,10 +49,7 @@ public:
 	bbc_userport_slot_device(machine_config const &mconfig, char const *tag, device_t *owner, T &&slot_options, const char *default_option)
 		: bbc_userport_slot_device(mconfig, tag, owner)
 	{
-		option_reset();
-		slot_options(*this);
-		set_default_option(default_option);
-		set_fixed(false);
+		set_options(std::forward<T>(slot_options), default_option, false);
 	}
 
 	bbc_userport_slot_device(machine_config const &mconfig, char const *tag, device_t *owner, uint32_t clock = 0);
@@ -61,15 +58,19 @@ public:
 	auto cb1_handler() { return m_cb1_handler.bind(); }
 	auto cb2_handler() { return m_cb2_handler.bind(); }
 
-	DECLARE_WRITE_LINE_MEMBER(cb1_w) { m_cb1_handler(state); }
-	DECLARE_WRITE_LINE_MEMBER(cb2_w) { m_cb2_handler(state); }
+	// from slot
+	void cb1_w(int state) { m_cb1_handler(state); }
+	void cb2_w(int state) { m_cb2_handler(state); }
 
+	// from host
 	uint8_t pb_r();
 	void pb_w(uint8_t data);
+	void write_cb1(int state);
+	void write_cb2(int state);
 
 protected:
-	// device-level overrides
-	virtual void device_start() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
 
 	device_bbc_userport_interface *m_device;
 
@@ -89,15 +90,17 @@ public:
 
 	virtual uint8_t pb_r() { return 0xff; }
 	virtual void pb_w(uint8_t data) { }
+	virtual void write_cb1(int state) { }
+	virtual void write_cb2(int state) { }
 
 protected:
 	device_bbc_userport_interface(const machine_config &mconfig, device_t &device);
 
-	bbc_userport_slot_device *m_slot;
+	bbc_userport_slot_device *const m_slot;
 };
 
 
-// device type definition
+// device type declaration
 DECLARE_DEVICE_TYPE(BBC_USERPORT_SLOT, bbc_userport_slot_device)
 
 

@@ -5,7 +5,7 @@
 
 /* Only problems ... */
 #if defined(_WIN32)
-#define SDLMAME_WIN32 1
+//#define SDLMAME_WIN32 1
 //#define _SDL_main_h
 #endif
 
@@ -17,7 +17,7 @@
 
 #if defined(_WIN32) || defined(WIN32)
 #define RETROMAME_WIN32 1
-#define SDLMAME_WIN32 1
+//#define SDLMAME_WIN32 1
 #endif
 
 

@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -251,31 +251,25 @@ public:
 			const game_driver *drv = 0;
 			windows_options dummy;
 			ui_options ui_opts;
-			printf("game_opts.cpp::load_file : Rebuilding cache\n");fflush(stdout);
+			printf("game_opts.h::load_file : Rebuilding cache\n");fflush(stdout);
 			for (uint32_t i = 0; i < m_total; i++)
 			{
 				uint32_t t = 0;
-				// BITS 0,1 = arcade, console, computer, other
+				// BITS 0,1 = arcade, non-arcade, unused, unused
 				drv = &driver_list::driver(i);
 				machine_config config(*drv, dummy);
 				ui::machine_static_info const info(ui_opts, config);
-				if ((info.machine_flags() & machine_flags::MASK_TYPE) == machine_flags::TYPE_CONSOLE)
+				if ((info.machine_flags() & machine_flags::MASK_TYPE) != machine_flags::TYPE_ARCADE)
 					t = 1;
-				else
-				if ((info.machine_flags() & machine_flags::MASK_TYPE) == machine_flags::TYPE_COMPUTER)
-					t = 2;
-				else
-				if ((info.machine_flags() & machine_flags::MASK_TYPE) == machine_flags::TYPE_OTHER)
-					t = 3;
 				m_cache = t;
 				// BIT 2 = SWAP_XY
 				t = (drv->flags & ORIENTATION_SWAP_XY) ? 0x0004 : 0;
 				m_cache |= t;
 				// BIT 6 = NOT_WORKING
-				t = (info.machine_flags() & machine_flags::NOT_WORKING) ? 0x0040 : 0;
+				t = (info.emulation_flags() & device_t::flags::NOT_WORKING) ? 0x0040 : 0;
 				m_cache |= t;
 				// BIT 7 = SUPPORTS_SAVE
-				t = (info.machine_flags() & machine_flags::SUPPORTS_SAVE) ? 0: 0x0080;
+				t = (info.emulation_flags() & device_t::flags::SAVE_UNSUPPORTED) ? 0 : 0x0080;
 				m_cache |= t;
 				// BIT 8 = NO_COCKTAIL
 				t = (info.machine_flags() & machine_flags::NO_COCKTAIL) ? 0x0100 : 0;
@@ -286,9 +280,7 @@ public:
 				// BIT 10 = REQUIRES_ARTWORK
 				t = (info.machine_flags() & machine_flags::REQUIRES_ARTWORK) ? 0x0400 : 0;
 				m_cache |= t;
-				// BIT 11 = CLICKABLE_ARTWORK
-				t = (info.machine_flags() & machine_flags::CLICKABLE_ARTWORK) ? 0x0800 : 0;
-				m_cache |= t;
+				// BIT 11 = not used - was CLICKABLE_ARTWORK
 				// BIT 12 = UNOFFICIAL
 				t = (info.machine_flags() & machine_flags::UNOFFICIAL) ? 0x1000 : 0;
 				m_cache |= t;
@@ -333,7 +325,7 @@ public:
 				m_list[i].cache_lower = m_cache;
 				m_list[i].cache_upper = 0;
 			}
-			printf("game_opts.cpp::load_file : Finished Rebuilding cache\n");fflush(stdout);
+			printf("game_opts.h::load_file : Finished Rebuilding cache\n");fflush(stdout);
 		}
 	}
 

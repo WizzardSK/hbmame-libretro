@@ -3,15 +3,11 @@
 
 defines {
 	"OSD_WINDOWS",
+	"UNICODE",
+	"_UNICODE",
 	"WIN32_LEAN_AND_MEAN",
 	"NOMINMAX",
 }
-
-configuration { "mingw* or vs*" }
-	defines {
-		"UNICODE",
-		"_UNICODE"
-	}
 
 configuration { "vs*" }
 	flags {
@@ -20,24 +16,12 @@ configuration { "vs*" }
 
 configuration { }
 
-if not _OPTIONS["MODERN_WIN_API"] then
-	_OPTIONS["MODERN_WIN_API"] = "0"
-end
-
-if _OPTIONS["MODERN_WIN_API"]=="1" then
 	defines {
-		"WINVER=0x0602",
-		"_WIN32_WINNT=0x0602",
-		"NTDDI_VERSION=0x06030000",
-		"MODERN_WIN_API",
+		"WINVER=0x0A00",
+		"_WIN32_WINNT=0x0A00",
 	}
-else
-	defines {
-		"_WIN32_WINNT=0x0501",
-	}
-end
 
-if not _OPTIONS["DONT_USE_NETWORK"] then
+if _OPTIONS["USE_TAPTUN"]=="1" or _OPTIONS["USE_PCAP"]=="1" and not _OPTIONS["DONT_USE_NETWORK"] then
 	defines {
 		"USE_NETWORK",
 		"OSD_NET_USE_PCAP",
@@ -51,6 +35,15 @@ if _OPTIONS["USE_SDL"]=="1" then
 		"USE_XINPUT=0",
 		"USE_SDL=1",
 		"USE_SDL_SOUND",
+		"USE_SDL_JOYSTICK",
+	}
+elseif _OPTIONS["USE_SDL3"]=="1" then
+	defines {
+		"SDLMAME_SDL3=1",
+		"USE_XINPUT=0",
+		"USE_SDL3=1",
+		"USE_SDL_SOUND",
+		"USE_SDL_JOYSTICK",
 	}
 else
 	defines {

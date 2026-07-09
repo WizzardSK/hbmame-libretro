@@ -1,14 +1,6 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
-#include "../mame/drivers/timeplt.cpp"
-
-
-/*************************************
- *
- *  ROM definitions
- *
- *************************************/
-
+#include "../mame/konami/timeplt.cpp"
 
 // At normal use, the rom screen is flipped.
 // For proper diagnostics, you must adjust the dips so the SW2 switches are all up (3rd switch doesn't matter).
@@ -25,10 +17,10 @@ ROM_START( timepltdiag )
 	ROM_REGION( 0x10000, "timeplt_audio:tpsound", 0 )
 	ROM_LOAD( "tm7",          0x0000, 0x1000, CRC(d66da813) SHA1(408fca4515e8af84211df3e204c8776b2f8adb23) )
 
-	ROM_REGION( 0x2000, "gfx1", 0 )
+	ROM_REGION( 0x2000, "tiles", 0 )
 	ROM_LOAD( "tm6",          0x0000, 0x2000, CRC(c2507f40) SHA1(07221875e3f81d9def67c57a7ccd82d52ce65e01) )
 
-	ROM_REGION( 0x4000, "gfx2", 0 )
+	ROM_REGION( 0x4000, "sprites", 0 )
 	ROM_LOAD( "tm4",          0x0000, 0x2000, CRC(7e437c3e) SHA1(cbe2ccd2cd503af62f009cd5aab73aa7366230b1) )
 	ROM_LOAD( "tm5",          0x2000, 0x2000, CRC(e8ca87b9) SHA1(5dd30d3fb9fd8cf9e6a8e37e7ea858c7fd038a7e) )
 
@@ -39,12 +31,5 @@ ROM_START( timepltdiag )
 	ROM_LOAD( "timeplt.e12",  0x0140, 0x0100, CRC(f7b7663e) SHA1(151bd2dff4e4ef76d6438c1ab2cae71f987b9dad) )
 ROM_END
 
-
-
-/*************************************
- *
- *  Game drivers
- *
- *************************************/
-
 GAME( 2015, timepltdiag, timeplt, timeplt,  timeplt,  timeplt_state, empty_init, ROT90,  "Shoestring", "Time Pilot Tester", MACHINE_SUPPORTS_SAVE )
+

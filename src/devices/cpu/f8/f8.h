@@ -11,7 +11,6 @@
 
 #pragma once
 
-
 #define F8_INPUT_LINE_INT_REQ   1
 
 class f8_cpu_device : public cpu_device
@@ -19,6 +18,12 @@ class f8_cpu_device : public cpu_device
 public:
 	// construction/destruction
 	f8_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
+
+	// used by F3850 systems that override the normal zero reset address
+	auto romc08_callback() { return m_romc08_callback.bind(); }
+
+	// interrupt acknowledge callback
+	auto int_cycle_callback() { return m_int_cycle.bind(); }
 
 protected:
 	enum
@@ -29,32 +34,34 @@ protected:
 		F8_H, F8_K, F8_Q
 	};
 
-	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
-	// device_execute_interface overrides
+	// device_execute_interface implementation
 	virtual u32 execute_min_cycles() const noexcept override { return 4; }
 	virtual u32 execute_max_cycles() const noexcept override { return 26; }
-	virtual u32 execute_input_lines() const noexcept override { return 1; }
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
 
-	// device_memory_interface overrides
+	// device_memory_interface implementation
 	virtual space_config_vector memory_space_config() const override;
 
-	// device_state_interface overrides
+	// device_state_interface implementation
 	virtual void state_string_export(const device_state_entry &entry, std::string &str) const override;
 
-	// device_disasm_interface overrides
+	// device_disasm_interface implementation
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
 private:
-	void regs_map(address_map &map);
+	void regs_map(address_map &map) ATTR_COLD;
 
 	address_space_config m_program_config;
 	address_space_config m_regs_config;
 	address_space_config m_io_config;
+
+	devcb_read8 m_romc08_callback;
+	devcb_read16 m_int_cycle;
 
 	u16  m_pc0;    /* program counter 0 */
 	u16  m_pc1;    /* program counter 1 */
@@ -66,10 +73,9 @@ private:
 	u8   m_dbus;   /* data bus value */
 	u16  m_io;     /* last I/O address */
 	u16  m_irq_vector;
-	address_space *m_program;
-	memory_access_cache<0, 0, ENDIANNESS_BIG> *m_cache;
-	memory_access_cache<0, 0, ENDIANNESS_BIG> *m_r;
-	address_space *m_iospace;
+	memory_access<16, 0, 0, ENDIANNESS_BIG>::cache m_program;
+	memory_access<6, 0, 0, ENDIANNESS_BIG>::cache m_r;
+	memory_access<8, 0, 0, ENDIANNESS_BIG>::specific m_ios;
 	int m_icount;
 	int m_irq_request;
 

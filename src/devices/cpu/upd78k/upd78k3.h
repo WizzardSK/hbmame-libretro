@@ -42,8 +42,8 @@ protected:
 	upd78k3_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, address_map_constructor mem_map, address_map_constructor sfr_map);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual void execute_run() override;
@@ -60,7 +60,7 @@ protected:
 
 private:
 	// internal memory map
-	void iram_map(address_map &map);
+	void iram_map(address_map &map) ATTR_COLD;
 
 	// internal helpers
 	inline u8 register_base() const noexcept;
@@ -73,11 +73,12 @@ private:
 	address_space_config m_program_config;
 	address_space_config m_iram_config;
 	address_space_config m_sfr_config;
-	address_space *m_program_space;
-	memory_access_cache<0, 0, ENDIANNESS_LITTLE> *m_program_cache;
 	required_shared_ptr<u16> m_iram;
-	memory_access_cache<1, 0, ENDIANNESS_LITTLE> *m_iram_cache;
-	address_space *m_sfr_space;
+
+	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::cache m_program_cache;
+	memory_access< 8, 1, 0, ENDIANNESS_LITTLE>::cache m_iram_cache;
+	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::specific m_program_space;
+	memory_access< 8, 1, 0, ENDIANNESS_LITTLE>::specific m_sfr_space;
 
 	// core registers and execution state
 	u16 m_pc;
@@ -111,8 +112,8 @@ protected:
 
 private:
 	// type-specific internal memory maps
-	void mem_map(address_map &map);
-	void sfr_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
+	void sfr_map(address_map &map) ATTR_COLD;
 };
 
 // ======================> upd78310_device

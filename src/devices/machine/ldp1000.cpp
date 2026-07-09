@@ -12,7 +12,7 @@
 ***************************************************************************/
 
 #include "emu.h"
-#include "machine/ldp1000.h"
+#include "ldp1000.h"
 
 #define DUMP_BCD 1
 #define FIFO_MAX 0x10
@@ -116,7 +116,7 @@ int32_t sony_ldp1000_device::player_update(const vbi_metadata &vbi, int fieldnum
 //  READ/WRITE HANDLERS
 //**************************************************************************
 
-READ8_MEMBER( sony_ldp1000_device::status_r )
+uint8_t sony_ldp1000_device::status_r()
 {
 	uint8_t res = m_status;
 	m_status = stat_undef;
@@ -127,7 +127,7 @@ void sony_ldp1000_device::set_new_player_state(ldp1000_player_state which)
 {
 	m_player_state = which;
 	m_index_state = 0;
-	printf("set new player state\n");
+	logerror("set new player state\n");
 }
 
 // TODO: probably don't even need a size ...
@@ -169,9 +169,9 @@ void sony_ldp1000_device::exec_enter_cmd()
 
 
 // TODO: de-instantize this
-WRITE8_MEMBER( sony_ldp1000_device::command_w )
+void sony_ldp1000_device::command_w(uint8_t data)
 {
-	printf("CMD %02x\n",data);
+	logerror("CMD %02x\n",data);
 	// 0x30 to 0x69 range causes an ACK, anything else is invalid
 	m_command = data;
 

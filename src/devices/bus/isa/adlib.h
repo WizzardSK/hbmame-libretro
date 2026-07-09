@@ -6,7 +6,7 @@
 #pragma once
 
 #include "isa.h"
-#include "sound/3812intf.h"
+#include "sound/ymopl.h"
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -22,16 +22,13 @@ public:
 	// construction/destruction
 	isa8_adlib_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER(ym3812_16_r);
-	DECLARE_WRITE8_MEMBER(ym3812_16_w);
-
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	// internal state

@@ -113,12 +113,12 @@ void tanbus_tug8082_device::device_add_mconfig(machine_config &config)
 	M6502(config, m_maincpu, DERIVED_CLOCK(1, 4));
 	m_maincpu->set_addrmap(AS_PROGRAM, &tanbus_tug8082_device::vid8082_map);
 
-	I8212(config, m_iop[0], 0);
+	I8212(config, m_iop[0]);
 	//m_iop[0]->md_rd_callback().set(CONSTANT(0));
 	m_iop[0]->int_wr_callback().set(FUNC(tanbus_tug8082_device::bus_irq_w));
 	//m_iop->do_wr_callback().set(FUNC(tanbus_tug8082_device::write));
 
-	I8212(config, m_iop[1], 0);
+	I8212(config, m_iop[1]);
 	//m_iop[1]->md_rd_callback().set(CONSTANT(0));
 	m_iop[1]->int_wr_callback().set(FUNC(tanbus_tug8082_device::vdu_irq_w));
 	//m_iop->di_rd_callback().set(FUNC(tanbus_tug8082_device::read));
@@ -208,7 +208,7 @@ void tanbus_tug8082_device::write(offs_t offset, uint8_t data, int inhrom, int i
 //  IMPLEMENTATION
 //**************************************************************************
 
-WRITE_LINE_MEMBER(tanbus_tug8082_device::bus_irq_w)
+void tanbus_tug8082_device::bus_irq_w(int state)
 {
 	/* Manual says these DIPs are not used but schematic suggests they are */
 	//switch (m_dips[0]->read() >> 2)
@@ -222,7 +222,7 @@ WRITE_LINE_MEMBER(tanbus_tug8082_device::bus_irq_w)
 	//}
 }
 
-WRITE_LINE_MEMBER(tanbus_tug8082_device::vdu_irq_w)
+void tanbus_tug8082_device::vdu_irq_w(int state)
 {
 	switch (m_dips[0]->read() & 0x03)
 	{
@@ -241,18 +241,14 @@ WRITE_LINE_MEMBER(tanbus_tug8082_device::vdu_irq_w)
 
 uint32_t tanbus_tug8082_device::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	uint32_t *scanline;
-	int x, y;
-	uint8_t pixels;
+	pen_t const *const pen = m_palette->pens();
 
-	const pen_t *pen = m_palette->pens();
-
-	for (y = 0; y < 256; y++)
+	for (int y = 0; y < 256; y++)
 	{
-		scanline = &bitmap.pix32(y);
-		for (x = 0; x < 64; x++)
+		uint32_t *scanline = &bitmap.pix(y);
+		for (int x = 0; x < 64; x++)
 		{
-			pixels = m_videoram[(y * 64) + x];
+			uint8_t const pixels = m_videoram[(y * 64) + x];
 
 			for (int i = 0; i < 8; ++i)
 				*scanline++ = pen[BIT(pixels, 7 - i)];

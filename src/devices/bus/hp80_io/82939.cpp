@@ -16,7 +16,6 @@
 
 #include "emu.h"
 #include "82939.h"
-#include "coreutil.h"
 
 // Debugging
 #define VERBOSE 0
@@ -52,7 +51,7 @@ hp82939_io_card_device::~hp82939_io_card_device()
 
 void hp82939_io_card_device::install_read_write_handlers(address_space& space , uint16_t base_addr)
 {
-	space.install_readwrite_handler(base_addr, base_addr + 1, read8_delegate(*m_translator, FUNC(hp_1mb5_device::cpu_r)), write8_delegate(*m_translator, FUNC(hp_1mb5_device::cpu_w)));
+	space.install_readwrite_handler(base_addr, base_addr + 1, read8sm_delegate(*m_translator, FUNC(hp_1mb5_device::cpu_r)), write8sm_delegate(*m_translator, FUNC(hp_1mb5_device::cpu_w)));
 }
 
 void hp82939_io_card_device::inten()
@@ -128,7 +127,7 @@ ROM_START(hp82939)
 	ROM_LOAD("1820-2438.bin" , 0 , 0x800 , CRC(3a2f42a2) SHA1(0f6a70eb8981a8a87c7514ce8226ff1af3ac1668))
 ROM_END
 
-READ8_MEMBER(hp82939_io_card_device::p1_r)
+uint8_t hp82939_io_card_device::p1_r()
 {
 	uint8_t res = uint8_t(m_sw12->read() & 0x7f);
 
@@ -137,14 +136,14 @@ READ8_MEMBER(hp82939_io_card_device::p1_r)
 	return res;
 }
 
-WRITE8_MEMBER(hp82939_io_card_device::p1_w)
+void hp82939_io_card_device::p1_w(uint8_t data)
 {
 	if (BIT(data , 7)) {
 		m_uart->reset();
 	}
 }
 
-READ8_MEMBER(hp82939_io_card_device::p2_r)
+uint8_t hp82939_io_card_device::p2_r()
 {
 	uint8_t res = uint8_t((m_sw12->read() >> 7) & 0xf);
 
@@ -163,10 +162,10 @@ READ8_MEMBER(hp82939_io_card_device::p2_r)
 	return res;
 }
 
-READ8_MEMBER(hp82939_io_card_device::cpu_r)
+uint8_t hp82939_io_card_device::cpu_r(offs_t offset)
 {
 	if ((offset & 0x82) == 0x00) {
-		return m_translator->uc_r(space , offset & 1 , mem_mask);
+		return m_translator->uc_r(offset & 1);
 	} else if ((offset & 0x83) == 0x82) {
 		return m_uart->ins8250_r((offset >> 2) & 7);
 	} else {
@@ -174,10 +173,10 @@ READ8_MEMBER(hp82939_io_card_device::cpu_r)
 	}
 }
 
-WRITE8_MEMBER(hp82939_io_card_device::cpu_w)
+void hp82939_io_card_device::cpu_w(offs_t offset, uint8_t data)
 {
 	if ((offset & 0x82) == 0x00) {
-		m_translator->uc_w(space , offset & 1 , data , mem_mask);
+		m_translator->uc_w(offset & 1 , data);
 	} else if ((offset & 0x83) == 0x82) {
 		m_uart->ins8250_w((offset >> 2) & 7 , data);
 	}
@@ -204,14 +203,14 @@ void hp82939_io_card_device::device_add_mconfig(machine_config &config)
 	m_cpu->p1_out_cb().set(FUNC(hp82939_io_card_device::p1_w));
 	m_cpu->p2_in_cb().set(FUNC(hp82939_io_card_device::p2_r));
 
-	HP_1MB5(config, m_translator, 0);
+	HP_1MB5(config, m_translator);
 	m_translator->irl_handler().set(FUNC(hp82939_io_card_device::irl_w));
 	m_translator->halt_handler().set(FUNC(hp82939_io_card_device::halt_w));
 	m_translator->reset_handler().set_inputline(m_cpu , INPUT_LINE_RESET);
 
 	RS232_PORT(config, m_rs232, default_rs232_devices, nullptr);
 
-	INS8250(config , m_uart , 0);
+	INS8250(config , m_uart);
 	m_uart->out_int_callback().set_inputline(m_cpu , MCS48_INPUT_IRQ);
 	m_uart->out_tx_callback().set(m_rs232 , FUNC(rs232_port_device::write_txd));
 	m_uart->out_dtr_callback().set(m_rs232 , FUNC(rs232_port_device::write_dtr));

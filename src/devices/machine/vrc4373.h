@@ -13,13 +13,13 @@
 class vrc4373_device : public pci_host_device {
 public:
 	template <typename T>
-	vrc4373_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&cpu_tag)
-		: vrc4373_device(mconfig, tag, owner, clock)
+	vrc4373_device(const machine_config &mconfig, const char *tag, device_t *owner, T &&cpu_tag)
+		: vrc4373_device(mconfig, tag, owner)
 	{
 		set_cpu_tag(std::forward<T>(cpu_tag));
 	}
 
-	vrc4373_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	vrc4373_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	virtual void reset_all_mappings() override;
 	virtual void map_extra(uint64_t memory_window_start, uint64_t memory_window_end, uint64_t memory_offset, address_space *memory_space,
@@ -28,37 +28,37 @@ public:
 
 	auto irq_cb() { return m_irq_cb.bind(); }
 	template <typename T> void set_cpu_tag(T &&tag) { m_cpu.set_tag(std::forward<T>(tag)); }
-	void set_ram_size(int size) { m_ram_size = size; };
-	void set_simm0_size(int size) { m_simm0_size = size; };
+	void set_ram_size(int size) { m_ram_size = size; }
+	void set_simm0_size(int size) { m_simm0_size = size; }
 
-	virtual void config_map(address_map &map) override;
+	virtual void config_map(address_map &map) override ATTR_COLD;
 
-	DECLARE_READ32_MEMBER(  pcictrl_r);
-	DECLARE_WRITE32_MEMBER( pcictrl_w);
+	uint32_t pcictrl_r(offs_t offset, uint32_t mem_mask = ~0);
+	void pcictrl_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 	//cpu bus registers
-	DECLARE_READ32_MEMBER (cpu_if_r);
-	DECLARE_WRITE32_MEMBER(cpu_if_w);
+	uint32_t cpu_if_r(offs_t offset, uint32_t mem_mask = ~0);
+	void cpu_if_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	DECLARE_READ32_MEMBER (master1_r);
-	DECLARE_WRITE32_MEMBER(master1_w);
+	uint32_t master1_r(offs_t offset, uint32_t mem_mask = ~0);
+	void master1_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	DECLARE_READ32_MEMBER (master2_r);
-	DECLARE_WRITE32_MEMBER(master2_w);
+	uint32_t master2_r(offs_t offset, uint32_t mem_mask = ~0);
+	void master2_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	DECLARE_READ32_MEMBER (master_io_r);
-	DECLARE_WRITE32_MEMBER(master_io_w);
+	uint32_t master_io_r(offs_t offset, uint32_t mem_mask = ~0);
+	void master_io_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	virtual void target1_map(address_map &map);
-	DECLARE_READ32_MEMBER (target1_r);
-	DECLARE_WRITE32_MEMBER(target1_w);
+	virtual void target1_map(address_map &map) ATTR_COLD;
+	uint32_t target1_r(offs_t offset, uint32_t mem_mask = ~0);
+	void target1_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	virtual void target2_map(address_map &map);
-	DECLARE_READ32_MEMBER (target2_r);
-	DECLARE_WRITE32_MEMBER(target2_w);
+	virtual void target2_map(address_map &map) ATTR_COLD;
+	uint32_t target2_r(offs_t offset, uint32_t mem_mask = ~0);
+	void target2_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	virtual space_config_vector memory_space_config() const override;
 
@@ -73,7 +73,7 @@ private:
 		AS_PCI_IO = 2
 	};
 
-	void cpu_map(address_map &map);
+	void cpu_map(address_map &map) ATTR_COLD;
 
 	void map_cpu_space();
 

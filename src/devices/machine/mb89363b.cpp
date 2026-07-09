@@ -77,47 +77,47 @@
 */
 
 #include "emu.h"
-#include "machine/mb89363b.h"
+#include "mb89363b.h"
 
 
 DEFINE_DEVICE_TYPE(MB89363B, mb89363b_device, "mb89363b", "Fujitsu MB89363B I/O")
 
 
-mb89363b_device::mb89363b_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, MB89363B, tag, owner, clock),
-		m_i8255_a(*this, "i8255_a"),
-		m_i8255_b(*this, "i8255_b"),
-		m_in_a_pa_cb(*this),
-		m_in_a_pb_cb(*this),
-		m_in_a_pc_cb(*this),
-		m_out_a_pa_cb(*this),
-		m_out_a_pb_cb(*this),
-		m_out_a_pc_cb(*this),
-		m_in_b_pa_cb(*this),
-		m_in_b_pb_cb(*this),
-		m_in_b_pc_cb(*this),
-		m_out_b_pa_cb(*this),
-		m_out_b_pb_cb(*this),
-		m_out_b_pc_cb(*this)
+mb89363b_device::mb89363b_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
+	device_t(mconfig, MB89363B, tag, owner, clock),
+	m_i8255_a(*this, "i8255_a"),
+	m_i8255_b(*this, "i8255_b"),
+	m_in_a_pa_cb(*this, 0xff),
+	m_in_a_pb_cb(*this, 0xff),
+	m_in_a_pc_cb(*this, 0xff),
+	m_out_a_pa_cb(*this),
+	m_out_a_pb_cb(*this),
+	m_out_a_pc_cb(*this),
+	m_in_b_pa_cb(*this, 0xff),
+	m_in_b_pb_cb(*this, 0xff),
+	m_in_b_pc_cb(*this, 0xff),
+	m_out_b_pa_cb(*this),
+	m_out_b_pb_cb(*this),
+	m_out_b_pc_cb(*this)
 {
 }
 
 
-READ8_MEMBER(mb89363b_device::i8255_a_port_a_r) { return m_in_a_pa_cb(space, offset); }
-READ8_MEMBER(mb89363b_device::i8255_a_port_b_r) { return m_in_a_pb_cb(space, offset); }
-READ8_MEMBER(mb89363b_device::i8255_a_port_c_r) { return m_in_a_pc_cb(space, offset); }
-WRITE8_MEMBER(mb89363b_device::i8255_a_port_a_w) { m_out_a_pa_cb(space, offset, data); }
-WRITE8_MEMBER(mb89363b_device::i8255_a_port_b_w) { m_out_a_pb_cb(space, offset, data); }
-WRITE8_MEMBER(mb89363b_device::i8255_a_port_c_w) { m_out_a_pc_cb(space, offset, data); }
-READ8_MEMBER(mb89363b_device::i8255_b_port_a_r) { return m_in_b_pa_cb(space, offset); }
-READ8_MEMBER(mb89363b_device::i8255_b_port_b_r) { return m_in_b_pb_cb(space, offset); }
-READ8_MEMBER(mb89363b_device::i8255_b_port_c_r) { return m_in_b_pc_cb(space, offset); }
-WRITE8_MEMBER(mb89363b_device::i8255_b_port_a_w) { m_out_b_pa_cb(space, offset, data); }
-WRITE8_MEMBER(mb89363b_device::i8255_b_port_b_w) { m_out_b_pb_cb(space, offset, data); }
-WRITE8_MEMBER(mb89363b_device::i8255_b_port_c_w) { m_out_b_pc_cb(space, offset, data); }
+uint8_t mb89363b_device::i8255_a_port_a_r(offs_t offset) { return m_in_a_pa_cb(offset); }
+uint8_t mb89363b_device::i8255_a_port_b_r(offs_t offset) { return m_in_a_pb_cb(offset); }
+uint8_t mb89363b_device::i8255_a_port_c_r(offs_t offset) { return m_in_a_pc_cb(offset); }
+void mb89363b_device::i8255_a_port_a_w(offs_t offset, uint8_t data) { m_out_a_pa_cb(offset, data); }
+void mb89363b_device::i8255_a_port_b_w(offs_t offset, uint8_t data) { m_out_a_pb_cb(offset, data); }
+void mb89363b_device::i8255_a_port_c_w(offs_t offset, uint8_t data) { m_out_a_pc_cb(offset, data); }
+uint8_t mb89363b_device::i8255_b_port_a_r(offs_t offset) { return m_in_b_pa_cb(offset); }
+uint8_t mb89363b_device::i8255_b_port_b_r(offs_t offset) { return m_in_b_pb_cb(offset); }
+uint8_t mb89363b_device::i8255_b_port_c_r(offs_t offset) { return m_in_b_pc_cb(offset); }
+void mb89363b_device::i8255_b_port_a_w(offs_t offset, uint8_t data) { m_out_b_pa_cb(offset, data); }
+void mb89363b_device::i8255_b_port_b_w(offs_t offset, uint8_t data) { m_out_b_pb_cb(offset, data); }
+void mb89363b_device::i8255_b_port_c_w(offs_t offset, uint8_t data) { m_out_b_pc_cb(offset, data); }
 
 
-READ8_MEMBER( mb89363b_device::read )
+uint8_t mb89363b_device::read(offs_t offset)
 {
 	if (offset & 4)
 		return m_i8255_b->read(offset & 3);
@@ -125,7 +125,7 @@ READ8_MEMBER( mb89363b_device::read )
 		return m_i8255_a->read(offset & 3);
 }
 
-WRITE8_MEMBER( mb89363b_device::write )
+void mb89363b_device::write(offs_t offset, uint8_t data)
 {
 	if (offset & 4)
 		m_i8255_b->write(offset & 3, data);
@@ -156,20 +156,6 @@ void mb89363b_device::device_add_mconfig(machine_config &config)
 
 void mb89363b_device::device_start()
 {
-	m_in_a_pa_cb.resolve_safe(0xff);
-	m_in_a_pb_cb.resolve_safe(0xff);
-	m_in_a_pc_cb.resolve_safe(0xff);
-	m_out_a_pa_cb.resolve_safe();
-	m_out_a_pb_cb.resolve_safe();
-	m_out_a_pc_cb.resolve_safe();
-
-	m_in_b_pa_cb.resolve_safe(0xff);
-	m_in_b_pb_cb.resolve_safe(0xff);
-	m_in_b_pc_cb.resolve_safe(0xff);
-	m_out_b_pa_cb.resolve_safe();
-	m_out_b_pb_cb.resolve_safe();
-	m_out_b_pc_cb.resolve_safe();
-
 }
 
 void mb89363b_device::device_reset()

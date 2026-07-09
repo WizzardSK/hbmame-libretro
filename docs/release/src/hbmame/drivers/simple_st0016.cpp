@@ -1,4 +1,4 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/simple_st0016.cpp"
 
@@ -8,4 +8,5 @@ ROM_START( renjuk )
 	ROM_LOAD( "rnj2.u32",   0x200000, 0x080000, CRC(2015289c) SHA1(5223b6d3dbe4657cd63cf5b527eaab84cf23587a) )
 ROM_END
 
-GAME( 1994, renjuk, renju, renju, renju, st0016_state, init_renju, ROT0, "Aneue Bannzai", "Renju Kizoku (Translation Korean)", 0 )
+GAME( 1994, renjuk, renju, renju, renju, st0016_state, init_renju, ROT0, "Aneue Bannzai", "Renju Kizoku (Korean)", 0 )
+

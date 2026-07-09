@@ -14,7 +14,6 @@
 
 #include "sg1000exp.h"
 #include "sk1100prn.h"
-#include "formats/sc3000_bit.h"
 #include "imagedev/cassette.h"
 #include "machine/i8255.h"
 
@@ -35,23 +34,23 @@ public:
 	// construction/destruction
 	sega_sk1100_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// optional information overrides
-	virtual ioport_constructor device_input_ports() const override;
-
 protected:
+	sega_sk1100_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 	// device_sg1000_expansion_slot_interface overrides
-	virtual DECLARE_READ8_MEMBER(peripheral_r) override;
-	virtual DECLARE_WRITE8_MEMBER(peripheral_w) override;
+	virtual uint8_t peripheral_r(offs_t offset) override;
+	virtual void peripheral_w(offs_t offset, uint8_t data) override;
 	virtual bool is_readable(uint8_t offset) override;
 
 private:
-	DECLARE_READ8_MEMBER( ppi_pa_r );
-	DECLARE_READ8_MEMBER( ppi_pb_r );
-	DECLARE_WRITE8_MEMBER( ppi_pc_w );
+	uint8_t ppi_pa_r();
+	uint8_t ppi_pb_r();
+	void ppi_pc_w(uint8_t data);
 
 	required_device<cassette_image_device> m_cassette;
 	required_device<i8255_device> m_ppi;
@@ -63,9 +62,20 @@ private:
 	uint8_t m_keylatch;
 };
 
+class sega_sk1100e_device : public sega_sk1100_device
+{
+public:
+	// construction/destruction
+	sega_sk1100e_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+
+protected:
+	// optional information overrides
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
+};
 
 // device type definition
 DECLARE_DEVICE_TYPE(SEGA_SK1100, sega_sk1100_device)
+DECLARE_DEVICE_TYPE(SEGA_SK1100E, sega_sk1100e_device)
 
 
 #endif // MAME_BUS_SG1000_EXP_SK1100_H

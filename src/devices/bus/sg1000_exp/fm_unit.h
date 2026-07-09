@@ -12,8 +12,8 @@
 #pragma once
 
 
-#include "sound/ym2413.h"
 #include "sound/sn76496.h"
+#include "sound/ymopl.h"
 #include "sg1000exp.h"
 
 
@@ -33,13 +33,13 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	// device_sg1000_expansion_slot_interface overrides
-	virtual DECLARE_READ8_MEMBER(peripheral_r) override;
-	virtual DECLARE_WRITE8_MEMBER(peripheral_w) override;
+	virtual uint8_t peripheral_r(offs_t offset) override;
+	virtual void peripheral_w(offs_t offset, uint8_t data) override;
 	virtual bool is_readable(uint8_t offset) override;
 	virtual bool is_writeable(uint8_t offset) override;
 	void set_audio_control(uint8_t data);

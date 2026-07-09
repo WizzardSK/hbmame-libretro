@@ -482,7 +482,7 @@ uint32_t alto2_cpu_device::hamming_code(bool write, uint32_t dw_addr, uint32_t d
  * memory access. Note that MEAR is set whenever an error of
  * _any kind_ (single-bit or double-bit) is detected.
  */
-READ16_MEMBER( alto2_cpu_device::mear_r )
+uint16_t alto2_cpu_device::mear_r()
 {
 	int data = m_mem.error ? m_mem.mear : m_mem.mar;
 	if (!machine().side_effects_disabled()) {
@@ -507,7 +507,7 @@ READ16_MEMBER( alto2_cpu_device::mear_r )
  * MESR[14-15]  Bank number in which error occurred
  * </PRE>
  */
-READ16_MEMBER( alto2_cpu_device::mesr_r )
+uint16_t alto2_cpu_device::mesr_r()
 {
 	uint16_t data = m_mem.mesr ^ 0177777;
 	if (!machine().side_effects_disabled()) {
@@ -521,7 +521,7 @@ READ16_MEMBER( alto2_cpu_device::mesr_r )
 	return data;
 }
 
-WRITE16_MEMBER( alto2_cpu_device::mesr_w )
+void alto2_cpu_device::mesr_w(uint16_t data)
 {
 	if (!machine().side_effects_disabled()) {
 		LOG((this,LOG_MEM,2,"    MESR write %07o (clear MESR; was %07o)\n", data, m_mem.mesr));
@@ -552,7 +552,7 @@ WRITE16_MEMBER( alto2_cpu_device::mesr_w )
  * MECR[15] Spare
  * </PRE>
  */
-WRITE16_MEMBER( alto2_cpu_device::mecr_w )
+void alto2_cpu_device::mecr_w(uint16_t data)
 {
 	m_mem.mecr = data ^ 0177777;
 	// clear spare bits
@@ -571,7 +571,7 @@ WRITE16_MEMBER( alto2_cpu_device::mecr_w )
 /**
  * @brief memory error control register read
  */
-READ16_MEMBER( alto2_cpu_device::mecr_r )
+uint16_t alto2_cpu_device::mecr_r()
 {
 	uint16_t data = m_mem.mecr ^ 0177777;
 	// all spare bits are set
@@ -591,7 +591,7 @@ READ16_MEMBER( alto2_cpu_device::mecr_r )
  * Note: This is for debugger access. Regular memory access is
  * only through load_mar, read_mem and write_mem.
  */
-READ16_MEMBER ( alto2_cpu_device::ioram_r )
+uint16_t alto2_cpu_device::ioram_r(offs_t offset)
 {
 	offs_t dw_addr = offset / 2;
 	return static_cast<uint16_t>(offset & 1 ? GET_ODD(m_mem.ram[dw_addr]) : GET_EVEN(m_mem.ram[dw_addr]));
@@ -602,7 +602,7 @@ READ16_MEMBER ( alto2_cpu_device::ioram_r )
  * Note: This is for debugger access. Regular memory access is
  * only through load_mar, read_mem and write_mem.
  */
-WRITE16_MEMBER( alto2_cpu_device::ioram_w )
+void alto2_cpu_device::ioram_w(offs_t offset, uint16_t data)
 {
 	offs_t dw_addr = offset / 2;
 	if (offset & 1)
@@ -807,7 +807,7 @@ void alto2_cpu_device::debug_write_mem(uint32_t addr, uint16_t data)
  */
 void alto2_cpu_device::init_memory()
 {
-	memset(&m_mem, 0, sizeof(m_mem));
+	m_mem = decltype(m_mem)();
 	save_item(NAME(m_mem.mar));
 	save_item(NAME(m_mem.rmdd));
 	save_item(NAME(m_mem.wmdd));
@@ -826,23 +826,19 @@ void alto2_cpu_device::exit_memory()
 
 void alto2_cpu_device::reset_memory()
 {
-	if (m_mem.ram) {
-		m_mem.ram = nullptr;
-	}
-	if (m_mem.hpb) {
-		m_mem.hpb = nullptr;
-	}
+	m_mem.ram.reset();
+	m_mem.hpb.reset();
 
 	// allocate 64K or 128K words of main memory
-	ioport_port* config = ioport(":CONFIG");
+	ioport_port *const config = ioport(":CONFIG");
 	m_mem.size = ALTO2_RAM_SIZE;
 	// config should be valid, unless the driver doesn't define it
 	if (config && 0 == config->read())
 		m_mem.size *= 2;
-	logerror("Main memory %u KiB\n", static_cast<uint32_t>(sizeof(uint16_t) * m_mem.size / 1024));
+	logerror("Main memory %u KiB\n", sizeof(uint16_t) * m_mem.size / 1024);
 
-	m_mem.ram = make_unique_clear<uint32_t[]>(sizeof(uint16_t) * m_mem.size);
-	m_mem.hpb = make_unique_clear<uint8_t[]> (sizeof(uint16_t) * m_mem.size);
+	m_mem.ram = make_unique_clear<uint32_t []>(sizeof(uint16_t) * m_mem.size);
+	m_mem.hpb = make_unique_clear<uint8_t []> (sizeof(uint16_t) * m_mem.size);
 
 	// Initialize the hamming codes and parity bits
 	for (uint32_t addr = 0; addr < m_mem.size; addr++)

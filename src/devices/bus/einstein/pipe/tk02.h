@@ -6,8 +6,8 @@
 
 ***************************************************************************/
 
-#ifndef MAME_BUS_EINSTEIN_TK02_H
-#define MAME_BUS_EINSTEIN_TK02_H
+#ifndef MAME_BUS_EINSTEIN_PIPE_TK02_H
+#define MAME_BUS_EINSTEIN_PIPE_TK02_H
 
 #pragma once
 
@@ -29,20 +29,20 @@ public:
 	tk02_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual ioport_constructor device_input_ports() const override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
-	void map(address_map &map);
+	void map(address_map &map) ATTR_COLD;
 
-	DECLARE_WRITE_LINE_MEMBER(de_w);
+	void de_w(int state);
 
-	DECLARE_READ8_MEMBER(ram_r);
-	DECLARE_WRITE8_MEMBER(ram_w);
-	DECLARE_READ8_MEMBER(status_r);
+	uint8_t ram_r(offs_t offset);
+	void ram_w(offs_t offset, uint8_t data);
+	uint8_t status_r();
 
 	MC6845_UPDATE_ROW(crtc_update_row);
 
@@ -59,4 +59,4 @@ private:
 // device type definition
 DECLARE_DEVICE_TYPE(TK02_80COL, tk02_device)
 
-#endif // MAME_BUS_EINSTEIN_TK02_H
+#endif // MAME_BUS_EINSTEIN_PIPE_TK02_H

@@ -57,11 +57,11 @@
 //  GLOBAL VARIABLES
 //**************************************************************************
 
-DEFINE_DEVICE_TYPE_NS(A1200_KBD, bus::amiga::keyboard, a1200_kbd_device, "a1200kbd_rb", "Amiga 1200 Keyboard Rev B")
+DEFINE_DEVICE_TYPE(A1200_KBD, bus::amiga::keyboard::a1200_kbd_device, "a1200kbd_rb", "Amiga 1200 Keyboard Rev B")
 
 
 
-namespace bus { namespace amiga { namespace keyboard {
+namespace bus::amiga::keyboard {
 
 namespace {
 
@@ -83,7 +83,7 @@ INPUT_PORTS_START(a1200_us_keyboard)
 
 	// FIXME: split compact mode into a separate device without the numeric keypad
 	PORT_START("IRQ")
-	PORT_CONFNAME(0x01, 0x01, "Layout") PORT_CHANGED_MEMBER(DEVICE_SELF, a1200_kbd_device, layout_changed, 0)
+	PORT_CONFNAME(0x01, 0x01, "Layout") PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(a1200_kbd_device::layout_changed), 0)
 	PORT_CONFSETTING(0x01, "Full Size")
 	PORT_CONFSETTING(0x00, "Compact")
 INPUT_PORTS_END
@@ -114,7 +114,7 @@ a1200_kbd_device::a1200_kbd_device(machine_config const &mconfig, char const *ta
 {
 }
 
-WRITE_LINE_MEMBER(a1200_kbd_device::kdat_w)
+void a1200_kbd_device::kdat_w(int state)
 {
 	if (bool(state) != m_host_kdat)
 	{
@@ -130,7 +130,7 @@ INPUT_CHANGED_MEMBER(a1200_kbd_device::layout_changed)
 	m_mpu->set_input_line(M68HC05_IRQ_LINE, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
-READ8_MEMBER(a1200_kbd_device::mpu_portb_r)
+u8 a1200_kbd_device::mpu_portb_r()
 {
 	u8 result(m_host_kdat ? 0xff : 0xfe);
 	for (unsigned row = 0; m_rows.size() > row; ++row)
@@ -141,12 +141,12 @@ READ8_MEMBER(a1200_kbd_device::mpu_portb_r)
 	return result;
 }
 
-WRITE8_MEMBER(a1200_kbd_device::mpu_porta_w)
+void a1200_kbd_device::mpu_porta_w(offs_t offset, u8 data, u8 mem_mask)
 {
 	m_row_drive = (m_row_drive & 0xff00) | u16(u8(data | ~mem_mask));
 }
 
-WRITE8_MEMBER(a1200_kbd_device::mpu_portb_w)
+void a1200_kbd_device::mpu_portb_w(offs_t offset, u8 data, u8 mem_mask)
 {
 	u8 const kdat(BIT(data, 0) | BIT(~mem_mask, 0));
 	m_host->kdat_w(kdat ? 1 : 0);
@@ -161,13 +161,13 @@ WRITE8_MEMBER(a1200_kbd_device::mpu_portb_w)
 	}
 }
 
-WRITE8_MEMBER(a1200_kbd_device::mpu_portc_w)
+void a1200_kbd_device::mpu_portc_w(offs_t offset, u8 data, u8 mem_mask)
 {
 	m_row_drive = (m_row_drive & 0x80ff) | (u16(u8(data | ~mem_mask) & 0x7f) << 8);
 	m_led_kbd_caps = BIT(~data, 7);
 }
 
-WRITE_LINE_MEMBER(a1200_kbd_device::mpu_tcmp)
+void a1200_kbd_device::mpu_tcmp(int state)
 {
 	m_host->krst_w(state);
 }
@@ -195,8 +195,6 @@ ioport_constructor a1200_kbd_device::device_input_ports() const
 
 void a1200_kbd_device::device_start()
 {
-	m_led_kbd_caps.resolve();
-
 	save_item(NAME(m_row_drive));
 	save_item(NAME(m_host_kdat));
 	save_item(NAME(m_mpu_kdat));
@@ -211,4 +209,4 @@ void a1200_kbd_device::device_reset_after_children()
 	m_mpu->set_input_line(M68HC05_IRQ_LINE, BIT(ioport("IRQ")->read(), 0) ? CLEAR_LINE : ASSERT_LINE);
 }
 
-} } } // namespace bus::amiga::keyboard
+} // namespace bus::amiga::keyboard

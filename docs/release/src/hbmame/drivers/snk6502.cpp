@@ -1,4 +1,4 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/snk6502.cpp"
 
@@ -23,3 +23,4 @@ ROM_START( vantris )
 ROM_END
 
 GAME( 1998, vantris, 0, vanguard, vanguard, vanguard_state, empty_init, ROT90, "Norbert Kehrer", "Vantris 98", MACHINE_SUPPORTS_SAVE ) // http://web.utanet.at/nkehrer/vantris.html
+

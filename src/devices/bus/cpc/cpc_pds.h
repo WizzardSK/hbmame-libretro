@@ -36,16 +36,16 @@ public:
 	// construction/destruction
 	cpc_pds_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER(pio_r);
-	DECLARE_WRITE8_MEMBER(pio_w);
+	uint8_t pio_r(offs_t offset);
+	void pio_w(offs_t offset, uint8_t data);
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	cpc_expansion_slot_device *m_slot;

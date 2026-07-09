@@ -38,11 +38,10 @@ protected:
 	u16 m_r[8];
 	u32 m_irq;
 
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual uint32_t execute_min_cycles() const noexcept override;
 	virtual uint32_t execute_max_cycles() const noexcept override;
-	virtual uint32_t execute_input_lines() const noexcept override;
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
 	virtual space_config_vector memory_space_config() const override;
@@ -50,8 +49,8 @@ protected:
 	virtual void state_string_export(const device_state_entry &entry, std::string &str) const override;
 
 	const address_space_config m_program_config;
-	address_space *m_program;
-	memory_access_cache<1, 0, ENDIANNESS_BIG> *m_program_cache;
+	memory_access<16, 1, 0, ENDIANNESS_BIG>::cache m_program_cache;
+	memory_access<16, 1, 0, ENDIANNESS_BIG>::specific m_program;
 
 	void handle_irq();
 	u16 snz(u16 r);

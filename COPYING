@@ -1,4 +1,27 @@
-MAME is a registered trademark of Gregory Ember.
+HBMAME is copyright by Robbbert and contributors, 2014-2026.
+
+It is a derivative of MAME(tm), of which the various conditions and copyrights can be found below.
+
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License version 2, as provided in docs/legal/GPL-2.0.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+The license requires that the source code of the release binary be available for at least 3 years. The source consists of 2 parts:
+
+a. The original MAME(tm) source, available at https://www.mamedev.org/release.html (if current), or https://www.mamedev.org/oldrel.html (for older versions), and
+
+b. The extra source to be applied over the top of the MAME(tm) source, and from November 2022 the current code can be found at the Github respository at https://github.com/Robbbert/hbmame. Earlier versions are available at https://www.progettosnaps.net/hbmame
+
+Currently, there's also a live github repository located at https://github.com/Robbbert/hbmame . You can pull this source anytime to make your own build, however these are works in progress and might not function as expected. The continued existence of this repository is not guaranteed.
+
+The winui code has an addendum, please read winui_license.txt
+
+Last update: 2026-01-05
+
+The MAME(tm) information begins here.
+
+MAME is a registered trademark of Gregory Ember.  Other trademarks are
+property of their respective owners.
 
 MAME as a whole is made available under the terms of the GNU General
 Public License.  Individual source files may be made available under
@@ -10,7 +33,7 @@ distributions.
 
 
 MAME
-Copyright (c) 1997-2020 MAMEdev and contributors
+Copyright (c) 1997-2026 MAMEdev and contributors
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2, as provided
@@ -54,8 +77,11 @@ Other Information
     the author or the affirmer.
 
 
+AES-256-CBC
+Copyright (c) 2024 Hallo Weeks
+
 Asio C++ Library
-Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+Copyright (c) 2003-2024 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 
 Permission is hereby granted, free of charge, to any person or
 organization obtaining a copy of the software and accompanying
@@ -82,14 +108,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-Berkeley SoftFloat - software implementation of binary floating-point that conforms to the IEEE Standard for Floating-Point Arithmetic
-Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018 The Regents of the University of California
+Berkeley SoftFloat - software implementation of binary floating-point that
+conforms to the IEEE Standard for Floating-Point Arithmetic
+Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018 The Regents of
+the University of California
 
 FLAC - Free Lossless Audio Codec
-Copyright (c) 2001,2002,2003,2004,2005,2006,2007 Josh Coalson 
+Copyright (C) 2000-2009  Josh Coalson
+Copyright (C) 2011-2023  Xiph.Org Foundation
 
 The msinttypes r29 
 Copyright (c) 2006-2013 Alexander Chemeris 
+
+Zstandard software
+Copyright (c) Meta Platforms, Inc. and affiliates.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -152,11 +184,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 Expat
-Copyright (c) 1998, 1999, 2000 Thai Open Source Software Center Ltd and Clark Cooper
-Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006 Expat maintainers
+Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and
+Clark Cooper
+Copyright (c) 2001-2025 Expat maintainers
 
 Lua - a powerful, fast, lightweight, embeddable scripting language
-Copyright (c) 1994-2017 Lua.org, PUC-Rio
+Copyright (c) 1994-2024 Lua.org, PUC-Rio
 
 LuaFileSystem - File System Library for Lua
 Copyright (c) 2003-2015 Kepler Project
@@ -181,19 +214,20 @@ Copyright (c) 1999-2000 Ross Bencina and Phil Burk
 Copyright (c) 2001-2009 Roger B. Dannenberg
 
 pugixml - a C++ XML processing library
-Copyright (c) 2006-2016 Arseny Kapoulkine
+Copyright (c) 2006-2019 Arseny Kapoulkine
 
 RapidJSON - A fast JSON parser/generator for C++ with both SAX/DOM style API
 Copyright (c) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
 
 Sol - a C++ library binding to Lua
-Copyright (c) 2013-2016 Rapptz and contributors
+Copyright (c) 2013-2020 Rapptz, ThePhD and contributors
 
 tap-windows.h
 Copyright (C) 2002-2014 OpenVPN Technologies, Inc.
 
 utf8proc
-Copyright (c) 2014-2015 Steven G. Johnson, Jiahao Chen, Tony Kelman, Jonas Fonseca, and other contributors
+Copyright (c) 2014-2021 Steven G. Johnson, Jiahao Chen, Tony Kelman,
+Jonas Fonseca, and other contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
@@ -233,7 +267,10 @@ LZMA SDK code is compatible with open source licenses, for example, you
 can include it to GNU GPL or GNU LGPL code.
 
 
-Nano SVG = Simple stupid SVG parser
+AsmJit - a lightweight library for machine code generation.
+Copyright (c) 2008-2021 The AsmJit Authors
+
+Nano SVG - Simple stupid SVG parser
 Copyright (c) 2013-14 Mikko Mononen memon@inside.org
 
 Simple DirectMedia Layer
@@ -244,7 +281,7 @@ Copyright (c) 2006 and later Cockos Incorporated
 Copyright (c) 1999 D. J. Bernstein
 
 zlib data compression library
-Copyright (c) 1995-2017 Jean-loup Gailly and Mark Adler
+Copyright (C) 1995-2026 Jean-loup Gailly and Mark Adler
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any damages

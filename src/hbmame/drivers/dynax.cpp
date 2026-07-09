@@ -1,14 +1,10 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
-#include "../mame/drivers/dynax.cpp"
+#include "../mame/dynax/dynax.cpp"
 
-// PSmame (c) gaston90 used with permission
+namespace {
 
- /****************************************************
-         Proyecto Shadows Mame Build Plus
-*****************************************************/
- 
- /**********************
+/**********************
  Mahjong Electron Base
 *************************/
 
@@ -20,7 +16,7 @@ ROM_START( mjelct3s01 ) //mjelct3h
 	ROM_CONTINUE(        0x20000, 0x08000 )
 	ROM_CONTINUE(        0x18000, 0x08000 )
 
-	ROM_REGION( 0x200000, "blitter", 0 ) 
+	ROM_REGION( 0x200000, "blitter", 0 )
 	ROM_LOAD( "eb-01.rom", 0x000000, 0x100000, CRC(e5c41448) SHA1(b8322e32b0cb3d771316c9c4f7be91de6e422a24) )
 	ROM_LOAD( "eb-02.rom", 0x100000, 0x080000, CRC(e1f1b431) SHA1(04a612aff4c30cb8ea741f228bfa7e4289acfee8) )
 ROM_END
@@ -57,8 +53,11 @@ ROM_START( tenkaibbs01 ) //tenkaibbc
 	ROM_LOAD( "lzc-03.u15", 0x200000, 0x020000, CRC(5b552cdf) SHA1(86aaa02dcf8dab670d818287c91c8cb296362401) )  // 1xxxxxxxxxxxxxxxx = 0xFF
 ROM_END
 
+} // anonymous namespace
+
 // Mahjong Electron Base
-GAME( 2004, mjelct3s01,  mjelctrn, mjelctrn, mjelct3,  dynax_state, init_mjelct3,  ROT180, "hack",   "Mahjong Electron Base (parts 2 & 3, No AI Cheat 2004-09-17)",   MACHINE_SUPPORTS_SAVE )
-GAME( 2005, mjelctrns01, mjelctrn, mjelctrn, mjelctrn, dynax_state, init_mjelct3,  ROT180, "hack",   "Mahjong Electron Base (parts 2 & 4, No AI Cheat 2005-09-03)",   MACHINE_SUPPORTS_SAVE )
+GAME( 2004, mjelct3s01,  mjelctrn, mjelctrn, mjelct3,  dynax_adpcm_state, init_mjelct3,  ROT180, "hack",   "Mahjong Electron Base (parts 2 & 3, No AI Cheat, 2004-09-17)",   MACHINE_SUPPORTS_SAVE )
+GAME( 2005, mjelctrns01, mjelctrn, mjelctrn, mjelctrn, dynax_adpcm_state, init_mjelct3,  ROT180, "hack",   "Mahjong Electron Base (parts 2 & 4, No AI Cheat, 2005-09-03)",   MACHINE_SUPPORTS_SAVE )
 // Mahjong Tenkaigen
-GAME( 2006, tenkaibbs01, tenkai, tenkai, tenkai, dynax_state, empty_init, ROT0, "hack",  "Mahjong Tenkaigen (No AI Cheat 2006-12-29)",     MACHINE_SUPPORTS_SAVE )
+GAME( 2006, tenkaibbs01, tenkai, tenkai, tenkai, dynax_state, empty_init, ROT0, "hack",  "Mahjong Tenkaigen (No AI Cheat, 2006-12-29)",     MACHINE_SUPPORTS_SAVE )
+

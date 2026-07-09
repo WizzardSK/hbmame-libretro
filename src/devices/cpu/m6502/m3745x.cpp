@@ -40,9 +40,9 @@ DEFINE_DEVICE_TYPE(M37450, m37450_device, "m37450", "Mitsubishi M37450")
 m3745x_device::m3745x_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_constructor internal_map) :
 	m740_device(mconfig, type, tag, owner, clock),
 	m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0, internal_map),
-	m_read_p(*this),
+	m_read_p(*this, 0),
 	m_write_p(*this),
-	m_read_ad(*this),
+	m_read_ad(*this, 0),
 	m_intreq1(0),
 	m_intreq2(0),
 	m_intctrl1(0),
@@ -58,14 +58,11 @@ m3745x_device::m3745x_device(const machine_config &mconfig, device_type type, co
 
 void m3745x_device::device_start()
 {
-	m_read_p.resolve_all_safe(0);
-	m_write_p.resolve_all_safe();
-	m_read_ad.resolve_all_safe(0);
-
-	for (int i = 0; i < NUM_TIMERS; i++)
+	for (int i = TIMER_1; i <= TIMER_3; i++)
 	{
-		m_timers[i] = timer_alloc(i, nullptr);
+		m_timers[i] = machine().scheduler().timer_alloc(timer_expired_delegate());
 	}
+	m_timers[TIMER_ADC] = timer_alloc(FUNC(m3745x_device::adc_complete), this);
 
 	m740_device::device_start();
 
@@ -101,7 +98,7 @@ void m3745x_device::device_reset()
 {
 	m740_device::device_reset();
 
-	SP = 0x01ff;    // we have the "traditional" stack in page 1, not 0 like some M740 derivatives
+	m_SP = 0x01ff;    // we have the "traditional" stack in page 1, not 0 like some M740 derivatives
 
 	for (auto & elem : m_timers)
 	{
@@ -116,22 +113,13 @@ void m3745x_device::device_reset()
 	m_last_all_ints = 0;
 }
 
-void m3745x_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(m3745x_device::adc_complete)
 {
-	switch (id)
-	{
-		case TIMER_ADC:
-			m_timers[TIMER_ADC]->adjust(attotime::never);
+	m_timers[TIMER_ADC]->adjust(attotime::never);
 
-			m_adctrl |= ADCTRL_COMPLETE;
-			m_intreq2 |= IRQ2_ADC;
-			recalc_irqs();
-			break;
-
-		default:
-			printf("M3775x: unknown timer expire %d\n", id);
-			break;
-	}
+	m_adctrl |= ADCTRL_COMPLETE;
+	m_intreq2 |= IRQ2_ADC;
+	recalc_irqs();
 }
 
 void m3745x_device::execute_set_input(int inputnum, int state)
@@ -170,10 +158,6 @@ void m3745x_device::execute_set_input(int inputnum, int state)
 				m_intreq1 &= ~IRQ1_INT3;
 			}
 			break;
-
-		case M3745X_SET_OVERFLOW:   // the base 740 class can handle this
-			m740_device::execute_set_input(M740_SET_OVERFLOW, state);
-			break;
 	}
 
 	recalc_irqs();
@@ -191,7 +175,7 @@ void m3745x_device::recalc_irqs()
 	all_ints = (m_intreq1 & m_intctrl1) << 8;
 	all_ints |= (m_intreq2 & m_intctrl2);
 
-//  printf("recalc_irqs: last_all_ints = %04x last_ints = %04x (req1 %02x ctrl1 %02x req2 %02x ctrl2 %02x)\n", all_ints, m_last_all_ints, m_intreq1, m_intctrl1, m_intreq2, m_intctrl2);
+	//printf("recalc_irqs: last_all_ints = %04x last_ints = %04x (req1 %02x ctrl1 %02x req2 %02x ctrl2 %02x)\n", all_ints, m_last_all_ints, m_intreq1, m_intctrl1, m_intreq2, m_intctrl2);
 
 	// check all 16 IRQ bits for changes
 	for (int i = 0; i < 16; i++)
@@ -202,19 +186,19 @@ void m3745x_device::recalc_irqs()
 			// and wasn't last time
 			if (!(m_last_all_ints & (1 << i)))
 			{
-//              printf("    asserting irq %d (%d)\n", i, irq_lines[i]);
+				//printf("    asserting irq %d (%d)\n", i, irq_lines[i]);
 				if (irq_lines[i] != -1)
 				{
 					m740_device::execute_set_input(irq_lines[i], ASSERT_LINE);
 				}
 			}
 		}
-		else    // bit is clear now
+		else // bit is clear now
 		{
 			// ...and wasn't clear last time
 			if (m_last_all_ints & (1 << i))
 			{
-//              printf("    clearing irq %d (%d)\n", i, irq_lines[i]);
+				//printf("    clearing irq %d (%d)\n", i, irq_lines[i]);
 				if (irq_lines[i] != -1)
 				{
 					m740_device::execute_set_input(irq_lines[i], CLEAR_LINE);
@@ -243,7 +227,7 @@ uint8_t m3745x_device::read_port(uint8_t offset)
 	return incoming;
 }
 
-READ8_MEMBER(m3745x_device::ports_r)
+uint8_t m3745x_device::ports_r(offs_t offset)
 {
 	switch (offset)
 	{
@@ -272,7 +256,7 @@ READ8_MEMBER(m3745x_device::ports_r)
 	return 0xff;
 }
 
-WRITE8_MEMBER(m3745x_device::ports_w)
+void m3745x_device::ports_w(offs_t offset, uint8_t data)
 {
 	switch (offset)
 	{
@@ -313,7 +297,7 @@ WRITE8_MEMBER(m3745x_device::ports_w)
 	}
 }
 
-READ8_MEMBER(m3745x_device::intregs_r)
+uint8_t m3745x_device::intregs_r(offs_t offset)
 {
 	switch (offset)
 	{
@@ -335,7 +319,7 @@ READ8_MEMBER(m3745x_device::intregs_r)
 	return 0;
 }
 
-WRITE8_MEMBER(m3745x_device::intregs_w)
+void m3745x_device::intregs_w(offs_t offset, uint8_t data)
 {
 	switch (offset)
 	{
@@ -359,7 +343,7 @@ WRITE8_MEMBER(m3745x_device::intregs_w)
 	recalc_irqs();
 }
 
-READ8_MEMBER(m3745x_device::adc_r)
+uint8_t m3745x_device::adc_r(offs_t offset)
 {
 	switch (offset)
 	{
@@ -375,7 +359,7 @@ READ8_MEMBER(m3745x_device::adc_r)
 	return 0;
 }
 
-WRITE8_MEMBER(m3745x_device::adc_w)
+void m3745x_device::adc_w(offs_t offset, uint8_t data)
 {
 	switch (offset)
 	{
@@ -389,8 +373,7 @@ WRITE8_MEMBER(m3745x_device::adc_w)
 			// starting a conversion?  this takes 50 cycles.
 			if (!(m_adctrl & ADCTRL_COMPLETE))
 			{
-				double hz = (double)clock() / 50.0;
-				m_timers[TIMER_ADC]->adjust(attotime::from_hz(hz));
+				m_timers[TIMER_ADC]->adjust(cycles_to_attotime(50));
 			}
 			break;
 	}

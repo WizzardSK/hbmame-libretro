@@ -1,8 +1,8 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 //****************************************************************************
 
-#ifndef DIJOYSTICK_H
-#define DIJOYSTICK_H
+#ifndef WINUI_DIJOYSTICK_H
+#define WINUI_DIJOYSTICK_H
 
 /*
   limits:
@@ -24,10 +24,10 @@
 
 */
 #define JOYCODE(joy, stick, axis_or_button, dir) \
-        ((((dir)            & 0x03) << 14) |     \
-         (((axis_or_button) & 0x3f) <<  8) |     \
-         (((stick)          & 0x1f) <<  3) |     \
-         (((joy)            & 0x07) <<  0))
+		((((dir)            & 0x03) << 14) |     \
+		 (((axis_or_button) & 0x3f) <<  8) |     \
+		 (((stick)          & 0x1f) <<  3) |     \
+		 (((joy)            & 0x07) <<  0))
 
 #define GET_JOYCODE_JOY(code)    (((code) >> 0) & 0x07)
 #define GET_JOYCODE_STICK(code)  (((code) >> 3) & 0x1f)
@@ -61,3 +61,4 @@ extern int    DIJoystick_GetNumPhysicalJoystickAxes(int num_joystick);
 extern TCHAR* DIJoystick_GetPhysicalJoystickAxisName(int num_joystick, int num_axis);
 
 #endif
+

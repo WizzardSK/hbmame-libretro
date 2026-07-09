@@ -3,6 +3,7 @@
 #ifndef MAME_LIB_UTIL_SERVER_WS_IMPL_HPP
 #define MAME_LIB_UTIL_SERVER_WS_IMPL_HPP
 #include "path_to_regex.hpp"
+#include "base64.hpp"
 #include "crypto.hpp"
 
 #include "asio.h"
@@ -73,10 +74,10 @@ namespace webpp {
 
 		public:
 			virtual ~Connection() {}
-			explicit Connection(const std::shared_ptr<socket_type> &socket) : super(0), socket(socket), strand(socket->get_io_service()), closed(false) { }
+			Connection(asio::io_context &context, const std::shared_ptr<socket_type> &socket) : super(0), socket(socket), strand(context), closed(false) { }
 
 		private:
-			explicit Connection(socket_type *socket): super(0), socket(socket), strand(socket->get_io_service()), closed(false) { }
+			Connection(asio::io_context &context, socket_type *socket): super(0), socket(socket), strand(context), closed(false) { }
 
 			class SendData {
 			public:
@@ -95,7 +96,7 @@ namespace webpp {
 			std::list<SendData> send_queue;
 
 			void send_from_queue(const std::shared_ptr<Connection> &connection) {
-				strand.post([this, connection]() {
+				asio::post(strand, [this, connection]() {
 					asio::async_write(*socket, send_queue.begin()->header_stream->streambuf,
 							strand.wrap([this, connection](const std::error_code& ec, size_t /*bytes_transferred*/) {
 						if(!ec) {
@@ -218,11 +219,11 @@ namespace webpp {
 				io_context=std::make_shared<asio::io_context>();
 
 			if(io_context->stopped())
-				io_context->reset();
+				io_context->restart();
 
 			asio::ip::tcp::endpoint endpoint;
 			if(config.address.size()>0)
-				endpoint=asio::ip::tcp::endpoint(asio::ip::address::from_string(config.address), config.port);
+				endpoint=asio::ip::tcp::endpoint(asio::ip::make_address(config.address), config.port);
 			else
 				endpoint=asio::ip::tcp::endpoint(asio::ip::tcp::v4(), config.port);
 
@@ -282,7 +283,7 @@ namespace webpp {
 			else
 				header_stream->put(static_cast<unsigned char>(length));
 
-			connection->strand.post([connection, header_stream, message_stream, callback]() {
+			asio::post(connection->strand, [connection, header_stream, message_stream, callback]() {
 				connection->send_queue.emplace_back(header_stream, message_stream, callback);
 				if(connection->send_queue.size()==1)
 					connection->send_from_queue(connection);
@@ -360,7 +361,7 @@ namespace webpp {
 		std::shared_ptr<asio::system_timer> get_timeout_timer(const std::shared_ptr<Connection> &connection, size_t seconds) {
 			if (seconds == 0)
 				return nullptr;
-			auto timer = std::make_shared<asio::system_timer>(connection->socket->get_io_service());
+			auto timer = std::make_shared<asio::system_timer>(connection->socket->get_executor());
 			timer->expires_at(std::chrono::system_clock::now() + std::chrono::seconds(static_cast<long>(seconds)));
 			timer->async_wait([connection](const std::error_code& ec){
 				if(!ec) {
@@ -651,13 +652,13 @@ namespace webpp {
 
 		void timer_idle_init(const std::shared_ptr<Connection> &connection) {
 			if(config.timeout_idle>0) {
-				connection->timer_idle= std::make_unique<asio::system_timer>(connection->socket->get_io_service());
-				connection->timer_idle->expires_from_now(std::chrono::seconds(static_cast<unsigned long>(config.timeout_idle)));
+				connection->timer_idle= std::make_unique<asio::system_timer>(connection->socket->get_executor());
+				connection->timer_idle->expires_after(std::chrono::seconds(static_cast<unsigned long>(config.timeout_idle)));
 				timer_idle_expired_function(connection);
 			}
 		}
 		void timer_idle_reset(const std::shared_ptr<Connection> &connection) const {
-			if(config.timeout_idle>0 && connection->timer_idle->expires_from_now(std::chrono::seconds(static_cast<unsigned long>(config.timeout_idle)))>0)
+			if(config.timeout_idle>0 && connection->timer_idle->expires_after(std::chrono::seconds(static_cast<unsigned long>(config.timeout_idle)))>0)
 				timer_idle_expired_function(connection);
 		}
 		void timer_idle_cancel(const std::shared_ptr<Connection> &connection) const {
@@ -692,7 +693,7 @@ namespace webpp {
 		void accept() override {
 			//Create new socket for this connection (stored in Connection::socket)
 			//Shared_ptr is used to pass temporary objects to the asynchronous functions
-			std::shared_ptr<Connection> connection(new Connection(new WS(*io_context)));
+			std::shared_ptr<Connection> connection(new Connection(*io_context, new WS(*io_context)));
 
 			acceptor->async_accept(*connection->socket, [this, connection](const std::error_code& ec) {
 				//Immediately start accepting a new connection (if io_context hasn't been stopped)

@@ -1,9 +1,8 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
 // standard windows headers
-#define _WIN32_IE 0x0501
 #include <windows.h>
 #include <windowsx.h>
 #include <commctrl.h>
@@ -16,46 +15,6 @@
 #include "winui.h"
 #include "mui_opts.h"
 #include "treeview.h"
-
-
-// fix warning: cast does not match function type
-#if defined(__GNUC__) && defined(ListView_GetHeader)
-#undef ListView_GetHeader
-#endif
-#if defined(__GNUC__) && defined(ListView_GetImageList)
-#undef ListView_GetImageList
-#undef ListView_GetItemRect
-#endif
-
-#ifndef ListView_GetItemRect
-#define ListView_GetItemRect(w,i,p,c) \
-	(BOOL)SNDMSG((w),LVM_GETITEMRECT,i,((p != NULL)?(((LPRECT)(p))->left=(c),(LPARAM)(LPRECT)(p)):0))
-#endif
-
-#ifndef ListView_GetImageList
-#define ListView_GetImageList(w,i) (HIMAGELIST)(LRESULT)(int)SendMessage((w),LVM_GETIMAGELIST,(i),0)
-#endif // ListView_GetImageList
-
-#ifndef ListView_GetHeader
-#define ListView_GetHeader(w) (HWND)(LRESULT)(int)SNDMSG((w),LVM_GETHEADER,0,0)
-#endif // ListView_GetHeader
-
-#ifndef HDM_SETIMAGELIST
-#define HDM_SETIMAGELIST        (HDM_FIRST + 8)
-#endif // HDM_SETIMAGELIST
-
-#ifndef Header_SetImageList
-#define Header_SetImageList(h,i) (HIMAGELIST)(LRESULT)(int)SNDMSG((h), HDM_SETIMAGELIST, 0, (LPARAM)i)
-#endif // Header_SetImageList
-
-#ifndef HDF_SORTUP
-#define HDF_SORTUP 0x400
-#endif
-
-#ifndef HDF_SORTDOWN
-#define HDF_SORTDOWN 0x200
-#endif
-
 
 
 struct PickerInfo
@@ -184,10 +143,10 @@ static BOOL ListViewContextMenu(HWND hwndPicker, LPARAM lParam)
 		GetCursorPos(&pt);
 
 	// Figure out which header column was clicked, if at all
-	int nViewID = Picker_GetViewID(hwndPicker);
+	//int nViewID = Picker_GetViewID(hwndPicker);
 	int nColumn = -1;
 
-	if ((nViewID == VIEW_REPORT) || (nViewID == VIEW_GROUPED))
+	//if ((nViewID == VIEW_REPORT) || (nViewID == VIEW_GROUPED))
 	{
 		HWND hwndHeader = ListView_GetHeader(hwndPicker);
 		POINT headerPt = pt;
@@ -509,20 +468,10 @@ BOOL SetupPicker(HWND hwndPicker, const struct PickerOptions *pOptions)
 			pPickerInfo->pnColumnsShown[i] = true;
 		}
 
-		if (GetUseOldControl())
-		{
-			if (pPickerInfo->pCallbacks->pfnSetColumnOrder)
-				pPickerInfo->pCallbacks->pfnSetColumnOrder(pPickerInfo->pnColumnsOrder);
-			if (pPickerInfo->pCallbacks->pfnSetColumnShown)
-				pPickerInfo->pCallbacks->pfnSetColumnShown(pPickerInfo->pnColumnsShown);
-		}
-		else
-		{
-			if (pPickerInfo->pCallbacks->pfnGetColumnOrder)
-				pPickerInfo->pCallbacks->pfnGetColumnOrder(pPickerInfo->pnColumnsOrder);
-			if (pPickerInfo->pCallbacks->pfnGetColumnShown)
-				pPickerInfo->pCallbacks->pfnGetColumnShown(pPickerInfo->pnColumnsShown);
-		}
+		if (pPickerInfo->pCallbacks->pfnGetColumnOrder)
+			pPickerInfo->pCallbacks->pfnGetColumnOrder(pPickerInfo->pnColumnsOrder);
+		if (pPickerInfo->pCallbacks->pfnGetColumnShown)
+			pPickerInfo->pCallbacks->pfnGetColumnShown(pPickerInfo->pnColumnsShown);
 	}
 
 	// Hook in our wndproc and userdata pointer
@@ -566,53 +515,6 @@ void Picker_SetViewID(HWND hwndPicker, int nViewID)
 	if (pPickerInfo->pCallbacks->pfnSetViewMode)
 		pPickerInfo->pCallbacks->pfnSetViewMode(pPickerInfo->nCurrentViewID);
 
-	// Change the ListView flags in accordance
-	LONG_PTR nListViewStyle;
-	switch(nViewID)
-	{
-		case VIEW_LARGE_ICONS:
-			nListViewStyle = LVS_ICON;
-			break;
-		case VIEW_SMALL_ICONS:
-			nListViewStyle = LVS_SMALLICON;
-			break;
-		case VIEW_INLIST:
-			nListViewStyle = LVS_LIST;
-			break;
-		case VIEW_GROUPED:
-		case VIEW_REPORT:
-		default:
-			nListViewStyle = LVS_REPORT;
-			break;
-	}
-
-	DWORD dwStyle = GetWindowLong(hwndPicker, GWL_STYLE);
-	if (GetUseXPControl())
-	{
-		// RS Microsoft must have changed something in the Ownerdraw handling with Version 6 of the Common Controls
-		// as on all other OSes it works without this...
-		if (nViewID == VIEW_LARGE_ICONS || nViewID == VIEW_SMALL_ICONS)
-		{
-			// remove Ownerdraw style for Icon views
-			dwStyle &= ~LVS_OWNERDRAWFIXED;
-			if( nViewID == VIEW_SMALL_ICONS )
-			{
-				// to properly get them to arrange, otherwise the entries might overlap
-				// we have to call SetWindowLong to get it into effect !!
-				// It's no use just setting the Style, as it's changed again further down...
-				SetWindowLong(hwndPicker, GWL_STYLE, (GetWindowLong(hwndPicker, GWL_STYLE) & ~LVS_TYPEMASK) | LVS_ICON);
-			}
-		}
-		else
-		{
-			// add again..
-			dwStyle |= LVS_OWNERDRAWFIXED;
-		}
-	}
-
-	dwStyle &= ~LVS_TYPEMASK;
-	dwStyle |= nListViewStyle;
-	SetWindowLong(hwndPicker, GWL_STYLE, dwStyle);
 	RedrawWindow(hwndPicker, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_FRAME);
 }
 
@@ -723,18 +625,10 @@ static void Picker_ResetHeaderSortIcon(HWND hwndPicker)
 		if (i != pPickerInfo->pCallbacks->pfnGetSortColumn())
 			res = Header_SetItem(hwndHeader, Picker_GetViewColumnFromRealColumn(hwndPicker, i), &hdi);
 
-	if (GetUseXPControl())
 	{
 		// use built in sort arrows
 		hdi.mask = HDI_FORMAT;
 		hdi.fmt = HDF_STRING | (pPickerInfo->pCallbacks->pfnGetSortReverse() ? HDF_SORTDOWN : HDF_SORTUP);
-	}
-	else
-	{
-		// put our arrow icon next to the text
-		hdi.mask = HDI_FORMAT | HDI_IMAGE;
-		hdi.fmt = HDF_STRING | HDF_IMAGE | HDF_BITMAP_ON_RIGHT;
-		hdi.iImage = pPickerInfo->pCallbacks->pfnGetSortReverse() ? 1 : 0;
 	}
 
 	int nViewColumn = Picker_GetViewColumnFromRealColumn(hwndPicker, pPickerInfo->pCallbacks->pfnGetSortColumn());
@@ -783,7 +677,7 @@ static int CALLBACK Picker_CompareProc(LPARAM index1, LPARAM index2, LPARAM nPar
 	TCHAR szBuffer1[256], szBuffer2[256];
 	const TCHAR *s1, *s2;
 
-	if (pcpp->nViewMode == VIEW_GROUPED)
+	if (GetEnableIndent())
 	{
 		// do our fancy compare, with clones grouped under parents
 		// first thing we need to do is identify both item's parents
@@ -1102,7 +996,7 @@ int Picker_GetNumColumns(HWND hWnd)
 	pPickerInfo->pCallbacks->pfnGetColumnShown(shown);
 	HWND hwndHeader = ListView_GetHeader(hWnd);
 
-	if (GetUseOldControl() || (nColumnCount = Header_GetItemCount(hwndHeader)) < 1)
+	if ((nColumnCount = Header_GetItemCount(hwndHeader)) < 1)
 	{
 		nColumnCount = 0;
 		for (int i = 0; i < pPickerInfo->nColumnCount ; i++ )
@@ -1129,7 +1023,7 @@ static LPCTSTR MakeShortString(HDC hDC, LPCTSTR lpszLong, int nColumnLen, int nO
 		return lpszLong;
 
 	lstrcpy(szShort, lpszLong);
-	GetTextExtentPoint32(hDC, szThreeDots, ARRAY_LENGTH(szThreeDots), &size);
+	GetTextExtentPoint32(hDC, szThreeDots, std::size(szThreeDots), &size);
 	int nAddLen = size.cx;
 
 	for (int i = nStringLen - 1; i > 0; i--)
@@ -1189,26 +1083,21 @@ void Picker_HandleDrawItem(HWND hWnd, LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	int nColumnMax = Picker_GetNumColumns(hWnd);
 
-	if (GetUseOldControl())
-		pPickerInfo->pCallbacks->pfnGetColumnOrder(order);
-	else
-	{
-		/* Get the Column Order and save it */
-		res = ListView_GetColumnOrderArray(hWnd, nColumnMax, order);
+	/* Get the Column Order and save it */
+	res = ListView_GetColumnOrderArray(hWnd, nColumnMax, order);
 
-		/* Disallow moving column 0 */
-		if (order[0] != 0)
+	/* Disallow moving column 0 */
+	if (order[0] != 0)
+	{
+		for (i = 0; i < nColumnMax; i++)
 		{
-			for (i = 0; i < nColumnMax; i++)
+			if (order[i] == 0)
 			{
-				if (order[i] == 0)
-				{
-					order[i] = order[0];
-					order[0] = 0;
-				}
+				order[i] = order[0];
+				order[0] = 0;
 			}
-			res = ListView_SetColumnOrderArray(hWnd, nColumnMax, order);
 		}
+		res = ListView_SetColumnOrderArray(hWnd, nColumnMax, order);
 	}
 
 	/* Labels are offset by a certain amount */
@@ -1231,10 +1120,10 @@ void Picker_HandleDrawItem(HWND hWnd, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		nParent = pPickerInfo->pCallbacks->pfnFindItemParent(hWnd, lvi.lParam);
 	else
 		nParent = -1;
-	bDrawAsChild = (pPickerInfo->pCallbacks->pfnGetViewMode() == VIEW_GROUPED && (nParent >= 0));
+	//bDrawAsChild = (pPickerInfo->pCallbacks->pfnGetViewMode() == VIEW_GROUPED && (nParent >= 0));
 
 	/* only indent if parent is also in this view */
-#if 1	// minimal listview flickering.
+#if 1   // minimal listview flickering.
 	if ((nParent >= 0) && bDrawAsChild)
 	{
 		if (GetParentFound(lvi.lParam))
@@ -1293,7 +1182,7 @@ void Picker_HandleDrawItem(HWND hWnd, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		GetClientRect(hWnd, &rcClient);
 		rcTmpBmp.right = rcClient.right;
 		/* We also need to check whether it is the last item
-           The update region has to be extended to the bottom if it is */
+		   The update region has to be extended to the bottom if it is */
 		if (nItem == ListView_GetItemCount(hWnd) - 1)
 			rcTmpBmp.bottom = rcClient.bottom;
 
@@ -1336,8 +1225,8 @@ void Picker_HandleDrawItem(HWND hWnd, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		res = ListView_GetItemRect_Modified(hWnd, nItem, &rect, LVIR_ICON);
 
 		/* indent width of icon + the space between the icon and text
-         * so left of clone icon starts at text of parent
-         */
+		 * so left of clone icon starts at text of parent
+		 */
 		indent_space = rect.right - rect.left + offset;
 	}
 
@@ -1572,19 +1461,13 @@ BOOL Picker_SaveColumnWidths(HWND hwndPicker)
 
 	nColumnMax = Picker_GetNumColumns(hwndPicker);
 
-	if (GetUseOldControl())
-		for (i = 0; i < nColumnMax; i++)
-			widths[Picker_GetRealColumnFromViewColumn(hwndPicker, i)] = ListView_GetColumnWidth(hwndPicker, i);
-	else
-	{
-		/* Get the Column Order and save it */
-		res = ListView_GetColumnOrderArray(hwndPicker, nColumnMax, tmpOrder);
+	/* Get the Column Order and save it */
+	res = ListView_GetColumnOrderArray(hwndPicker, nColumnMax, tmpOrder);
 
-		for (i = 0; i < nColumnMax; i++)
-		{
-			widths[Picker_GetRealColumnFromViewColumn(hwndPicker, i)] = ListView_GetColumnWidth(hwndPicker, i);
-			order[i] = Picker_GetRealColumnFromViewColumn(hwndPicker, tmpOrder[i]);
-		}
+	for (i = 0; i < nColumnMax; i++)
+	{
+		widths[Picker_GetRealColumnFromViewColumn(hwndPicker, i)] = ListView_GetColumnWidth(hwndPicker, i);
+		order[i] = Picker_GetRealColumnFromViewColumn(hwndPicker, tmpOrder[i]);
 	}
 
 	pPickerInfo->pCallbacks->pfnSetColumnWidths(widths);
@@ -1601,3 +1484,4 @@ done:
 	res++;
 	return bSuccess;
 }
+

@@ -14,7 +14,13 @@
 #pragma once
 
 #include <intrin.h>
+#include <stdlib.h>
+
 #pragma intrinsic(_BitScanReverse)
+
+#if defined(_M_X64) || defined(_M_ARM64)
+#pragma intrinsic(_BitScanReverse64)
+#endif
 
 
 /***************************************************************************
@@ -22,32 +28,42 @@
 ***************************************************************************/
 
 /*-------------------------------------------------
-    count_leading_zeros - return the number of
-    leading zero bits in a 32-bit value
+    rotl_32 - circularly shift a 32-bit value left
+    by the specified number of bits (modulo 32)
 -------------------------------------------------*/
 
-#ifndef count_leading_zeros
-#define count_leading_zeros _count_leading_zeros
-inline uint8_t _count_leading_zeros(uint32_t value)
-{
-	unsigned long index;
-	return _BitScanReverse(&index, value) ? (31U - index) : 32U;
-}
+#ifndef rotl_32
+#define rotl_32 _rotl
 #endif
 
 
 /*-------------------------------------------------
-    count_leading_ones - return the number of
-    leading one bits in a 32-bit value
+    rotr_32 - circularly shift a 32-bit value right
+    by the specified number of bits (modulo 32)
 -------------------------------------------------*/
 
-#ifndef count_leading_ones
-#define count_leading_ones _count_leading_ones
-inline uint8_t _count_leading_ones(uint32_t value)
-{
-	unsigned long index;
-	return _BitScanReverse(&index, ~value) ? (31U - index) : 32U;
-}
+#ifndef rotr_32
+#define rotr_32 _rotr
+#endif
+
+
+/*-------------------------------------------------
+    rotl_64 - circularly shift a 64-bit value left
+    by the specified number of bits (modulo 64)
+-------------------------------------------------*/
+
+#ifndef rotl_64
+#define rotl_64 _rotl64
+#endif
+
+
+/*-------------------------------------------------
+    rotr_64 - circularly shift a 64-bit value right
+    by the specified number of bits (modulo 64)
+-------------------------------------------------*/
+
+#ifndef rotr_64
+#define rotr_64 _rotr64
 #endif
 
 #endif // MAME_OSD_EIVC_H

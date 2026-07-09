@@ -116,7 +116,7 @@ void dmv_k806_device::device_add_mconfig(machine_config &config)
 	m_mcu->p2_out_cb().set(FUNC(dmv_k806_device::port2_w));
 	m_mcu->t1_in_cb().set(FUNC(dmv_k806_device::portt1_r));
 
-	TIMER(config, "mouse_timer", 0).configure_periodic(FUNC(dmv_k806_device::mouse_timer), attotime::from_hz(1000));
+	TIMER(config, "mouse_timer").configure_periodic(FUNC(dmv_k806_device::mouse_timer), attotime::from_hz(1000));
 }
 
 //-------------------------------------------------
@@ -141,7 +141,7 @@ void dmv_k806_device::io_read(int ifsel, offs_t offset, uint8_t &data)
 {
 	uint8_t jumpers = m_jumpers->read();
 	if (BIT(jumpers, ifsel) && ((!BIT(offset, 3) && BIT(jumpers, 5)) || (BIT(offset, 3) && BIT(jumpers, 6))))
-		data = m_mcu->upi41_master_r(machine().dummy_space(), offset & 1);
+		data = m_mcu->upi41_master_r(offset & 1);
 }
 
 void dmv_k806_device::io_write(int ifsel, offs_t offset, uint8_t data)
@@ -149,12 +149,12 @@ void dmv_k806_device::io_write(int ifsel, offs_t offset, uint8_t data)
 	uint8_t jumpers = m_jumpers->read();
 	if (BIT(jumpers, ifsel) && ((!BIT(offset, 3) && BIT(jumpers, 5)) || (BIT(offset, 3) && BIT(jumpers, 6))))
 	{
-		m_mcu->upi41_master_w(machine().dummy_space(), offset & 1, data);
+		m_mcu->upi41_master_w(offset & 1, data);
 		out_int(CLEAR_LINE);
 	}
 }
 
-READ8_MEMBER( dmv_k806_device::port1_r )
+uint8_t dmv_k806_device::port1_r()
 {
 	// ---- ---x   Left button
 	// ---- --x-   Middle button
@@ -175,12 +175,12 @@ READ8_MEMBER( dmv_k806_device::port1_r )
 	return data;
 }
 
-READ_LINE_MEMBER( dmv_k806_device::portt1_r )
+int dmv_k806_device::portt1_r()
 {
 	return BIT(m_jumpers->read(), 7) ? 0 : 1;
 }
 
-WRITE8_MEMBER( dmv_k806_device::port2_w )
+void dmv_k806_device::port2_w(uint8_t data)
 {
 	out_int((data & 1) ? CLEAR_LINE : ASSERT_LINE);
 }

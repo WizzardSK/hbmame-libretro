@@ -7,7 +7,7 @@
 **********************************************************************/
 
 #include "emu.h"
-#include "machine/wd11c00_17.h"
+#include "wd11c00_17.h"
 
 #define VERBOSE 1
 #include "logmacro.h"
@@ -183,10 +183,10 @@ wd11c00_17_device::wd11c00_17_device(const machine_config &mconfig, const char *
 	, m_out_busy_cb(*this)
 	, m_out_req_cb(*this)
 	, m_out_ra3_cb(*this)
-	, m_in_rd322_cb(*this)
-	, m_in_ramcs_cb(*this)
+	, m_in_rd322_cb(*this, 0)
+	, m_in_ramcs_cb(*this, 0)
 	, m_out_ramwr_cb(*this)
-	, m_in_cs1010_cb(*this)
+	, m_in_cs1010_cb(*this, 0)
 	, m_out_cs1010_cb(*this)
 	, m_status(0)
 	, m_ra(0)
@@ -205,18 +205,6 @@ wd11c00_17_device::wd11c00_17_device(const machine_config &mconfig, const char *
 
 void wd11c00_17_device::device_start()
 {
-	// resolve callbacks
-	m_out_irq5_cb.resolve_safe();
-	m_out_drq3_cb.resolve_safe();
-	m_out_mr_cb.resolve_safe();
-	m_out_busy_cb.resolve_safe();
-	m_out_req_cb.resolve_safe();
-	m_out_ra3_cb.resolve_safe();
-	m_in_rd322_cb.resolve_safe(0);
-	m_in_ramcs_cb.resolve_safe(0);
-	m_out_ramwr_cb.resolve_safe();
-	m_in_cs1010_cb.resolve_safe(0);
-	m_out_cs1010_cb.resolve_safe();
 }
 
 
@@ -238,7 +226,7 @@ void wd11c00_17_device::device_reset()
 //  io_r -
 //-------------------------------------------------
 
-READ8_MEMBER( wd11c00_17_device::io_r )
+uint8_t wd11c00_17_device::io_r(offs_t offset)
 {
 	uint8_t data = 0xff;
 
@@ -271,7 +259,7 @@ READ8_MEMBER( wd11c00_17_device::io_r )
 //  io_w -
 //-------------------------------------------------
 
-WRITE8_MEMBER( wd11c00_17_device::io_w )
+void wd11c00_17_device::io_w(offs_t offset, uint8_t data)
 {
 	switch (offset)
 	{
@@ -304,7 +292,7 @@ WRITE8_MEMBER( wd11c00_17_device::io_w )
 //  dack3_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER(wd11c00_17_device::dack3_w)
+void wd11c00_17_device::dack3_w(int state)
 {
 }
 
@@ -333,7 +321,7 @@ void wd11c00_17_device::dack_w(uint8_t data)
 //  read -
 //-------------------------------------------------
 
-READ8_MEMBER( wd11c00_17_device::read )
+uint8_t wd11c00_17_device::read(offs_t offset)
 {
 	uint8_t data = 0;
 
@@ -358,7 +346,7 @@ READ8_MEMBER( wd11c00_17_device::read )
 //  write -
 //-------------------------------------------------
 
-WRITE8_MEMBER( wd11c00_17_device::write )
+void wd11c00_17_device::write(offs_t offset, uint8_t data)
 {
 	switch (offset)
 	{
@@ -385,7 +373,7 @@ WRITE8_MEMBER( wd11c00_17_device::write )
 //  ireq_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( wd11c00_17_device::ireq_w )
+void wd11c00_17_device::ireq_w(int state)
 {
 	LOG("%s WD11C00-17 IREQ %u\n", machine().describe_context(), state);
 
@@ -414,7 +402,7 @@ WRITE_LINE_MEMBER( wd11c00_17_device::ireq_w )
 //  io_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( wd11c00_17_device::io_w )
+void wd11c00_17_device::io_w(int state)
 {
 	LOG("%s WD11C00-17 I/O %u\n", machine().describe_context(), state);
 
@@ -426,7 +414,7 @@ WRITE_LINE_MEMBER( wd11c00_17_device::io_w )
 //  cd_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( wd11c00_17_device::cd_w )
+void wd11c00_17_device::cd_w(int state)
 {
 	LOG("%s WD11C00-17 C/D %u\n", machine().describe_context(), state);
 
@@ -438,7 +426,7 @@ WRITE_LINE_MEMBER( wd11c00_17_device::cd_w )
 //  clct_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( wd11c00_17_device::clct_w )
+void wd11c00_17_device::clct_w(int state)
 {
 	LOG("%s WD11C00-17 CLCT %u\n", machine().describe_context(), state);
 
@@ -454,7 +442,7 @@ WRITE_LINE_MEMBER( wd11c00_17_device::clct_w )
 //  mode_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( wd11c00_17_device::mode_w )
+void wd11c00_17_device::mode_w(int state)
 {
 	LOG("%s WD11C00-17 MODE %u\n", machine().describe_context(), state);
 
@@ -467,7 +455,7 @@ WRITE_LINE_MEMBER( wd11c00_17_device::mode_w )
 //  busy_r -
 //-------------------------------------------------
 
-READ_LINE_MEMBER( wd11c00_17_device::busy_r )
+int wd11c00_17_device::busy_r()
 {
 	return (m_status & STATUS_BUSY) ? 0 : 1;
 }
@@ -477,7 +465,7 @@ READ_LINE_MEMBER( wd11c00_17_device::busy_r )
 //  ecc_not_0_r -
 //-------------------------------------------------
 
-READ_LINE_MEMBER( wd11c00_17_device::ecc_not_0_r )
+int wd11c00_17_device::ecc_not_0_r()
 {
 	return m_ecc_not_0;
 }

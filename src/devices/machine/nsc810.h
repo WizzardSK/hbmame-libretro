@@ -22,15 +22,17 @@ public:
 		set_timer0_clock(clk0);
 		set_timer1_clock(clk1);
 	}
-
-	nsc810_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, const XTAL &clk0, const XTAL &clk1)
-		: nsc810_device(mconfig, tag, owner, clock)
+	template <typename T, typename U>
+	nsc810_device(const machine_config &mconfig, const char *tag, device_t *owner, T &&clk0, U &&clk1)
+		: nsc810_device(mconfig, tag, owner, 0, clock_value(std::forward<T>(clk0)), clock_value(std::forward<U>(clk1)))
 	{
-		set_timer0_clock(clk0.value());
-		set_timer1_clock(clk1.value());
+		set_timer0_clock(clock_value(std::forward<T>(clk0)));
+		set_timer1_clock(clock_value(std::forward<U>(clk1)));
 	}
+	static uint32_t clock_value(uint32_t v) { return v; }
+	static uint32_t clock_value(const XTAL &v) { return v.value(); }
 
-	nsc810_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	nsc810_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	auto portA_read_callback() { return m_portA_r.bind(); }
 	auto portB_read_callback() { return m_portB_r.bind(); }
@@ -38,21 +40,22 @@ public:
 	auto portA_write_callback() { return m_portA_w.bind(); }
 	auto portB_write_callback() { return m_portB_w.bind(); }
 	auto portC_write_callback() { return m_portC_w.bind(); }
-	auto timer0_callback() { return m_timer0_out.bind(); }
-	auto timer1_callback() { return m_timer1_out.bind(); }
+	auto timer0_callback() { return m_timer_out[0].bind(); }
+	auto timer1_callback() { return m_timer_out[1].bind(); }
 
-	void set_timer0_clock(uint32_t clk) { m_timer0_clock = clk; }
+	void set_timer0_clock(uint32_t clk) { m_timer_clock[0] = clk; }
 	void set_timer0_clock(const XTAL &clk) { set_timer0_clock(clk.value()); }
-	void set_timer1_clock(uint32_t clk) { m_timer1_clock = clk; }
+	void set_timer1_clock(uint32_t clk) { m_timer_clock[1] = clk; }
 	void set_timer1_clock(const XTAL &clk) { set_timer1_clock(clk.value()); }
 
 	uint8_t read(offs_t offset);
 	void write(offs_t offset, uint8_t data);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+
+	template <int Timer> TIMER_CALLBACK_MEMBER(timer_tick);
 
 private:
 	uint8_t m_portA_latch;
@@ -62,18 +65,12 @@ private:
 	uint8_t m_ddrB;
 	uint8_t m_ddrC;
 	uint8_t m_mode;
-	emu_timer* m_timer0;
-	emu_timer* m_timer1;
-	uint8_t m_timer0_mode;
-	uint8_t m_timer1_mode;
-	uint16_t m_timer0_counter;
-	uint16_t m_timer1_counter;
-	uint16_t m_timer0_base;
-	uint16_t m_timer1_base;
-	bool m_timer0_running;
-	bool m_timer1_running;
-	uint32_t m_timer0_clock;
-	uint32_t m_timer1_clock;
+	emu_timer* m_timer[2];
+	uint8_t m_timer_mode[2];
+	uint16_t m_timer_counter[2];
+	uint16_t m_timer_base[2];
+	bool m_timer_running[2];
+	uint32_t m_timer_clock[2];
 	bool m_ramselect;
 
 	devcb_read8 m_portA_r;
@@ -82,11 +79,7 @@ private:
 	devcb_write8 m_portA_w;
 	devcb_write8 m_portB_w;
 	devcb_write8 m_portC_w;
-	devcb_write_line m_timer0_out;
-	devcb_write_line m_timer1_out;
-
-	static constexpr device_timer_id TIMER0_CLOCK = 0;
-	static constexpr device_timer_id TIMER1_CLOCK = 1;
+	devcb_write_line::array<2> m_timer_out;
 
 	enum
 	{

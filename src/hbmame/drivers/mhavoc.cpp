@@ -1,125 +1,29 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
-#include "../mame/drivers/mhavoc.cpp"
-
-//**********************************************************************
-//* Drivers included
-//*
-//* Major Havoc - The Promised End - CAX 2018 BETA v0.21 - mhavocpex
-//* Major Havoc - The Promised End - CAX 2019 BETA v0.50 - mhavocpex2
-//*
-//**********************************************************************
-
-void mhavoc_state::gammape_map(address_map &map)
-{
-	map(0x0000, 0x07ff).ram().mirror(0x1800);                   /* Program RAM (2K) */
-	map(0x2000, 0x203f).rw(FUNC(mhavoc_state::quad_pokeyn_r), FUNC(mhavoc_state::quad_pokeyn_w)).mirror(0x07C0); /* Quad Pokey read/write  */
-	map(0x2800, 0x2800).portr("IN1").mirror(0x07ff);      /* Gamma Input Port */
-	map(0x3000, 0x3000).r(FUNC(mhavoc_state::mhavoc_alpha_r)).mirror(0x07ff);  /* Alpha Comm. Read Port */
-	map(0x3800, 0x3803).portr("DIAL").mirror(0x07fc);     /* Roller Controller Input */
-	map(0x4000, 0x4000).portr("DSW2").w(FUNC(mhavoc_state::mhavoc_gamma_irq_ack_w)).mirror(0x07ff); /* DSW at 8S, IRQ Acknowledge */
-	map(0x4800, 0x4800).w(FUNC(mhavoc_state::mhavoc_out_1_w)).mirror(0x07ff); /* Coin Counters    */
-	map(0x5000, 0x5000).w(FUNC(mhavoc_state::mhavoc_alpha_w)).mirror(0x07ff); /* Alpha Comm. Write Port */
-	map(0x5800, 0x5800).w(FUNC(mhavoc_state::mhavocrv_speech_data_w)).mirror(0x06ff); /* TMS5220 data write */
-	map(0x5900, 0x5900).w(FUNC(mhavoc_state::mhavocrv_speech_strobe_w)).mirror(0x06ff); /* TMS5220 /WS strobe write */
-	map(0x6000, 0x61ff).rw("eeprom", FUNC(eeprom_parallel_28xx_device::read), FUNC(eeprom_parallel_28xx_device::write)).mirror(0x1e00); /* EEROM */
-	map(0x8000, 0xffff).rom();                   /* Program ROM (32K) */
-}
-
-void mhavoc_state::alphape_map(address_map &map)
-{
-	map(0x0000, 0x01ff).ram();
-	map(0x0200, 0x07ff).bankrw("bank1").share("zram0");
-	map(0x0800, 0x09ff).ram();
-	map(0x0a00, 0x0fff).bankrw("bank1").share("zram1");
-	map(0x1000, 0x1000).r(FUNC(mhavoc_state::mhavoc_gamma_r));          /* Gamma Read Port */
-	map(0x1200, 0x1200).portr("IN0").nopw();                            /* Alpha Input Port 0 */
-	map(0x1400, 0x141f).ram().share("avg:colorram");                    /* ColorRAM */
-	map(0x1600, 0x1600).w(FUNC(mhavoc_state::mhavoc_out_0_w));          /* Control Signals */
-	map(0x1640, 0x1640).w("avg", FUNC(avg_mhavoc_device::go_w));        /* Vector Generator GO */
-	map(0x1680, 0x1680).w("watchdog", FUNC(watchdog_timer_device::reset_w));         /* Watchdog Clear */
-	map(0x16c0, 0x16c0).w("avg", FUNC(avg_mhavoc_device::reset_w));     /* Vector Generator Reset */
-	map(0x1700, 0x1700).w(FUNC(mhavoc_state::mhavoc_alpha_irq_ack_w));  /* IRQ ack */
-	//map(0x1740, 0x1740).w(FUNC(mhavoc_state::mhavocpe_rom_banksel_w));     /* Program ROM Page Select */
-	map(0x1740, 0x1740).lw8(NAME([this] (u8 data) { membank("bank2")->set_entry((data & 1) | ((data & 2)<<1) | ((data & 4)>>1)); }));
-	map(0x1780, 0x1780).w(FUNC(mhavoc_state::mhavoc_ram_banksel_w));    /* Program RAM Page Select */
-	map(0x17c0, 0x17c0).w(FUNC(mhavoc_state::mhavoc_gamma_w));          /* Gamma Communication Write Port */
-	map(0x1800, 0x1fff).ram();                              /* Shared Beta Ram */
-	map(0x2000, 0x3fff).bankr("bank2");                     /* Paged Program ROM (32K) */
-	map(0x4000, 0x4fff).ram().share("avg:vectorram").region("alpha", 0x4000);    /* Vector Generator RAM */
-	map(0x5000, 0x5fff).rom();                              /* Vector ROM */
-	map(0x6000, 0x7fff).bankr("bank3");                     /* Paged Vector ROM */
-	map(0x8000, 0xffff).rom();                              /* Program ROM (32K) */
-}
-//	membank("bank3")->set_entry(m_map);
-
-void mhavoc_state::mhavocpe(machine_config &config)
-{
-	mhavocrv(config);
-
-	/* basic machine hardware */
-	m_alpha->set_addrmap(AS_PROGRAM, &mhavoc_state::alphape_map);
-	m_gamma->set_addrmap(AS_PROGRAM, &mhavoc_state::gammape_map);
-}
+#include "../mame/atari/mhavoc.cpp"
 
 
-ROM_START( mhavocpex )
-	/* Alpha Processor ROMs */
-	ROM_REGION( 0x20000, "alpha", 0 )
-	/* Vector Generator ROM */
-	ROM_LOAD( "mhpe.6kl",   0x05000, 0x2000, CRC(4c05b1a8) SHA1(89b524182fcfd966d6a7e3188235c957c451b8a9) )
+ROM_START( mhavocrv2 ) // doesn't say return to vax on-screen. Release date unknown.
+	ROM_REGION( 0x2000, "vectorrom", 0 )
+	ROM_LOAD( "136025.210",   0x0000, 0x2000, CRC(c67284ca) SHA1(d9adad80c266d36429444f483cac4ebcf1fec7b8) )
 
-	/* Program ROM */
-	ROM_LOAD( "mhpe.1mn",   0x08000, 0x4000, CRC(3b691eff) SHA1(e8227d1458e3ed4d0e8444ec23f2c2d45a0d93b8) )
-	ROM_LOAD( "mhpe.1l",    0x0c000, 0x4000, CRC(fb53dae6) SHA1(08e9bd60e801778d3521d64817a10ba1ed74f4ff) )
+	ROM_REGION( 0x18000, "alpha", 0 )
+	ROM_LOAD( "136025.916a",  0x08000, 0x4000, CRC(8613f09b) SHA1(20befacfce4263a45b0674369d0e7de495fdc4fd) )
+	ROM_LOAD( "136025.917",   0x0c000, 0x4000, CRC(21889079) SHA1(d1ad6d9fa1432912e376bca50ceeefac2bfd6ac3) )
 
-	/* Paged Program ROM */
-	ROM_LOAD( "mhpe.1q",    0x10000, 0x8000, CRC(660e3d57) SHA1(6eddf1335c536406080eab73f5501a202fb0583d) )
-	ROM_LOAD( "mhpe.1np",   0x18000, 0x8000, CRC(c1a70bad) SHA1(0b72b6817e2f00d2c001ac61ebd2cd42ff7785c9) )
+	ROM_LOAD( "136025.915a",  0x10000, 0x4000, CRC(39dc3ac1) SHA1(5be399340e6688b070f236768e2122f5f5a596fa) )
+	ROM_LOAD( "136025.918a",  0x14000, 0x4000, CRC(d60ff5bd) SHA1(eac5fd92eb9ed7f8efff6821037ef5156e0b765f) )
 
-	/* Paged Vector Generator ROM */
 	ROM_REGION( 0x8000, "avg", 0 )
-	ROM_LOAD( "mhpe.6h",    0x0000, 0x4000, CRC(79fc58c0) SHA1(7b40dfb89bc4078e2bd6f89a570f2be9cca15df9) )
-	ROM_LOAD( "mhpe.6jk",   0x4000, 0x4000, CRC(dc78b802) SHA1(6b951982232de08d32d3a2d01814cc28f89d2120) )
+	ROM_LOAD( "136025.106",   0x0000, 0x4000, CRC(2ca83c76) SHA1(cc1adca32f70af30c4590e9fd6b056b051ccdb38) )
+	ROM_LOAD( "136025.907",   0x4000, 0x4000, CRC(4deea2c9) SHA1(c4107581748a3f2d2084de2a4f120abd67a52189) )
 
-	/* Gamma Processor ROM */
-	ROM_REGION( 0x10000, "gamma", 0 )
-	ROM_LOAD( "mhpe.9s",    0x8000, 0x8000, CRC(d42ee58e) SHA1(667aec3c3e93df3f8dedddb0db1188291e37630b) )
+	ROM_REGION( 0x4000, "gamma", 0 )
+	ROM_LOAD( "136025.908",   0x0000, 0x4000, CRC(c52ec664) SHA1(08120a385f71b17ec02a3c2ef856ff835a91773e) )
 
-	/* AVG PROM */
 	ROM_REGION( 0x100, "avg:prom", 0 )
-	ROM_LOAD( "036408-01.b1",   0x0000, 0x0100, CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
+	ROM_LOAD( "136002-125.6c",0x0000, 0x0100, CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 ROM_END
 
-ROM_START( mhavocpex2 )
-	/* Alpha Processor ROMs */
-	ROM_REGION( 0x20000, "alpha", 0 )
-	/* Vector Generator ROM */
-	ROM_LOAD( "mhpe2.6kl",  0x05000, 0x2000, CRC(3804822b) SHA1(78ca5ad3ac9ce9f6ce6ca497f70c7233adc52502) )
-
-	/* Program ROM */
-	ROM_LOAD( "mhpe2.1mn",  0x08000, 0x4000, CRC(2b505cae) SHA1(1ca14c6c810a3dec964eae63e9941e411d3ec546) )
-	ROM_LOAD( "mhpe2.1l",   0x0c000, 0x4000, CRC(8c078dcf) SHA1(b4681eb4930938a93e74c313ee1031ad1a71e198) )
-
-	/* Paged Program ROM */
-	ROM_LOAD( "mhpe2.1q",   0x10000, 0x8000, CRC(7602fccd) SHA1(9073c5e2a70f23c7bab2927936ee5a22e2adb57a) )
-	ROM_LOAD( "mhpe2.1np",  0x18000, 0x8000, CRC(bc6775e1) SHA1(a59a93d4414a0318e37c1e50ef139b6611e4233f) )
-
-	/* Paged Vector Generator ROM */
-	ROM_REGION( 0x8000, "avg", 0 )
-	ROM_LOAD( "mhpe2.6h",   0x0000, 0x4000, CRC(ec19097f) SHA1(261c957e5311ac5fd700949e04e9d4a6ef12c043) )
-	ROM_LOAD( "mhpe2.6jk",  0x4000, 0x4000, CRC(2ac3f07b) SHA1(27d06ed9edf8cd227c7db7c28a7f7357da1260c6) )
-
-	/* Gamma Processor ROM */
-	ROM_REGION( 0x10000, "gamma", 0 )
-	ROM_LOAD( "mhpe2.9s",   0x8000, 0x8000, CRC(57ca8c09) SHA1(84ae19a9ff3b61c75f1fd147540a1e5fb42e6915) )
-
-	/* AVG PROM */
-	ROM_REGION( 0x100, "avg:prom", 0 )
-	ROM_LOAD( "036408-01.b1",   0x0000, 0x0100, CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
-ROM_END
-
-
-GAME( 2018, mhavocpex,  mhavoc, mhavocpe, mhavocrv, mhavoc_state, init_mhavocrv, ROT0, "HaxRus", "Major Havoc - The Promised End (v0.21)", MACHINE_SUPPORTS_SAVE )
-GAME( 2019, mhavocpex2, mhavoc, mhavocpe, mhavocrv, mhavoc_state, init_mhavocrv, ROT0, "HaxRus", "Major Havoc - The Promised End (v0.50)", MACHINE_SUPPORTS_SAVE )
+GAME( 20??, mhavocrv2, mhavoc, mhavocrv, mhavocrv, mhavocrv_state, empty_init, ROT0, "hack (JMA)", "Major Havoc - Return to Vax 1.8", MACHINE_SUPPORTS_SAVE )
 

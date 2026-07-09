@@ -15,7 +15,6 @@
 
 #include "cpcexp.h"
 #include "imagedev/cassette.h"
-#include "formats/tzx_cas.h"
 
 class cpc_doubler_device  : public device_t,
 						public device_cpc_expansion_card_interface
@@ -24,15 +23,15 @@ public:
 	// construction/destruction
 	cpc_doubler_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER(ext_tape_r);
+	uint8_t ext_tape_r();
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	cpc_expansion_slot_device *m_slot;

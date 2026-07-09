@@ -2,7 +2,7 @@
 // copyright-holders:Aaron Giles
 /***************************************************************************
 
-    save.c
+    save.cpp
 
     Save state management functions.
 
@@ -24,7 +24,13 @@
 
 #include "emu.h"
 #include "emuopts.h"
-#include "coreutil.h"
+
+#include "main.h"
+
+#include "util/endianness.h"
+#include "util/ioprocs.h"
+#include "util/ioprocsfilter.h"
+#include "util/multibyte.h"
 
 
 //**************************************************************************
@@ -63,10 +69,7 @@ enum
 save_manager::save_manager(running_machine &machine)
 	: m_machine(machine)
 	, m_reg_allowed(true)
-	, m_illegal_regs(0)
-#if defined(__LIBRETRO__)
-	, m_state_size(-1)
-#endif
+	, m_supported(false)
 {
 	m_rewind = std::make_unique<rewinder>(*this);
 }
@@ -99,6 +102,16 @@ void save_manager::allow_registration(bool allowed)
 
 		if (dupes_found)
 			fatalerror("%d duplicate save state entries found.\n", dupes_found);
+
+		m_supported = true;
+		for (device_t &device : device_enumerator(machine().root_device()))
+		{
+			if (device.type().emulation_flags() & device_t::flags::SAVE_UNSUPPORTED)
+			{
+				m_supported = false;
+				break;
+			}
+		}
 
 		dump_registry();
 
@@ -185,21 +198,19 @@ void save_manager::save_memory(device_t *device, const char *module, const char 
 	if (!m_reg_allowed)
 	{
 		machine().logerror("Attempt to register save state entry after state registration is closed!\nModule %s tag %s name %s\n", module, tag, name);
-		if (machine().system().flags & machine_flags::SUPPORTS_SAVE)
-			fatalerror("Attempt to register save state entry after state registration is closed!\nModule %s tag %s name %s\n", module, tag, name);
-		m_illegal_regs++;
+		fatalerror("Attempt to register save state entry after state registration is closed!\nModule %s tag %s name %s\n", module, tag, name);
 		return;
 	}
 
 	// create the full name
 	std::string totalname;
-	if (tag != nullptr)
+	if (tag)
 		totalname = string_format("%s/%s/%X/%s", module, tag, index, name);
 	else
 		totalname = string_format("%s/%X/%s", module, index, name);
 
 	// insert us into the list
-	m_entry_list.emplace_back(std::make_unique<state_entry>(val, totalname.c_str(), device, module, tag ? tag : "", index, valsize, valcount, blockcount, stride));
+	m_entry_list.emplace_back(std::make_unique<state_entry>(val, std::move(totalname), device, module, tag ? tag : "", index, valsize, valcount, blockcount, stride));
 }
 
 
@@ -208,25 +219,21 @@ void save_manager::save_memory(device_t *device, const char *module, const char 
 //  state
 //-------------------------------------------------
 
-save_error save_manager::check_file(running_machine &machine, emu_file &file, const char *gamename, void (CLIB_DECL *errormsg)(const char *fmt, ...))
+std::pair<save_error, std::string> save_manager::check_file(running_machine &machine, util::core_file &file, const char *gamename)
 {
 	// if we want to validate the signature, compute it
 	u32 sig;
 	sig = machine.save().signature();
 
 	// seek to the beginning and read the header
-	file.compress(FCOMPRESS_NONE);
 	file.seek(0, SEEK_SET);
 	u8 header[HEADER_SIZE];
-	if (file.read(header, sizeof(header)) != sizeof(header))
-	{
-		if (errormsg != nullptr)
-			(*errormsg)("Could not read %s save file header",emulator_info::get_appname());
-		return STATERR_READ_ERROR;
-	}
+	auto const [err, actual] = read(file, header, sizeof(header));
+	if (err || (actual != sizeof(header)))
+		return std::make_pair(STATERR_READ_ERROR, util::string_format("Could not read %s save file header", emulator_info::get_appname()));
 
 	// let the generic header check work out the rest
-	return validate_header(header, gamename, sig, errormsg, "");
+	return validate_header(header, gamename, sig);
 }
 
 
@@ -239,53 +246,6 @@ void save_manager::dispatch_postload()
 {
 	for (auto &func : m_postload_list)
 		func->m_func();
-}
-
-
-//-------------------------------------------------
-//  read_file - read the data from a file
-//-------------------------------------------------
-
-save_error save_manager::read_file(emu_file &file)
-{
-	// if we have illegal registrations, return an error
-	if (m_illegal_regs > 0)
-		return STATERR_ILLEGAL_REGISTRATIONS;
-
-	// read the header and turn on compression for the rest of the file
-	file.compress(FCOMPRESS_NONE);
-	file.seek(0, SEEK_SET);
-	u8 header[HEADER_SIZE];
-	if (file.read(header, sizeof(header)) != sizeof(header))
-		return STATERR_READ_ERROR;
-	file.compress(FCOMPRESS_MEDIUM);
-
-	// verify the header and report an error if it doesn't match
-	u32 sig = signature();
-	if (validate_header(header, machine().system().name, sig, nullptr, "Error: ")  != STATERR_NONE)
-		return STATERR_INVALID_HEADER;
-
-	// determine whether or not to flip the data when done
-	bool flip = NATIVE_ENDIAN_VALUE_LE_BE((header[9] & SS_MSB_FIRST) != 0, (header[9] & SS_MSB_FIRST) == 0);
-
-	// read all the data, flipping if necessary
-	for (auto &entry : m_entry_list)
-	{
-		const u32 blocksize = entry->m_typesize * entry->m_typecount;
-		u8 *data = reinterpret_cast<u8 *>(entry->m_data);
-		for (u32 b = 0; entry->m_blockcount > b; ++b, data += (entry->m_typesize * entry->m_stride))
-			if (file.read(data, blocksize) != blocksize)
-				return STATERR_READ_ERROR;
-
-		// handle flipping
-		if (flip)
-			entry->flip_data();
-	}
-
-	// call the post-load functions
-	dispatch_postload();
-
-	return STATERR_NONE;
 }
 
 
@@ -305,11 +265,157 @@ void save_manager::dispatch_presave()
 //  write_file - writes the data to a file
 //-------------------------------------------------
 
-save_error save_manager::write_file(emu_file &file)
+save_error save_manager::write_file(util::core_file &file)
 {
-	// if we have illegal registrations, return an error
-	if (m_illegal_regs > 0)
-		return STATERR_ILLEGAL_REGISTRATIONS;
+	util::write_stream::ptr writer;
+	save_error err = do_write(
+			[] (size_t total_size) { return true; },
+			[&writer] (const void *data, size_t size)
+			{
+				auto const [filerr, written] = write(*writer, data, size);
+				return !filerr;
+			},
+			[&file, &writer] ()
+			{
+				if (file.seek(0, SEEK_SET))
+					return false;
+				util::core_file::ptr proxy;
+				std::error_condition filerr = util::core_file::open_proxy(file, proxy);
+				writer = std::move(proxy);
+				return !filerr && writer;
+			},
+			[&file, &writer] ()
+			{
+				writer = util::zlib_write(file, 6, 16384);
+				return bool(writer);
+			});
+	return (STATERR_NONE != err) ? err : writer->finalize() ? STATERR_WRITE_ERROR : STATERR_NONE;
+}
+
+//-------------------------------------------------
+//  read_file - read the data from a file
+//-------------------------------------------------
+
+save_error save_manager::read_file(util::core_file &file)
+{
+	util::read_stream::ptr reader;
+	return do_read(
+			[] (size_t total_size) { return true; },
+			[&reader] (void *data, size_t size)
+			{
+				auto const [filerr, actual] = read(*reader, data, size);
+				return !filerr && (actual == size);
+			},
+			[&file, &reader] ()
+			{
+				if (file.seek(0, SEEK_SET))
+					return false;
+				util::core_file::ptr proxy;
+				std::error_condition filerr = util::core_file::open_proxy(file, proxy);
+				reader = std::move(proxy);
+				return !filerr && reader;
+			},
+			[&file, &reader] ()
+			{
+				reader = util::zlib_read(file, 16384);
+				return bool(reader);
+			});
+}
+
+
+//-------------------------------------------------
+//  write_stream - write the current machine state
+//  to an output stream
+//-------------------------------------------------
+
+save_error save_manager::write_stream(std::ostream &str)
+{
+	return do_write(
+			[] (size_t total_size) { return true; },
+			[&str] (const void *data, size_t size)
+			{
+				return bool(str.write(reinterpret_cast<const char *>(data), size));
+			},
+			[] () { return true; },
+			[] () { return true; });
+}
+
+
+//-------------------------------------------------
+//  read_stream - restore the machine state from
+//  an input stream
+//-------------------------------------------------
+
+save_error save_manager::read_stream(std::istream &str)
+{
+	return do_read(
+			[] (size_t total_size) { return true; },
+			[&str] (void *data, size_t size)
+			{
+				return bool(str.read(reinterpret_cast<char *>(data), size));
+			},
+			[] () { return true; },
+			[] () { return true; });
+}
+
+
+//-------------------------------------------------
+//  write_buffer - write the current machine state
+//  to an allocated buffer
+//-------------------------------------------------
+
+save_error save_manager::write_buffer(void *buf, size_t size)
+{
+	return do_write(
+			[size] (size_t total_size) { return size == total_size; },
+			[ptr = reinterpret_cast<u8 *>(buf)] (const void *data, size_t size) mutable
+			{
+				memcpy(ptr, data, size);
+				ptr += size;
+				return true;
+			},
+			[] () { return true; },
+			[] () { return true; });
+}
+
+
+//-------------------------------------------------
+//  read_buffer - restore the machine state from a
+//  buffer
+//-------------------------------------------------
+
+save_error save_manager::read_buffer(const void *buf, size_t size)
+{
+	const u8 *ptr = reinterpret_cast<const u8 *>(buf);
+	const u8 *const end = ptr + size;
+	return do_read(
+			[size] (size_t total_size) { return size == total_size; },
+			[&ptr, &end] (void *data, size_t size) -> bool
+			{
+				if ((ptr + size) > end)
+					return false;
+				memcpy(data, ptr, size);
+				ptr += size;
+				return true;
+			},
+			[] () { return true; },
+			[] () { return true; });
+}
+
+
+//-------------------------------------------------
+//  do_write - serialisation logic
+//-------------------------------------------------
+
+template <typename T, typename U, typename V, typename W>
+inline save_error save_manager::do_write(T check_space, U write_block, V start_header, W start_data)
+{
+	// check for sufficient space
+	size_t total_size = HEADER_SIZE;
+	for (const auto &entry : m_entry_list)
+		total_size += entry->m_typesize * entry->m_typecount * entry->m_blockcount;
+	if (!check_space(total_size))
+		return STATERR_WRITE_ERROR;
 
 	// generate the header
 	u8 header[HEADER_SIZE];
@@ -318,14 +424,11 @@ save_error save_manager::write_file(emu_file &file)
 	header[9] = NATIVE_ENDIAN_VALUE_LE_BE(0, SS_MSB_FIRST);
 	strncpy((char *)&header[0x0a], machine().system().name, 0x1c - 0x0a);
 	u32 sig = signature();
-	*(u32 *)&header[0x1c] = little_endianize_int32(sig);
+	put_u32le(&header[0x1c], sig);
 
 	// write the header and turn on compression for the rest of the file
-	file.compress(FCOMPRESS_NONE);
-	file.seek(0, SEEK_SET);
-	if (file.write(header, sizeof(header)) != sizeof(header))
+	if (!start_header() || !write_block(header, sizeof(header)) || !start_data())
 		return STATERR_WRITE_ERROR;
-	file.compress(FCOMPRESS_MEDIUM);
 
 	// call the pre-save functions
 	dispatch_presave();
@@ -335,87 +438,49 @@ save_error save_manager::write_file(emu_file &file)
 	{
 		const u32 blocksize = entry->m_typesize * entry->m_typecount;
 		const u8 *data = reinterpret_cast<const u8 *>(entry->m_data);
-		for (u32 b = 0; entry->m_blockcount > b; ++b, data += (entry->m_typesize * entry->m_stride))
-			if (file.write(data, blocksize) != blocksize)
+		for (u32 b = 0; entry->m_blockcount > b; ++b, data += entry->m_stride)
+			if (!write_block(data, blocksize))
 				return STATERR_WRITE_ERROR;
 	}
 	return STATERR_NONE;
 }
 
-#if defined(__LIBRETRO__)
+
 //-------------------------------------------------
-//  write_data - writes the data to buffer
+//  do_read - deserialisation logic
 //-------------------------------------------------
 
-save_error save_manager::write_data(void *data, size_t size)
+template <typename T, typename U, typename V, typename W>
+inline save_error save_manager::do_read(T check_length, U read_block, V start_header, W start_data)
 {
-	unsigned char *pos = (unsigned char*)data ;
+	// check for sufficient space
+	size_t total_size = HEADER_SIZE;
+	for (const auto &entry : m_entry_list)
+		total_size += entry->m_typesize * entry->m_typecount * entry->m_blockcount;
+	if (!check_length(total_size))
+		return STATERR_READ_ERROR;
 
-	// if we have illegal registrations, return an error
-	if (m_illegal_regs > 0)
-		return STATERR_ILLEGAL_REGISTRATIONS;
-
-	if ( data == NULL )
-		return STATERR_WRITE_ERROR ;
-
-	// generate the header
+	// read the header and turn on compression for the rest of the file
 	u8 header[HEADER_SIZE];
-	memcpy(&header[0], STATE_MAGIC_NUM, 8);
-	header[8] = SAVE_VERSION;
-	header[9] = NATIVE_ENDIAN_VALUE_LE_BE(0, SS_MSB_FIRST);
-	strncpy((char *)&header[0x0a], machine().system().name, 0x1c - 0x0a);
-	u32 sig = signature();
-	*(u32 *)&header[0x1c] = little_endianize_int32(sig);
-
-	memcpy(pos, header, sizeof(header)) ;
-	pos += sizeof(header) ;
-
-	// call the pre-save functions
-	dispatch_presave();
-
-	// then write all the data
-	for (auto &entry : m_entry_list)
-	{
-		u32 totalsize = entry->m_typesize * entry->m_typecount;
-		memcpy(pos, entry->m_data, totalsize) ;
-		pos += totalsize ;
-	}
-	return STATERR_NONE;
-}
-
-//-------------------------------------------------
-//  read_data - read the data from a buffer
-//-------------------------------------------------
-
-save_error save_manager::read_data(void *data, size_t size)
-{
-	unsigned char *pos = (unsigned char*)data ;
-
-	// if we have illegal registrations, return an error
-	if (m_illegal_regs > 0)
-		return STATERR_ILLEGAL_REGISTRATIONS;
-
-	if ( data == NULL )
-		return STATERR_READ_ERROR ;
-
-	u8 header[HEADER_SIZE];
-	memcpy(header, pos, sizeof(header)) ;
-	pos += sizeof(header) ;
+	if (!start_header() || !read_block(header, sizeof(header)) || !start_data())
+		return STATERR_READ_ERROR;
 
 	// verify the header and report an error if it doesn't match
-	u32 sig = signature();
-	if (validate_header(header, machine().system().name, sig, nullptr, "Error: ")  != STATERR_NONE)
+	u32 const sig = signature();
+	if (validate_header(header, machine().system().name, sig).first != STATERR_NONE)
 		return STATERR_INVALID_HEADER;
 
 	// determine whether or not to flip the data when done
-	bool flip = NATIVE_ENDIAN_VALUE_LE_BE((header[9] & SS_MSB_FIRST) != 0, (header[9] & SS_MSB_FIRST) == 0);
+	const bool flip = NATIVE_ENDIAN_VALUE_LE_BE((header[9] & SS_MSB_FIRST) != 0, (header[9] & SS_MSB_FIRST) == 0);
 
 	// read all the data, flipping if necessary
 	for (auto &entry : m_entry_list)
 	{
-		u32 totalsize = entry->m_typesize * entry->m_typecount;
-		memcpy(entry->m_data, pos, totalsize) ;
-		pos += totalsize ;
+		const u32 blocksize = entry->m_typesize * entry->m_typecount;
+		u8 *data = reinterpret_cast<u8 *>(entry->m_data);
+		for (u32 b = 0; entry->m_blockcount > b; ++b, data += entry->m_stride)
+			if (!read_block(data, blocksize))
+				return STATERR_READ_ERROR;
 
 		// handle flipping
 		if (flip)
@@ -428,33 +493,6 @@ save_error save_manager::read_data(void *data, size_t size)
 	return STATERR_NONE;
 }
 
-//-------------------------------------------------------------------
-//  state_size - calculate the buffer size needed to store state data
-//-------------------------------------------------------------------
-
-s32 save_manager::state_size()
-{
-	u8 header[HEADER_SIZE];
-
-	// if we have illegal registrations, return an error
-	if (m_illegal_regs > 0)
-		return -1 ;
-
-	if ( m_state_size != -1 )
-		return m_state_size ;
-
-	m_state_size = sizeof(header) ;
-
-	// call the pre-save functions
-	dispatch_presave();
-
-	// then calculate size
-	for (auto &entry : m_entry_list)
-		m_state_size += ( entry->m_typesize * entry->m_typecount );
-
-	return m_state_size ;
-}
-#endif
 
 //-------------------------------------------------
 //  signature - compute the signature, which
@@ -463,22 +501,26 @@ s32 save_manager::state_size()
 
 u32 save_manager::signature() const
 {
+#ifdef __LIBRETRO__
+	// Ignored for older version state compatibility
+	return 0;
+#endif
 	// iterate over entries
-	u32 crc = 0;
+	util::crc32_creator crc;
 	for (auto &entry : m_entry_list)
 	{
 		// add the entry name to the CRC
-		crc = core_crc32(crc, (u8 *)entry->m_name.c_str(), entry->m_name.length());
+		crc.append(entry->m_name.data(), entry->m_name.length());
 
 		// add the type and size to the CRC
 		u32 temp[4];
 		temp[0] = little_endianize_int32(entry->m_typesize);
 		temp[1] = little_endianize_int32(entry->m_typecount);
 		temp[2] = little_endianize_int32(entry->m_blockcount);
-		temp[3] = little_endianize_int32(entry->m_stride);
-		crc = core_crc32(crc, (u8 *)&temp[0], sizeof(temp));
+		temp[3] = 0;
+		crc.append(&temp[0], sizeof(temp));
 	}
-	return crc;
+	return crc.finish();
 }
 
 
@@ -499,45 +541,28 @@ void save_manager::dump_registry() const
 //  header
 //-------------------------------------------------
 
-save_error save_manager::validate_header(const u8 *header, const char *gamename, u32 signature,
-	void (CLIB_DECL *errormsg)(const char *fmt, ...), const char *error_prefix)
+std::pair<save_error, std::string> save_manager::validate_header(const u8 *header, const char *gamename, u32 signature)
 {
 	// check magic number
 	if (memcmp(header, STATE_MAGIC_NUM, 8))
-	{
-		if (errormsg != nullptr)
-			(*errormsg)("%sThis is not a %s save file", error_prefix,emulator_info::get_appname());
-		return STATERR_INVALID_HEADER;
-	}
+		return std::make_pair(STATERR_INVALID_HEADER, util::string_format("This is not a %s save file", emulator_info::get_appname()));
 
 	// check save state version
 	if (header[8] != SAVE_VERSION)
-	{
-		if (errormsg != nullptr)
-			(*errormsg)("%sWrong version in save file (version %d, expected %d)", error_prefix, header[8], SAVE_VERSION);
-		return STATERR_INVALID_HEADER;
-	}
+		return std::make_pair(STATERR_INVALID_HEADER, util::string_format("Wrong version in save file (version %d, expected %d)", header[8], SAVE_VERSION));
 
 	// check gamename, if we were asked to
-	if (gamename != nullptr && strncmp(gamename, (const char *)&header[0x0a], 0x1c - 0x0a))
-	{
-		if (errormsg != nullptr)
-			(*errormsg)("%s'File is not a valid savestate file for game '%s'.", error_prefix, gamename);
-		return STATERR_INVALID_HEADER;
-	}
+	if (gamename && strncmp(gamename, (const char *)&header[0x0a], 0x1c - 0x0a))
+		return std::make_pair(STATERR_INVALID_HEADER, util::string_format("'File is not a valid savestate file for game '%s'.", gamename));
 
 	// check signature, if we were asked to
 	if (signature != 0)
 	{
-		u32 rawsig = *(u32 *)&header[0x1c];
-		if (signature != little_endianize_int32(rawsig))
-		{
-			if (errormsg != nullptr)
-				(*errormsg)("%sIncompatible save file (signature %08x, expected %08x)", error_prefix, little_endianize_int32(rawsig), signature);
-			return STATERR_INVALID_HEADER;
-		}
+		u32 const rawsig = get_u32le(&header[0x1c]);
+		if (signature != rawsig)
+			return std::make_pair(STATERR_INVALID_HEADER, util::string_format("Incompatible save file (signature %08x, expected %08x)", rawsig, signature));
 	}
-	return STATERR_NONE;
+	return std::make_pair(STATERR_NONE, std::string());
 }
 
 
@@ -596,41 +621,10 @@ save_error ram_state::save()
 	m_valid = false;
 	m_data.seekp(0);
 
-	// if we have illegal registrations, return an error
-	if (m_save.m_illegal_regs > 0)
-		return STATERR_ILLEGAL_REGISTRATIONS;
-
-	// generate the header
-	u8 header[HEADER_SIZE];
-	memcpy(&header[0], STATE_MAGIC_NUM, 8);
-	header[8] = SAVE_VERSION;
-	header[9] = NATIVE_ENDIAN_VALUE_LE_BE(0, SS_MSB_FIRST);
-	strncpy((char *)&header[0x0a], m_save.machine().system().name, 0x1c - 0x0a);
-	u32 sig = m_save.signature();
-	*(u32 *)&header[0x1c] = little_endianize_int32(sig);
-
-	// write the header
-	m_data.write((char *)header, sizeof(header));
-
-	// check for any errors
-	if (!m_data)
-		return STATERR_WRITE_ERROR;
-
-	// call the pre-save functions
-	m_save.dispatch_presave();
-
-	// write all the data
-	for (auto &entry : m_save.m_entry_list)
-	{
-		const u32 blocksize = entry->m_typesize * entry->m_typecount;
-		const char *data = reinterpret_cast<const char *>(entry->m_data);
-		for (u32 b = 0; entry->m_blockcount > b; ++b, data += (entry->m_typesize * entry->m_stride))
-			m_data.write(data, blocksize);
-
-		// check for any errors
-		if (!m_data)
-			return STATERR_WRITE_ERROR;
-	}
+	// get the save manager to write state
+	const save_error err = m_save.write_stream(m_data);
+	if (err != STATERR_NONE)
+		return err;
 
 	// final confirmation
 	m_valid = true;
@@ -650,47 +644,8 @@ save_error ram_state::load()
 	// initialize
 	m_data.seekg(0);
 
-	// if we have illegal registrations, return an error
-	if (m_save.m_illegal_regs > 0)
-		return STATERR_ILLEGAL_REGISTRATIONS;
-
-	// read the header
-	u8 header[HEADER_SIZE];
-	m_data.read((char *)header, sizeof(header));
-
-	// check for any errors
-	if (!m_data)
-		return STATERR_READ_ERROR;
-
-	// verify the header and report an error if it doesn't match
-	u32 sig = m_save.signature();
-	if (m_save.validate_header(header, m_save.machine().system().name, sig, nullptr, "Error: ") != STATERR_NONE)
-		return STATERR_INVALID_HEADER;
-
-	// determine whether or not to flip the data when done
-	bool flip = NATIVE_ENDIAN_VALUE_LE_BE((header[9] & SS_MSB_FIRST) != 0, (header[9] & SS_MSB_FIRST) == 0);
-
-	// read all the data, flipping if necessary
-	for (auto &entry : m_save.m_entry_list)
-	{
-		const u32 blocksize = entry->m_typesize * entry->m_typecount;
-		char *data = reinterpret_cast<char *>(entry->m_data);
-		for (u32 b = 0; entry->m_blockcount > b; ++b, data += (entry->m_typesize * entry->m_stride))
-			m_data.read(data, blocksize);
-
-		// check for any errors
-		if (!m_data)
-			return STATERR_READ_ERROR;
-
-		// handle flipping
-		if (flip)
-			entry->flip_data();
-	}
-
-	// call the post-load functions
-	m_save.dispatch_postload();
-
-	return STATERR_NONE;
+	// get the save manager to load state
+	return m_save.read_stream(m_data);
 }
 
 
@@ -938,11 +893,6 @@ void rewinder::report_error(save_error error, rewind_operation operation)
 	switch (error)
 	{
 	// internal saveload failures
-	case STATERR_ILLEGAL_REGISTRATIONS:
-		m_save.machine().logerror("Rewind error: Unable to %s state due to illegal registrations.", opname);
-		m_save.machine().popmessage("Rewind error occured. See error.log for details.");
-		break;
-
 	case STATERR_INVALID_HEADER:
 		m_save.machine().logerror("Rewind error: Unable to %s state due to an invalid header. "
 			"Make sure the save state is correct for this machine.\n", opname);
@@ -979,7 +929,7 @@ void rewinder::report_error(save_error error, rewind_operation operation)
 	// success
 	case STATERR_NONE:
 		{
-			const u64 supported = m_save.machine().system().flags & MACHINE_SUPPORTS_SAVE;
+			const u64 supported = m_save.supported();
 			const char *const warning = supported || !m_first_time_warning ? "" :
 				"Rewind warning: Save states are not officially supported for this machine.\n";
 			const char *const opnamed = (operation == rewind_operation::LOAD) ? "loaded" : "captured";
@@ -1007,12 +957,15 @@ void rewinder::report_error(save_error error, rewind_operation operation)
 //  state_entry - constructor
 //-------------------------------------------------
 
-save_manager::state_entry::state_entry(void *data, const char *name, device_t *device, const char *module, const char *tag, int index, u8 size, u32 valcount, u32 blockcount, u32 stride)
+save_manager::state_entry::state_entry(
+		void *data,
+		std::string &&name, device_t *device, std::string &&module, std::string &&tag, int index,
+		u8 size, u32 valcount, u32 blockcount, u32 stride)
 	: m_data(data)
-	, m_name(name)
+	, m_name(std::move(name))
 	, m_device(device)
-	, m_module(module)
-	, m_tag(tag)
+	, m_module(std::move(module))
+	, m_tag(std::move(tag))
 	, m_index(index)
 	, m_typesize(size)
 	, m_typecount(valcount)
@@ -1030,7 +983,7 @@ save_manager::state_entry::state_entry(void *data, const char *name, device_t *d
 void save_manager::state_entry::flip_data()
 {
 	u8 *data = reinterpret_cast<u8 *>(m_data);
-	for (u32 b = 0; m_blockcount > b; ++b, data += (m_typesize * m_stride))
+	for (u32 b = 0; m_blockcount > b; ++b, data += m_stride)
 	{
 		u16 *data16;
 		u32 *data32;

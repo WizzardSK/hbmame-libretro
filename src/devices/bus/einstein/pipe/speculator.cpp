@@ -11,7 +11,6 @@
 #include "emu.h"
 #include "speculator.h"
 #include "machine/rescap.h"
-#include "sound/wave.h"
 #include "formats/tzx_cas.h"
 
 
@@ -27,7 +26,7 @@ DEFINE_DEVICE_TYPE(EINSTEIN_SPECULATOR, einstein_speculator_device, "einstein_sp
 
 void einstein_speculator_device::device_add_mconfig(machine_config &config)
 {
-	TTL74123(config, m_ic5a, 0);
+	TTL74123(config, m_ic5a);
 	m_ic5a->set_connection_type(TTL74123_NOT_GROUNDED_NO_DIODE);
 	m_ic5a->set_resistor_value(RES_K(47));
 	m_ic5a->set_capacitor_value(CAP_P(560));
@@ -36,7 +35,7 @@ void einstein_speculator_device::device_add_mconfig(machine_config &config)
 	m_ic5a->set_clear_pin_value(0);
 	m_ic5a->out_cb().set(FUNC(einstein_speculator_device::ic5a_q_w));
 
-	TTL74123(config, m_ic5b, 0);
+	TTL74123(config, m_ic5b);
 	m_ic5b->set_connection_type(TTL74123_NOT_GROUNDED_NO_DIODE);
 	m_ic5b->set_resistor_value(RES_K(47));
 	m_ic5b->set_capacitor_value(CAP_P(560));
@@ -46,10 +45,10 @@ void einstein_speculator_device::device_add_mconfig(machine_config &config)
 	m_ic5b->out_cb().set(FUNC(einstein_speculator_device::ic5b_q_w));
 
 	SPEAKER(config, "mono").front_center();
-	WAVE(config, "wave", m_cassette).add_route(ALL_OUTPUTS, "mono", 0.25);
 	SPEAKER_SOUND(config, m_speaker).add_route(ALL_OUTPUTS, "mono", 0.50);
 
 	CASSETTE(config, m_cassette);
+	m_cassette->add_route(ALL_OUTPUTS, "mono", 0.05);
 	m_cassette->set_formats(tzx_cassette_formats);
 	m_cassette->set_default_state(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED);
 	m_cassette->set_interface("spectrum_cass");
@@ -97,18 +96,18 @@ void einstein_speculator_device::device_reset()
 {
 	// ram: range 0x1f, 0x3f, 0x5f, 0x7f, 0x9f, 0xbf, 0xdf, 0xff
 	io_space().install_readwrite_handler(0x1f, 0x1f, 0, 0, 0xffe0,
-			read8_delegate(*this, FUNC(einstein_speculator_device::ram_r)),
-			write8_delegate(*this, FUNC(einstein_speculator_device::ram_w)));
+			read8sm_delegate(*this, FUNC(einstein_speculator_device::ram_r)),
+			write8sm_delegate(*this, FUNC(einstein_speculator_device::ram_w)));
 
 	// ram: range 0x60 - 0xff
 	io_space().install_readwrite_handler(0x60, 0x60, 0, 0, 0xff9f,
-			read8_delegate(*this, FUNC(einstein_speculator_device::ram_r)),
-			write8_delegate(*this, FUNC(einstein_speculator_device::ram_w)));
+			read8sm_delegate(*this, FUNC(einstein_speculator_device::ram_r)),
+			write8sm_delegate(*this, FUNC(einstein_speculator_device::ram_w)));
 
 	// tape read/nmi write register: range 0xff
 	io_space().install_readwrite_handler(0xff, 0xff, 0, 0, 0xff00,
-			read8_delegate(*this, FUNC(einstein_speculator_device::tape_r)),
-			write8_delegate(*this, FUNC(einstein_speculator_device::nmi_w)));
+			read8smo_delegate(*this, FUNC(einstein_speculator_device::tape_r)),
+			write8smo_delegate(*this, FUNC(einstein_speculator_device::nmi_w)));
 }
 
 
@@ -116,7 +115,7 @@ void einstein_speculator_device::device_reset()
 //  IMPLEMENTATION
 //**************************************************************************
 
-WRITE_LINE_MEMBER( einstein_speculator_device::ic5a_q_w )
+void einstein_speculator_device::ic5a_q_w(int state)
 {
 	m_ic5b->a_w(state);
 
@@ -127,7 +126,7 @@ WRITE_LINE_MEMBER( einstein_speculator_device::ic5a_q_w )
 	}
 }
 
-WRITE_LINE_MEMBER( einstein_speculator_device::ic5b_q_w )
+void einstein_speculator_device::ic5b_q_w(int state)
 {
 	if (m_nmisel == 0)
 	{
@@ -167,19 +166,19 @@ offs_t einstein_speculator_device::address_translate(offs_t offset)
 	return (ra3 << 3) | (ra2 << 2) | (ra1 << 1) | (ra0 << 0);
 }
 
-READ8_MEMBER( einstein_speculator_device::ram_r )
+uint8_t einstein_speculator_device::ram_r(offs_t offset)
 {
 	offs_t addr = ((offset << 4) & 0x7f) | address_translate(offset);
 	return m_ram[addr];
 }
 
-WRITE8_MEMBER( einstein_speculator_device::ram_w )
+void einstein_speculator_device::ram_w(offs_t offset, uint8_t data)
 {
 	offs_t addr = ((offset << 4) & 0x7f) | address_translate(offset);
 	m_ram[addr] = data;
 }
 
-READ8_MEMBER( einstein_speculator_device::tape_r )
+uint8_t einstein_speculator_device::tape_r()
 {
 	// 7654321-  unknown
 	// -------0  cassette input
@@ -187,9 +186,9 @@ READ8_MEMBER( einstein_speculator_device::tape_r )
 	return m_cassette->input() > 0.0038 ? 1 : 0;
 }
 
-WRITE8_MEMBER( einstein_speculator_device::nmi_w )
+void einstein_speculator_device::nmi_w(uint8_t data)
 {
-	logerror("nmi_w offset %04x data %02x\n", offset, data);
+	logerror("nmi_w data %02x\n", data);
 
 	// 76543---  unknown
 	// -----2--  nmi enable?

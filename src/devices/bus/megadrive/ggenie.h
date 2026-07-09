@@ -18,15 +18,15 @@ public:
 	md_rom_ggenie_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device-level overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ16_MEMBER(read) override;
-	virtual DECLARE_WRITE16_MEMBER(write) override;
+	virtual uint16_t read(offs_t offset) override;
+	virtual void write(offs_t offset, uint16_t data, uint16_t mem_mask = ~0) override;
 
 private:
 	required_device<md_cart_slot_device> m_exp;

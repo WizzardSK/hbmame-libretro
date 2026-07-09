@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include "osdcore.h"
-#include "coretmpl.h"
+#include <cstdint>
+#include <vector>
 
 
 //**************************************************************************
@@ -100,12 +100,12 @@ public:
 	~palette_client();
 
 	// getters
-	palette_client *next() const { return m_next; }
-	palette_t &palette() const { return m_palette; }
-	const uint32_t *dirty_list(uint32_t &mindirty, uint32_t &maxdirty);
+	palette_client *next() const noexcept { return m_next; }
+	palette_t &palette() const noexcept { return m_palette; }
+	const uint32_t *dirty_list(uint32_t &mindirty, uint32_t &maxdirty) noexcept;
 
 	// dirty marking
-	void mark_dirty(uint32_t index) { m_live->mark_dirty(index); }
+	void mark_dirty(uint32_t index) noexcept { m_live->mark_dirty(index); }
 
 private:
 	// internal object to track dirty states
@@ -116,10 +116,10 @@ private:
 		dirty_state();
 
 		// operations
-		const uint32_t *dirty_list(uint32_t &mindirty, uint32_t &maxdirty);
+		const uint32_t *dirty_list(uint32_t &mindirty, uint32_t &maxdirty) noexcept;
 		void resize(uint32_t colors);
-		void mark_dirty(uint32_t index);
-		void reset();
+		void mark_dirty(uint32_t index) noexcept;
+		void reset() noexcept;
 
 	private:
 		// internal state
@@ -149,15 +149,15 @@ public:
 	static palette_t *alloc(uint32_t numcolors, uint32_t numgroups = 1);
 
 	// reference counting
-	void ref() { m_refcount++; }
-	void deref();
+	void ref() noexcept { m_refcount++; }
+	void deref() noexcept;
 
 	// getters
-	int num_colors() const { return m_numcolors; }
-	int num_groups() const { return m_numgroups; }
-	int max_index() const { return m_numcolors * m_numgroups + 2; }
-	uint32_t black_entry() const { return m_numcolors * m_numgroups + 0; }
-	uint32_t white_entry() const { return m_numcolors * m_numgroups + 1; }
+	int num_colors() const noexcept { return m_numcolors; }
+	int num_groups() const noexcept { return m_numgroups; }
+	int max_index() const noexcept { return m_numcolors * m_numgroups + 2; }
+	uint32_t black_entry() const noexcept { return m_numcolors * m_numgroups + 0; }
+	uint32_t white_entry() const noexcept { return m_numcolors * m_numgroups + 1; }
 
 	// overall adjustments
 	void set_brightness(float brightness);
@@ -165,9 +165,9 @@ public:
 	void set_gamma(float gamma);
 
 	// entry getters
-	rgb_t entry_color(uint32_t index) const { return (index < m_numcolors) ? m_entry_color[index] : rgb_t::black(); }
-	rgb_t entry_adjusted_color(uint32_t index) const { return (index < m_numcolors * m_numgroups) ? m_adjusted_color[index] : rgb_t::black(); }
-	float entry_contrast(uint32_t index) const { return (index < m_numcolors) ? m_entry_contrast[index] : 1.0f; }
+	rgb_t entry_color(uint32_t index) const noexcept { return (index < m_numcolors) ? m_entry_color[index] : rgb_t::black(); }
+	rgb_t entry_adjusted_color(uint32_t index) const noexcept { return (index < m_numcolors * m_numgroups) ? m_adjusted_color[index] : rgb_t::black(); }
+	float entry_contrast(uint32_t index) const noexcept { return (index < m_numcolors) ? m_entry_contrast[index] : 1.0f; }
 
 	// entry setters
 	void entry_set_color(uint32_t index, rgb_t rgb);
@@ -177,9 +177,9 @@ public:
 	void entry_set_contrast(uint32_t index, float contrast);
 
 	// entry list getters
-	const rgb_t *entry_list_raw() const { return &m_entry_color[0]; }
-	const rgb_t *entry_list_adjusted() const { return &m_adjusted_color[0]; }
-	const rgb_t *entry_list_adjusted_rgb15() const { return &m_adjusted_rgb15[0]; }
+	const rgb_t *entry_list_raw() const noexcept { return &m_entry_color[0]; }
+	const rgb_t *entry_list_adjusted() const noexcept { return &m_adjusted_color[0]; }
+	const rgb_t *entry_list_adjusted_rgb15() const noexcept { return &m_adjusted_rgb15[0]; }
 
 	// group adjustments
 	void group_set_brightness(uint32_t group, float brightness);
@@ -191,21 +191,21 @@ public:
 private:
 	// construction/destruction
 	palette_t(uint32_t numcolors, uint32_t numgroups = 1);
-	~palette_t() = default;
+	~palette_t();
 
 	// internal helpers
 	rgb_t adjust_palette_entry(rgb_t entry, float brightness, float contrast, const uint8_t *gamma_map);
 	void update_adjusted_color(uint32_t group, uint32_t index);
 
 	// internal state
-	uint32_t          m_refcount;                   // reference count on the palette
-	uint32_t          m_numcolors;                  // number of colors in the palette
-	uint32_t          m_numgroups;                  // number of groups in the palette
+	uint32_t           m_refcount;              // reference count on the palette
+	uint32_t           m_numcolors;             // number of colors in the palette
+	uint32_t           m_numgroups;             // number of groups in the palette
 
-	float           m_brightness;                 // overall brightness value
-	float           m_contrast;                   // overall contrast value
-	float           m_gamma;                      // overall gamma value
-	uint8_t           m_gamma_map[256];             // gamma map
+	float              m_brightness;            // overall brightness value
+	float              m_contrast;              // overall contrast value
+	float              m_gamma;                 // overall gamma value
+	uint8_t            m_gamma_map[256];        // gamma map
 
 	std::vector<rgb_t> m_entry_color;           // array of raw colors
 	std::vector<float> m_entry_contrast;        // contrast value for each entry
@@ -215,7 +215,7 @@ private:
 	std::vector<float> m_group_bright;          // brightness value for each group
 	std::vector<float> m_group_contrast;        // contrast value for each group
 
-	palette_client *m_client_list;                // list of clients for this palette
+	palette_client *m_client_list;              // list of clients for this palette
 };
 
 
@@ -228,16 +228,16 @@ private:
 //  palexpand - expand a palette value to 8 bits
 //-------------------------------------------------
 
-template<int _NumBits>
-inline uint8_t palexpand(uint8_t bits)
+template <int NumBits>
+constexpr uint8_t palexpand(uint8_t bits)
 {
-	if (_NumBits == 1) { return (bits & 1) ? 0xff : 0x00; }
-	if (_NumBits == 2) { bits &= 3; return (bits << 6) | (bits << 4) | (bits << 2) | bits; }
-	if (_NumBits == 3) { bits &= 7; return (bits << 5) | (bits << 2) | (bits >> 1); }
-	if (_NumBits == 4) { bits &= 0xf; return (bits << 4) | bits; }
-	if (_NumBits == 5) { bits &= 0x1f; return (bits << 3) | (bits >> 2); }
-	if (_NumBits == 6) { bits &= 0x3f; return (bits << 2) | (bits >> 4); }
-	if (_NumBits == 7) { bits &= 0x7f; return (bits << 1) | (bits >> 6); }
+	if (NumBits == 1) { return (bits & 0x01) ? 0xff : 0x00; }
+	if (NumBits == 2) { bits &= 0x03; return (bits << 6) | (bits << 4) | (bits << 2) | bits; }
+	if (NumBits == 3) { bits &= 0x07; return (bits << 5) | (bits << 2) | (bits >> 1); }
+	if (NumBits == 4) { bits &= 0x0f; return (bits << 4) | bits; }
+	if (NumBits == 5) { bits &= 0x1f; return (bits << 3) | (bits >> 2); }
+	if (NumBits == 6) { bits &= 0x3f; return (bits << 2) | (bits >> 4); }
+	if (NumBits == 7) { bits &= 0x7f; return (bits << 1) | (bits >> 6); }
 	return bits;
 }
 
@@ -246,13 +246,13 @@ inline uint8_t palexpand(uint8_t bits)
 //  palxbit - convert an x-bit value to 8 bits
 //-------------------------------------------------
 
-inline uint8_t pal1bit(uint8_t bits) { return palexpand<1>(bits); }
-inline uint8_t pal2bit(uint8_t bits) { return palexpand<2>(bits); }
-inline uint8_t pal3bit(uint8_t bits) { return palexpand<3>(bits); }
-inline uint8_t pal4bit(uint8_t bits) { return palexpand<4>(bits); }
-inline uint8_t pal5bit(uint8_t bits) { return palexpand<5>(bits); }
-inline uint8_t pal6bit(uint8_t bits) { return palexpand<6>(bits); }
-inline uint8_t pal7bit(uint8_t bits) { return palexpand<7>(bits); }
+constexpr uint8_t pal1bit(uint8_t bits) { return palexpand<1>(bits); }
+constexpr uint8_t pal2bit(uint8_t bits) { return palexpand<2>(bits); }
+constexpr uint8_t pal3bit(uint8_t bits) { return palexpand<3>(bits); }
+constexpr uint8_t pal4bit(uint8_t bits) { return palexpand<4>(bits); }
+constexpr uint8_t pal5bit(uint8_t bits) { return palexpand<5>(bits); }
+constexpr uint8_t pal6bit(uint8_t bits) { return palexpand<6>(bits); }
+constexpr uint8_t pal7bit(uint8_t bits) { return palexpand<7>(bits); }
 
 
 //-------------------------------------------------
@@ -260,10 +260,16 @@ inline uint8_t pal7bit(uint8_t bits) { return palexpand<7>(bits); }
 //  RGB
 //-------------------------------------------------
 
-template<int _RBits, int _GBits, int _BBits>
-inline rgb_t rgbexpand(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift)
+template <int RBits, int GBits, int BBits>
+constexpr rgb_t rgbexpand(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift)
 {
-	return rgb_t(palexpand<_RBits>(data >> rshift), palexpand<_GBits>(data >> gshift), palexpand<_BBits>(data >> bshift));
+	return rgb_t(palexpand<RBits>(data >> rshift), palexpand<GBits>(data >> gshift), palexpand<BBits>(data >> bshift));
+}
+
+template <int ABits, int RBits, int GBits, int BBits>
+constexpr rgb_t argbexpand(uint32_t data, uint8_t ashift, uint8_t rshift, uint8_t gshift, uint8_t bshift)
+{
+	return rgb_t(palexpand<ABits>(data >> ashift), palexpand<RBits>(data >> rshift), palexpand<GBits>(data >> gshift), palexpand<BBits>(data >> bshift));
 }
 
 
@@ -272,10 +278,10 @@ inline rgb_t rgbexpand(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bs
 //  bits from a uint32_t
 //-------------------------------------------------
 
-inline rgb_t pal332(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<3,3,2>(data, rshift, gshift, bshift); }
-inline rgb_t pal444(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<4,4,4>(data, rshift, gshift, bshift); }
-inline rgb_t pal555(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<5,5,5>(data, rshift, gshift, bshift); }
-inline rgb_t pal565(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<5,6,5>(data, rshift, gshift, bshift); }
-inline rgb_t pal888(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<8,8,8>(data, rshift, gshift, bshift); }
+constexpr rgb_t pal332(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<3,3,2>(data, rshift, gshift, bshift); }
+constexpr rgb_t pal444(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<4,4,4>(data, rshift, gshift, bshift); }
+constexpr rgb_t pal555(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<5,5,5>(data, rshift, gshift, bshift); }
+constexpr rgb_t pal565(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<5,6,5>(data, rshift, gshift, bshift); }
+constexpr rgb_t pal888(uint32_t data, uint8_t rshift, uint8_t gshift, uint8_t bshift) { return rgbexpand<8,8,8>(data, rshift, gshift, bshift); }
 
 #endif // MAME_UTIL_PALETTE_H

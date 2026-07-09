@@ -8,7 +8,7 @@
  *                                Version 4.50
  *
  * A portable Motorola M680x0 processor emulation engine.
- * Copyright Karl Stenerud.  All rights reserved.
+ * Copyright Karl Stenerud
  *
  */
 
@@ -215,19 +215,19 @@ inline u32 &REG_SP()          { return m_dar[15]; }
 /* Disable certain comparisons if we're not using all CPU types */
 inline u32 CPU_TYPE_IS_COLDFIRE() const    { return ((m_cpu_type) & (CPU_TYPE_COLDFIRE)); }
 
-inline u32 CPU_TYPE_IS_040_PLUS() const    { return ((m_cpu_type) & (CPU_TYPE_040 | CPU_TYPE_EC040)); }
+inline u32 CPU_TYPE_IS_040_PLUS() const    { return ((m_cpu_type) & (CPU_TYPE_040 | CPU_TYPE_EC040 | CPU_TYPE_LC040)); }
 
-inline u32 CPU_TYPE_IS_030_PLUS() const    { return ((m_cpu_type) & (CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040)); }
+inline u32 CPU_TYPE_IS_030_PLUS() const    { return ((m_cpu_type) & (CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040 | CPU_TYPE_EC040 | CPU_TYPE_LC040)); }
 
-inline u32 CPU_TYPE_IS_020_PLUS() const    { return ((m_cpu_type) & (CPU_TYPE_020 | CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040 | CPU_TYPE_FSCPU32 | CPU_TYPE_COLDFIRE)); }
+inline u32 CPU_TYPE_IS_020_PLUS() const    { return ((m_cpu_type) & (CPU_TYPE_020 | CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040 | CPU_TYPE_LC040 | CPU_TYPE_FSCPU32 | CPU_TYPE_COLDFIRE)); }
 
 inline u32 CPU_TYPE_IS_020_VARIANT() const { return ((m_cpu_type) & (CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_FSCPU32)); }
 
-inline u32 CPU_TYPE_IS_EC020_PLUS() const  { return ((m_cpu_type) & (CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040 | CPU_TYPE_FSCPU32 | CPU_TYPE_COLDFIRE)); }
+inline u32 CPU_TYPE_IS_EC020_PLUS() const  { return ((m_cpu_type) & (CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040 | CPU_TYPE_LC040 | CPU_TYPE_FSCPU32 | CPU_TYPE_COLDFIRE)); }
 inline u32 CPU_TYPE_IS_EC020_LESS() const  { return ((m_cpu_type) & (CPU_TYPE_000 | CPU_TYPE_008 | CPU_TYPE_010 | CPU_TYPE_EC020)); }
 
 inline u32 CPU_TYPE_IS_010() const         { return ((m_cpu_type) == CPU_TYPE_010); }
-inline u32 CPU_TYPE_IS_010_PLUS() const    { return ((m_cpu_type) & (CPU_TYPE_010 | CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_EC030 | CPU_TYPE_030 | CPU_TYPE_040 | CPU_TYPE_EC040 | CPU_TYPE_FSCPU32 | CPU_TYPE_COLDFIRE)); }
+inline u32 CPU_TYPE_IS_010_PLUS() const    { return ((m_cpu_type) & (CPU_TYPE_010 | CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_EC030 | CPU_TYPE_030 | CPU_TYPE_040 | CPU_TYPE_EC040 | CPU_TYPE_LC040 | CPU_TYPE_FSCPU32 | CPU_TYPE_COLDFIRE)); }
 inline u32 CPU_TYPE_IS_010_LESS() const    { return ((m_cpu_type) & (CPU_TYPE_000 | CPU_TYPE_008 | CPU_TYPE_010 | CPU_TYPE_SCC070)); }
 
 inline u32 CPU_TYPE_IS_000() const         { return ((m_cpu_type) == CPU_TYPE_000 || (m_cpu_type) == CPU_TYPE_008); }
@@ -604,11 +604,14 @@ inline u32 m68ki_read_imm_16()
 	result = MASK_OUT_ABOVE_16(m_pref_data);
 	m_pc += 2;
 	if (!m_mmu_tmp_buserror_occurred) {
+
 		// prefetch only if no bus error occurred in opcode fetch
 		m_pref_data = m68ki_ic_readimm16(m_pc);
 		m_pref_addr = m_mmu_tmp_buserror_occurred ? ~0 : m_pc;
-		// ignore bus error on prefetch
-		m_mmu_tmp_buserror_occurred = 0;
+		if (!CPU_TYPE_IS_010())
+		{
+			m_mmu_tmp_buserror_occurred = 0;
+		}
 	}
 
 	return result;
@@ -656,6 +659,16 @@ inline u32 m68ki_read_8_fc(u32 address, u32 fc)
 	m_mmu_tmp_fc = fc;
 	m_mmu_tmp_rw = 1;
 	m_mmu_tmp_sz = M68K_SZ_BYTE;
+	// Check for reading the FPU's CIRs if this is an '020 or '030.
+	// In CPU space (FC 7), addresses 0x0002xxxx are coprocessor interface registers.
+	// Bits 15-13 are the coprocessor ID, and bits 0-4 are the register select.
+	if ((fc == 7) && CPU_TYPE_IS_020_PLUS() && !CPU_TYPE_IS_040_PLUS())
+	{
+		if ((address & 0xffffeff0) == 0x00022000)
+		{
+			return m6888x_read_cir(address);
+		}
+	}
 	return m_read8(address);
 }
 inline u32 m68ki_read_16_fc(u32 address, u32 fc)
@@ -667,6 +680,13 @@ inline u32 m68ki_read_16_fc(u32 address, u32 fc)
 	m_mmu_tmp_fc = fc;
 	m_mmu_tmp_rw = 1;
 	m_mmu_tmp_sz = M68K_SZ_WORD;
+	if ((fc == 7) && CPU_TYPE_IS_020_PLUS() && !CPU_TYPE_IS_040_PLUS())
+	{
+		if ((address & 0xffffeff0) == 0x00022000)
+		{
+			return m6888x_read_cir(address);
+		}
+	}
 	return m_read16(address);
 }
 inline u32 m68ki_read_32_fc(u32 address, u32 fc)
@@ -678,6 +698,13 @@ inline u32 m68ki_read_32_fc(u32 address, u32 fc)
 	m_mmu_tmp_fc = fc;
 	m_mmu_tmp_rw = 1;
 	m_mmu_tmp_sz = M68K_SZ_LONG;
+	if ((fc == 7) && CPU_TYPE_IS_020_PLUS() && !CPU_TYPE_IS_040_PLUS())
+	{
+		if ((address & 0xffffeff0) == 0x00022000)
+		{
+			return m6888x_read_cir(address);
+		}
+	}
 	return m_read32(address);
 }
 
@@ -686,6 +713,14 @@ inline void m68ki_write_8_fc(u32 address, u32 fc, u32 value)
 	m_mmu_tmp_fc = fc;
 	m_mmu_tmp_rw = 0;
 	m_mmu_tmp_sz = M68K_SZ_BYTE;
+	if ((fc == 7) && CPU_TYPE_IS_020_PLUS() && !CPU_TYPE_IS_040_PLUS())
+	{
+		if ((address & 0xffffeff0) == 0x00022000)
+		{
+			m6888x_write_cir(address, value);
+			return;
+		}
+	}
 	m_write8(address, value);
 }
 inline void m68ki_write_16_fc(u32 address, u32 fc, u32 value)
@@ -697,6 +732,14 @@ inline void m68ki_write_16_fc(u32 address, u32 fc, u32 value)
 	m_mmu_tmp_fc = fc;
 	m_mmu_tmp_rw = 0;
 	m_mmu_tmp_sz = M68K_SZ_WORD;
+	if ((fc == 7) && CPU_TYPE_IS_020_PLUS() && !CPU_TYPE_IS_040_PLUS())
+	{
+		if ((address & 0xffffeff0) == 0x00022000)
+		{
+			m6888x_write_cir(address, value);
+			return;
+		}
+	}
 	m_write16(address, value);
 }
 inline void m68ki_write_32_fc(u32 address, u32 fc, u32 value)
@@ -708,6 +751,14 @@ inline void m68ki_write_32_fc(u32 address, u32 fc, u32 value)
 	m_mmu_tmp_fc = fc;
 	m_mmu_tmp_rw = 0;
 	m_mmu_tmp_sz = M68K_SZ_LONG;
+	if ((fc == 7) && CPU_TYPE_IS_020_PLUS() && !CPU_TYPE_IS_040_PLUS())
+	{
+		if ((address & 0xffffeff0) == 0x00022000)
+		{
+			m6888x_write_cir(address, value);
+			return;
+		}
+	}
 	m_write32(address, value);
 }
 
@@ -1108,8 +1159,10 @@ inline void m68ki_set_sr(u32 value)
 /* ------------------------- Exception Processing ------------------------- */
 
 /* Initiate exception processing */
-inline u32 m68ki_init_exception()
+inline u32 m68ki_init_exception(u32 vector)
 {
+	debugger_exception_hook(vector);
+
 	/* Save the old status register */
 	u32 sr = m68ki_get_sr();
 
@@ -1186,8 +1239,11 @@ inline void m68ki_stack_frame_buserr(u32 sr)
 /* Format 8 stack frame (68010).
  * 68010 only.  This is the 29 word bus/address error frame.
  */
-inline void m68ki_stack_frame_1000(u32 pc, u32 sr, u32 vector)
+inline void m68ki_stack_frame_1000(u32 pc, u32 sr, u32 vector, u32 fault_address)
 {
+	int orig_rw = m_mmu_tmp_buserror_rw;    // this gets splatted by the following pushes, so save it now
+	int orig_fc = m_mmu_tmp_buserror_fc;
+
 	/* VERSION
 	 * NUMBER
 	 * INTERNAL INFORMATION, 16 WORDS
@@ -1220,10 +1276,10 @@ inline void m68ki_stack_frame_1000(u32 pc, u32 sr, u32 vector)
 	m68ki_fake_push_16();
 
 	/* FAULT ADDRESS */
-	m68ki_push_32(0);
+	m68ki_push_32(fault_address);
 
 	/* SPECIAL STATUS WORD */
-	m68ki_push_16(0);
+	m68ki_push_16(orig_fc | (orig_rw<<8));
 
 	/* 1000, VECTOR OFFSET */
 	m68ki_push_16(0x8000 | (vector<<2));
@@ -1238,7 +1294,7 @@ inline void m68ki_stack_frame_1000(u32 pc, u32 sr, u32 vector)
 /* Format 15 stack frame (68070).
  * 68070 only.  This is the 17 word bus/address error frame.
  */
-inline void m68ki_stack_frame_1111(uint32_t pc, uint32_t sr, uint32_t vector)
+inline void m68ki_stack_frame_1111(u32 pc, u32 sr, u32 vector, u32 fault_address)
 {
 	/* INTERNAL INFORMATION */
 	m68ki_fake_push_16();
@@ -1253,7 +1309,7 @@ inline void m68ki_stack_frame_1111(uint32_t pc, uint32_t sr, uint32_t vector)
 	m68ki_push_32(0);
 
 	/* FAULT ADDRESS */
-	m68ki_push_32(0);
+	m68ki_push_32(fault_address);
 
 	/* DATA OUTPUT BUFFER */
 	m68ki_push_32(0);
@@ -1454,7 +1510,7 @@ inline void m68ki_stack_frame_0111(u32 sr, u32 vector, u32 pc, u32 fault_address
  */
 inline void m68ki_exception_trap(u32 vector)
 {
-	u32 sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(vector);
 
 	if(CPU_TYPE_IS_010_LESS())
 		m68ki_stack_frame_0000(m_pc, sr, vector);
@@ -1470,7 +1526,7 @@ inline void m68ki_exception_trap(u32 vector)
 /* Trap#n stacks a 0 frame but behaves like group2 otherwise */
 inline void m68ki_exception_trapN(u32 vector)
 {
-	u32 sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(vector);
 	m68ki_stack_frame_0000(m_pc, sr, vector);
 	m68ki_jump_vector(vector);
 
@@ -1481,7 +1537,7 @@ inline void m68ki_exception_trapN(u32 vector)
 /* Exception for trace mode */
 inline void m68ki_exception_trace()
 {
-	u32 sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(EXCEPTION_TRACE);
 
 	if(CPU_TYPE_IS_010_LESS())
 	{
@@ -1506,7 +1562,7 @@ inline void m68ki_exception_trace()
 /* Exception for privilege violation */
 inline void m68ki_exception_privilege_violation()
 {
-	u32 sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(EXCEPTION_PRIVILEGE_VIOLATION);
 
 	if(CPU_TYPE_IS_000())
 	{
@@ -1523,9 +1579,7 @@ inline void m68ki_exception_privilege_violation()
 /* Exception for A-Line instructions */
 inline void m68ki_exception_1010()
 {
-	u32 sr;
-
-	sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(EXCEPTION_1010);
 	m68ki_stack_frame_0000(m_ppc, sr, EXCEPTION_1010);
 	m68ki_jump_vector(EXCEPTION_1010);
 
@@ -1536,9 +1590,7 @@ inline void m68ki_exception_1010()
 /* Exception for F-Line instructions */
 inline void m68ki_exception_1111()
 {
-	u32 sr;
-
-	sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(EXCEPTION_1111);
 	m68ki_stack_frame_0000(m_ppc, sr, EXCEPTION_1111);
 	m68ki_jump_vector(EXCEPTION_1111);
 
@@ -1549,9 +1601,7 @@ inline void m68ki_exception_1111()
 /* Exception for illegal instructions */
 inline void m68ki_exception_illegal()
 {
-	u32 sr;
-
-	sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(EXCEPTION_ILLEGAL_INSTRUCTION);
 
 	if(CPU_TYPE_IS_000())
 	{
@@ -1568,7 +1618,7 @@ inline void m68ki_exception_illegal()
 /* Exception for format errror in RTE */
 inline void m68ki_exception_format_error()
 {
-	u32 sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(EXCEPTION_FORMAT_ERROR);
 	m68ki_stack_frame_0000(m_pc, sr, EXCEPTION_FORMAT_ERROR);
 	m68ki_jump_vector(EXCEPTION_FORMAT_ERROR);
 
@@ -1579,7 +1629,7 @@ inline void m68ki_exception_format_error()
 /* Exception for address error */
 inline void m68ki_exception_address_error()
 {
-	u32 sr = m68ki_init_exception();
+	u32 sr = m68ki_init_exception(EXCEPTION_ADDRESS_ERROR);
 
 	/* If we were processing a bus error, address error, or reset,
 	 * this is a catastrophic failure.
@@ -1602,12 +1652,12 @@ inline void m68ki_exception_address_error()
 	else if (CPU_TYPE_IS_010())
 	{
 		/* only the 68010 throws this unique type-1000 frame */
-		m68ki_stack_frame_1000(m_ppc, sr, EXCEPTION_BUS_ERROR);
+		m68ki_stack_frame_1000(m_ppc, sr, EXCEPTION_BUS_ERROR, m_mmu_tmp_buserror_address);
 	}
 	else if (CPU_TYPE_IS_070())
 	{
 		/* only the 68070 throws this unique type-1111 frame */
-		m68ki_stack_frame_1111(m_ppc, sr, EXCEPTION_BUS_ERROR);
+		m68ki_stack_frame_1111(m_ppc, sr, EXCEPTION_BUS_ERROR, m_mmu_tmp_buserror_address);
 	}
 	else if (m_mmu_tmp_buserror_address == m_ppc)
 	{

@@ -170,12 +170,15 @@ void neosprite_device::neogeo_set_fixed_layer_source( uint8_t data )
 
 void neosprite_device::draw_fixed_layer( bitmap_rgb32 &bitmap, int scanline )
 {
+	if (m_region_fixed_size == 0)
+		return;
+
 	uint8_t* gfx_base = m_fixed_layer_source ? m_region_fixed : m_region_fixedbios->base();
 	uint32_t addr_mask = ( m_fixed_layer_source ? m_region_fixed_size : m_region_fixedbios->bytes() ) - 1;
 	uint16_t *video_data = &m_videoram_drawsource[0x7000 | (scanline >> 3)];
-	uint32_t *pixel_addr = &bitmap.pix32(scanline, NEOGEO_HBEND);
+	uint32_t *pixel_addr = &bitmap.pix(scanline, NEOGEO_HBEND);
 
-	uint8_t garouoffsets[32];
+	uint8_t garouoffsets[34];
 	bool banked = m_fixed_layer_source && (addr_mask > 0x1ffff);
 
 	/* thanks to Mr K for the garou & kof2000 banking info */
@@ -292,15 +295,11 @@ inline bool neosprite_device::sprite_on_scanline(int scanline, int y, int rows)
 
 void neosprite_device::draw_sprites( bitmap_rgb32 &bitmap, int scanline )
 {
-	int sprite_index;
-	int max_sprite_index;
+	if (m_region_sprites_size == 0)
+		return;
 
-	int y = 0;
-	int x = 0;
-	int rows = 0;
-	int zoom_y = 0;
-	int zoom_x = 0;
 	uint16_t *sprite_list;
+	int max_sprite_index = 0, x = 0, y = 0, zoom_x = 0, zoom_y = 0, rows = 0;
 
 	/* select the active list */
 	if (scanline & 0x01)
@@ -321,7 +320,7 @@ void neosprite_device::draw_sprites( bitmap_rgb32 &bitmap, int scanline )
 	if (max_sprite_index != (MAX_SPRITES_PER_LINE - 1))
 		max_sprite_index = max_sprite_index + 1;
 
-	for (sprite_index = 0; sprite_index <= max_sprite_index; sprite_index++)
+	for (int sprite_index = 0; sprite_index <= max_sprite_index; sprite_index++)
 	{
 		uint16_t sprite_number = sprite_list[sprite_index] & 0x01ff;
 		uint16_t y_control = m_videoram_drawsource[0x8200 | sprite_number];
@@ -428,7 +427,7 @@ void neosprite_device::draw_sprites( bitmap_rgb32 &bitmap, int scanline )
 			/* draw the line - no wrap-around */
 			if (x <= 0x01f0)
 			{
-				uint32_t *pixel_addr = &bitmap.pix32(scanline, x + NEOGEO_HBEND);
+				uint32_t *pixel_addr = &bitmap.pix(scanline, x + NEOGEO_HBEND);
 
 				for (u8 i = 0; i < 0x10; i++)
 				{
@@ -447,7 +446,7 @@ void neosprite_device::draw_sprites( bitmap_rgb32 &bitmap, int scanline )
 			else
 			{
 				int x_save = x;
-				uint32_t *pixel_addr = &bitmap.pix32(scanline, NEOGEO_HBEND);
+				uint32_t *pixel_addr = &bitmap.pix(scanline, NEOGEO_HBEND);
 
 				for (u8 i = 0; i < 0x10; i++)
 				{
@@ -476,7 +475,6 @@ void neosprite_device::draw_sprites( bitmap_rgb32 &bitmap, int scanline )
 
 void neosprite_device::parse_sprites( int scanline )
 {
-	uint16_t sprite_number;
 	int y = 0;
 	int rows = 0;
 	uint16_t *sprite_list;
@@ -490,7 +488,7 @@ void neosprite_device::parse_sprites( int scanline )
 		sprite_list = &m_videoram_drawsource[0x8600];
 
 	/* scan all sprites */
-	for (sprite_number = 0; sprite_number < MAX_SPRITES_PER_SCREEN; sprite_number++)
+	for (u16 sprite_number = 0; sprite_number < MAX_SPRITES_PER_SCREEN; sprite_number++)
 	{
 		uint16_t y_control = m_videoram_drawsource[0x8200 | sprite_number];
 
@@ -592,7 +590,7 @@ void neosprite_device::set_pens(const pen_t* pens)
 void neosprite_device::optimize_sprite_data()
 {
 	uint32_t mask = 0xffffffff, len = m_region_sprites_size * 2 - 1;
-	uint8_t bit;
+	s8 bit = 0;
 
 	for (bit = 31; bit != 0; bit--)
 		if (BIT(len, bit))

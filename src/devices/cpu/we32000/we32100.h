@@ -26,8 +26,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual void execute_run() override;
@@ -45,8 +45,8 @@ protected:
 private:
 	// address space
 	address_space_config m_space_config;
-	address_space *m_space;
-	memory_access_cache<2, 0, ENDIANNESS_BIG> *m_cache;
+	memory_access<32, 2, 0, ENDIANNESS_BIG>::cache m_cache;
+	memory_access<32, 2, 0, ENDIANNESS_BIG>::specific m_space;
 
 	// internal state
 	u32 m_r[16];

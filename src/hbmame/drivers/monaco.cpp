@@ -15,78 +15,78 @@ To Do:
 - extended play colors
 
 General:
-	Score Increases as a function of the player's speed.
-	Speed of Terrain scrolling is independent.
+    Score Increases as a function of the player's speed.
+    Speed of Terrain scrolling is independent.
 
 Computer Cars:
-	The bridge section is different from the others (besides all the cars going
-	faster after so many points(6K and 8K).
+    The bridge section is different from the others (besides all the cars going
+    faster after so many points(6K and 8K).
 
 Display Panel:
-	The cockpit model displays TIME (2 digit), top 5 scores (4 digits each),
-	your Score (4 digits), Players to Date (3 digits)(daily), and
-	Ranking (3 digits) (this is final score ranking, not position during the game).
+    The cockpit model displays TIME (2 digit), top 5 scores (4 digits each),
+    your Score (4 digits), Players to Date (3 digits)(daily), and
+    Ranking (3 digits) (this is final score ranking, not position during the game).
 
-	The top 999 high scores are internally recorded in a RAM.
-	The player's ranking is updated only after gamplay is finished (during the
-	fanfare).
+    The top 999 high scores are internally recorded in a RAM.
+    The player's ranking is updated only after gamplay is finished (during the
+    fanfare).
 
 Timed Play:
-	X000-X295	A-Smooth Zone
-	X295-X450	B-Slip Zone
-	X450-X795	A-Smooth Zone
-	X795-X000	C-Tunnel
+    X000-X295   A-Smooth Zone
+    X295-X450   B-Slip Zone
+    X450-X795   A-Smooth Zone
+    X795-X000   C-Tunnel
 
 Extended Play:
-	X000-X095	A-Smooth Zone
-	X095-X150	D-Gravel Zone
-	X150-X295	A-Smooth Zone
-	X295-X475	B-Slip Zone
-	X475-X595	A-Smooth Zone
-	X595-X635	E-Bridge Zone
-	X635-X795	A-Smooth Zone
-	X795-X000	C-Tunnel Zone
+    X000-X095   A-Smooth Zone
+    X095-X150   D-Gravel Zone
+    X150-X295   A-Smooth Zone
+    X295-X475   B-Slip Zone
+    X475-X595   A-Smooth Zone
+    X595-X635   E-Bridge Zone
+    X635-X795   A-Smooth Zone
+    X795-X000   C-Tunnel Zone
 
 Oil Slicks (pool):
-	X185		(during zone A)
-	X685		(during zone A)
-	After 8000 points, two pools come out in succession
-	(the second about 20-30 points from the first).
+    X185        (during zone A)
+    X685        (during zone A)
+    After 8000 points, two pools come out in succession
+    (the second about 20-30 points from the first).
 
 Rescue Car (firetruck)
-	The rescue car only appears during Extended play.  Tolerance -50 (not+)
-	X000
-	X075
-	X125
-	X250
-	X500
+    The rescue car only appears during Extended play.  Tolerance -50 (not+)
+    X000
+    X075
+    X125
+    X250
+    X500
 
-	The rescue car appears in a mid-right lane.  It does not move side to side,
-	it just moves slowly up the screen until it goes off the screen.
+    The rescue car appears in a mid-right lane.  It does not move side to side,
+    it just moves slowly up the screen until it goes off the screen.
 
-	In extended play, the rescue car was observed to come out AT LEAST ONCE
-	during each 1000 points cycle.  I have observed the rescue car coming
-	out as much a 3 TIMES in one 1000 point cycle.
-	I could not find a pattern in the time or count interval between the
-	rescue cars.  However, 72% were between 750 and 1250 point intervals
-	(most around 875) while the remaining 28% were 500 point intervals or
-	lower.  Therfore, we can narrow down WHERE the rescue cars appear, but
-	IF it is going to appear seems to have some randomness to it.
+    In extended play, the rescue car was observed to come out AT LEAST ONCE
+    during each 1000 points cycle.  I have observed the rescue car coming
+    out as much a 3 TIMES in one 1000 point cycle.
+    I could not find a pattern in the time or count interval between the
+    rescue cars.  However, 72% were between 750 and 1250 point intervals
+    (most around 875) while the remaining 28% were 500 point intervals or
+    lower.  Therfore, we can narrow down WHERE the rescue cars appear, but
+    IF it is going to appear seems to have some randomness to it.
 
 
 notes:
-	when the player first appears (game start, after a spinout, after
-	a crash), the player's car shows up on the extreme right of the
-	screen and is totally invulnerable (even if over water on the
-	bridge scene!).  The road doesn't scroll at all until you give the
-	car some gas.  Note that once you start moving, you can never
-	completely come to a stop.
+    when the player first appears (game start, after a spinout, after
+    a crash), the player's car shows up on the extreme right of the
+    screen and is totally invulnerable (even if over water on the
+    bridge scene!).  The road doesn't scroll at all until you give the
+    car some gas.  Note that once you start moving, you can never
+    completely come to a stop.
 
-	Once you move to left onto the center part of the
-	road, normal collision behavior takes over.  You earn no points
-	while in the invulnerable state.  The player can remain in this
-	state forever during timed play (until time runs out).  In extended
-	play, the player's car will explode after several seconds of driving.
+    Once you move to left onto the center part of the
+    road, normal collision behavior takes over.  You earn no points
+    while in the invulnerable state.  The player can remain in this
+    state forever during timed play (until time runs out).  In extended
+    play, the player's car will explode after several seconds of driving.
 
 ---------------------------------------------------------------------------
 
@@ -101,42 +101,42 @@ Board Assy A
 - sends the signals for the sounds to the Oscillator board
 - outputs to the L.E.D. score display board
 - directly interacts with Board Assy B
-	Components:
-		Start Timer Control
-		Player Control (pedal, steering, shifter)
-		My Car light control, explosion, and pool (oil slick) skid
-		Other Car Control
+    Components:
+        Start Timer Control
+        Player Control (pedal, steering, shifter)
+        My Car light control, explosion, and pool (oil slick) skid
+        Other Car Control
 
 Board Assy B
 - outputs the video
 - outputs to the L.E.D. score display board
 - directly interacts with Board Assy A.
-	Components:
-		Display of Letter
-		Road Movement Horizontal
-		Road Movement Vertical (Right and Left)
-		Background (sprite) coloring
-		Road Object (tunnel, bridge, water) control
-		Signal Sync
-		Rescue Car, Player Car, Bridge--Video and Control
+    Components:
+        Display of Letter
+        Road Movement Horizontal
+        Road Movement Vertical (Right and Left)
+        Background (sprite) coloring
+        Road Object (tunnel, bridge, water) control
+        Signal Sync
+        Rescue Car, Player Car, Bridge--Video and Control
 
-	(On the second set, boards A and B have different part numbers
-	(97091X and 97092X) and two less roms.  These boards were made
-	later then the first set.  I have interchanged these boards with
-	each other, and they seem to be interchangable, the only
-	difference seems to be the rom size, which only 2 of the roms
-	utilize the full 1024 bytes (second set).)
+    (On the second set, boards A and B have different part numbers
+    (97091X and 97092X) and two less roms.  These boards were made
+    later then the first set.  I have interchanged these boards with
+    each other, and they seem to be interchangable, the only
+    difference seems to be the rom size, which only 2 of the roms
+    utilize the full 1024 bytes (second set).)
 
 Oscillator Board 96598
-ROM ID		IC#
-PRm-40		IC21			PRm-40		<both type 6331-1, 16 pin>
-	engine (constant; pitch varies with speed)
-	passing (two variations)
-	bonus (chimes)
-	fanfare
-	explosion
-	slip zone
-	siren (rescue car)
+ROM ID      IC#
+PRm-40      IC21            PRm-40      <both type 6331-1, 16 pin>
+    engine (constant; pitch varies with speed)
+    passing (two variations)
+    bonus (chimes)
+    fanfare
+    explosion
+    slip zone
+    siren (rescue car)
 */
 
 /* The following changes were done by Robbbert on 2007-Dec-08:
@@ -175,21 +175,23 @@ There is a bunch more things to be done
 #include "speaker.h"
 #include "monaco.lh"
 
+namespace {
 
 #define kRESCUE_CAR_SPEED (1.75)
-#define SCREEN_WIDTH	384 /* 12 car lengths */
-#define SCREEN_HEIGHT	240 /* 15 car widths */
-#define BRIDGE_YPOS	((SCREEN_HEIGHT-16)/2-8)
-#define PAGE_SIZE		(14*32)
+#define SCREEN_WIDTH    384 /* 12 car lengths */
+#define SCREEN_HEIGHT   240 /* 15 car widths */
+#define BRIDGE_YPOS ((SCREEN_HEIGHT-16)/2-8)
+#define PAGE_SIZE       448
+ // == (14*32)
 #define NUM_COMPUTER_CARS 4
 
 /* red */
-#define TEXT_GAMEOVER		2
-#define TEXT_EXTENDEDPLAY	0
+#define TEXT_GAMEOVER       2
+#define TEXT_EXTENDEDPLAY   0
 
 /* blue */
-#define TEXT_DEPOSITCOIN	3
-#define TEXT_START		1
+#define TEXT_DEPOSITCOIN    3
+#define TEXT_START      1
 
 enum
 {
@@ -203,24 +205,24 @@ enum
 
 enum
 {
-	CYAN_PEN	= 0x91,
-	BLACK_PEN	= 0x94,
-	YELLOW_PEN	= 0x95,
-	GREY_PEN	= 0x96
+	CYAN_PEN    = 0x91,
+	BLACK_PEN   = 0x94,
+	YELLOW_PEN  = 0x95,
+	GREY_PEN    = 0x96
 };
 
 enum
 {
-	RESCUE_CLUT	= 0x50,
-	HOUSE_CLUT	= 0x60,
-	WATER_CLUT	= 0x70,
-	PLAYER_CLUT	= 0x80,
-	TREE_CLUT	= 0x84,
-	SHRUB_CLUT	= 0x88,
-	GRASS_CLUT	= 0x8c,
-	CYAN_CLUT	= 0x90,
-	RED_CLUT	= 0x92,
-	YELLOW_CLUT	= 0x94
+	RESCUE_CLUT = 0x50,
+	HOUSE_CLUT  = 0x60,
+	WATER_CLUT  = 0x70,
+	PLAYER_CLUT = 0x80,
+	TREE_CLUT   = 0x84,
+	SHRUB_CLUT  = 0x88,
+	GRASS_CLUT  = 0x8c,
+	CYAN_CLUT   = 0x90,
+	RED_CLUT    = 0x92,
+	YELLOW_CLUT = 0x94
 };
 
 enum
@@ -249,16 +251,16 @@ enum
 enum monaco_mode
 {
 	MODE_ATTRACT,
-	/*	cars zoom up the screen (max 2 on the screen at a time)
-	 *	player's car is not visible
-	 *	"GAME OVER" is centered near the middle-top
-	 *	"DEPOSIT COIN" is centered near the bottom
+	/*  cars zoom up the screen (max 2 on the screen at a time)
+	 *  player's car is not visible
+	 *  "GAME OVER" is centered near the middle-top
+	 *  "DEPOSIT COIN" is centered near the bottom
 	 */
 	MODE_START,
 	MODE_INVULNERABLE,
-	MODE_NORMAL,	/* driving */
+	MODE_NORMAL,    /* driving */
 	MODE_GRAVEL,
-	MODE_SLIP1,		/* skidding */
+	MODE_SLIP1,     /* skidding */
 	MODE_SLIP2,
 	MODE_SPINOUT1,
 	MODE_SPINOUT2,
@@ -286,17 +288,17 @@ public:
 	void init_monaco();
 	void monaco(machine_config &config);
 private:
-	DECLARE_READ8_MEMBER(monaco_ram_r);
-	DECLARE_WRITE8_MEMBER(monaco_ram_w);
+	u8 monaco_ram_r(offs_t offset);
+	void monaco_ram_w(offs_t offset, u8 data);
 	INTERRUPT_GEN_MEMBER(monaco_interrupt);
 	DECLARE_VIDEO_START(monaco);
 	void monaco_map(address_map &map);
 	void machine_reset() override;
-	uint32_t screen_update_monaco(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	u32 screen_update_monaco(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	struct monaco_gfx *m_monaco_gfx;
 	enum monaco_mode m_monaco_mode;
-	uint32_t monaco_word_r (uint16_t offset);
-	void monaco_word_w (uint16_t offset, uint32_t data);
+	u32 monaco_word_r (u16 offset);
+	void monaco_word_w (u16 offset, u32 data);
 	int get_player_xpos( void );
 	void handle_collision( int sx, int sy, int width, int height, int type );
 	int read_coin();
@@ -329,63 +331,63 @@ private:
 	int m_anim_timer;
 
 	/* LED display */
-	uint16_t m_plays;
-	uint16_t m_rank;
-	uint16_t m_rank_display;	// shows 0 until game ends
-	uint32_t m_score;
-	uint32_t m_bonus_score;
-	uint8_t m_in_ext_play;
-	uint8_t m_gear;
-	uint16_t m_time;
-	uint8_t m_lives;
-	int m_bShaking;
-	double m_speed;
-	double m_player_ypos;
-	double m_computer_speed;
-	double m_xpos[NUM_COMPUTER_CARS];
-	double m_ypos[NUM_COMPUTER_CARS];
-	double m_dy[NUM_COMPUTER_CARS];
-	double m_rescue_xpos;
-	double m_pool_xpos;
-	double m_scroll;
-	double m_distance;
-	int m_ticks;
-	int m_page_current;
-	int m_page_next;
-	int m_page_next2;
+	u16 m_plays = 0U;
+	u16 m_rank = 0U;
+	u16 m_rank_display = 0U; // shows 0 until game ends
+	u32 m_score = 0U;
+	u32 m_bonus_score = 0U;
+	u8 m_in_ext_play = 0U;
+	u8 m_gear = 0U;
+	u16 m_time = 0U;
+	u8 m_lives = 0U;
+	int m_bShaking = 0;
+	double m_speed = 0;
+	double m_player_ypos = 0;
+	double m_computer_speed = 0;
+	double m_xpos[NUM_COMPUTER_CARS]{};
+	double m_ypos[NUM_COMPUTER_CARS]{};
+	double m_dy[NUM_COMPUTER_CARS]{};
+	double m_rescue_xpos = 0;
+	double m_pool_xpos = 0;
+	double m_scroll = 0;
+	double m_distance = 0;
+	int m_ticks = 0;
+	int m_page_current = 0;
+	int m_page_next = 0;
+	int m_page_next2 = 0;
 
-	double m_track_bottom_inset;
-	double m_track_top_inset;
-	double m_track_bottom_delta;
-	double m_track_top_delta;
-	int m_bSignalVisible;
-	int m_left_text;
-	int m_right_text;
-	int m_bExtendedPlay;
-	int m_left_page, m_right_page;
-	int m_top_inset, m_bottom_inset;
-	int m_player_x, m_player_y, m_player_tile, m_player_splash;
-	int m_pool_x, m_pool_y;
-	int m_rescue_x, m_rescue_y, m_rescue_tile;
-	int m_x[NUM_COMPUTER_CARS];
-	int m_y[NUM_COMPUTER_CARS];
-	int m_tile[NUM_COMPUTER_CARS];
-	int m_color[NUM_COMPUTER_CARS];
-	uint32_t m_led_high1;
-	uint32_t m_led_high2;
-	uint32_t m_led_high3;
-	uint32_t m_led_high4;
-	uint32_t m_led_high5;
-	uint32_t m_led_score;
-	uint16_t m_led_time;
-	uint16_t m_led_rank;
-	uint16_t m_led_plays;
-	uint16_t m_led_lives;
-	uint16_t m_led_gear;
-	uint16_t m_led_speed;
+	double m_track_bottom_inset = 0;
+	double m_track_top_inset = 0;
+	double m_track_bottom_delta = 0;
+	double m_track_top_delta = 0;
+	int m_bSignalVisible = 0;
+	int m_left_text = 0;
+	int m_right_text = 0;
+	int m_bExtendedPlay = 0;
+	int m_left_page = 0, m_right_page = 0;
+	int m_top_inset = 0, m_bottom_inset = 0;
+	int m_player_x = 0, m_player_y = 0, m_player_tile = 0, m_player_splash = 0;
+	int m_pool_x = 0, m_pool_y = 0;
+	int m_rescue_x = 0, m_rescue_y = 0, m_rescue_tile = 0;
+	int m_x[NUM_COMPUTER_CARS]{};
+	int m_y[NUM_COMPUTER_CARS]{};
+	int m_tile[NUM_COMPUTER_CARS]{};
+	int m_color[NUM_COMPUTER_CARS]{};
+	u32 m_led_high1 = 0U;
+	u32 m_led_high2 = 0U;
+	u32 m_led_high3 = 0U;
+	u32 m_led_high4 = 0U;
+	u32 m_led_high5 = 0U;
+	u32 m_led_score = 0U;
+	u16 m_led_time = 0U;
+	u16 m_led_rank = 0U;
+	u16 m_led_plays = 0U;
+	u16 m_led_lives = 0U;
+	u16 m_led_gear = 0U;
+	u16 m_led_speed = 0U;
 	required_device<cpu_device> m_maincpu;
 	required_device<samples_device> m_samples;
-	required_shared_ptr<uint8_t> m_p_ram;
+	required_shared_ptr<u8> m_p_ram;
 	required_device<gfxdecode_device> m_gfxdecode;
 	required_device<palette_device> m_palette;
 	output_finder<105> m_out_digit;
@@ -402,55 +404,53 @@ enum
 	eSAMPLE_FANFARE,
 	eSAMPLE_SIREN,
 	eSAMPLE_SLIP,
-//	eSAMPLE_GRAVEL
+//  eSAMPLE_GRAVEL
 };
 
-#define DOWN	0x01
-#define UP	0x02
-#define RIGHT	0x04
-#define LEFT	0x08
-#define COIN	0x10
-#define ACCEL1	0x20
-#define ACCEL2	0x40
-#define ACCEL3	0x80
+#define DOWN    0x01
+#define UP  0x02
+#define RIGHT   0x04
+#define LEFT    0x08
+#define COIN    0x10
+#define ACCEL1  0x20
+#define ACCEL2  0x40
+#define ACCEL3  0x80
 
-#define IS_PRESSED(key)		(ioport("IN0")->read() & key)
+#define IS_PRESSED(key)     (ioport("IN0")->read() & key)
 
-#define EXT_SCORE (2000<<8)			// number of points needed to get extended play, 2000
-#define FIRST_TIME (90<<8)			// number of seconds when coin inserted, 90
+#define EXT_SCORE (2000<<8)         // number of points needed to get extended play, 2000
+#define FIRST_TIME (90<<8)          // number of seconds when coin inserted, 90
 
 
-READ8_MEMBER( monaco_state::monaco_ram_r )
+u8 monaco_state::monaco_ram_r(offs_t offset)
 {
 	return m_p_ram[offset];
 }
 
-WRITE8_MEMBER( monaco_state::monaco_ram_w )
+void monaco_state::monaco_ram_w(offs_t offset, u8 data)
 {
 	m_p_ram[offset] = data;
 }
 
-uint32_t monaco_state::monaco_word_r (uint16_t offset)
+u32 monaco_state::monaco_word_r (u16 offset)
 {
-	address_space &space = m_maincpu->space(AS_PROGRAM);
-	uint8_t byte0 = monaco_ram_r (space, (offset << 2));
-	uint8_t byte1 = monaco_ram_r (space, (offset << 2) + 1);
-	uint8_t byte2 = monaco_ram_r (space, (offset << 2) + 2);
-	uint8_t byte3 = monaco_ram_r (space, (offset << 2) + 3);
+	u8 byte0 = monaco_ram_r ((offset << 2));
+	u8 byte1 = monaco_ram_r ((offset << 2) + 1);
+	u8 byte2 = monaco_ram_r ((offset << 2) + 2);
+	u8 byte3 = monaco_ram_r ((offset << 2) + 3);
 	return (byte3<<24) | (byte2<<16) | (byte1<<8) | byte0;
 }
 
-void monaco_state::monaco_word_w (uint16_t offset, uint32_t data)
+void monaco_state::monaco_word_w (u16 offset, u32 data)
 {
-	address_space &space = m_maincpu->space(AS_PROGRAM);
-	uint8_t byte0 = data & 0xff;
-	uint8_t byte1 = (data & 0xff00) >> 8;
-	uint8_t byte2 = (data & 0xff0000) >> 16;
-	uint8_t byte3 = (data & 0xff000000) >> 24;
-	monaco_ram_w (space, (offset << 2), byte0);
-	monaco_ram_w (space, (offset << 2) + 1, byte1);
-	monaco_ram_w (space, (offset << 2) + 2, byte2);
-	monaco_ram_w (space, (offset << 2) + 3, byte3);
+	u8 byte0 = data & 0xff;
+	u8 byte1 = (data & 0xff00) >> 8;
+	u8 byte2 = (data & 0xff0000) >> 16;
+	u8 byte3 = (data & 0xff000000) >> 24;
+	monaco_ram_w ((offset << 2), byte0);
+	monaco_ram_w ((offset << 2) + 1, byte1);
+	monaco_ram_w ((offset << 2) + 2, byte2);
+	monaco_ram_w ((offset << 2) + 3, byte3);
 }
 
 int monaco_state::get_player_xpos( void )
@@ -460,12 +460,10 @@ int monaco_state::get_player_xpos( void )
 
 void monaco_state::handle_collision( int sx, int sy, int width, int height, int type )
 {
-	int px, py;
-
 	if( m_monaco_mode == MODE_NORMAL )
 	{
-		px = get_player_xpos();
-		py = m_player_ypos + 8;
+		int px = get_player_xpos();
+		int py = m_player_ypos + 8;
 
 		if( px < sx + width &&
 			sx < px + 32 &&
@@ -474,7 +472,7 @@ void monaco_state::handle_collision( int sx, int sy, int width, int height, int 
 		{
 			m_samples->start( 3, eSAMPLE_CRASH );
 			m_anim_timer = 0;
-			m_speed = 15;		/* you almost stop when you crash */
+			m_speed = 15;       /* you almost stop when you crash */
 			if( type == COLLISION_CRASH )
 			{
 				if( !m_in_ext_play )
@@ -500,13 +498,15 @@ void monaco_state::handle_collision( int sx, int sy, int width, int height, int 
 
 int monaco_state::read_coin()
 {
-	static int old_trigger;
+	static bool old_trigger = 0;
 	if( IS_PRESSED(COIN) )
 	{
 		old_trigger = 1;
 	}
-	else {
-		if( old_trigger ){
+	else
+	{
+		if( old_trigger )
+		{
 			old_trigger = 0;
 			return 1;
 		}
@@ -517,7 +517,7 @@ int monaco_state::read_coin()
 
 void monaco_state::update_player_speed()
 {
-	double desired_speed, min_speed, max_speed = 44;
+	double min_speed = 0, max_speed = 44;
 	int accel = 0;
 
 	if( IS_PRESSED(ACCEL1) ) accel = 1;
@@ -543,11 +543,9 @@ void monaco_state::update_player_speed()
 		if( accel ) m_monaco_mode = MODE_INVULNERABLE;
 		else return;
 	}
-	
+
 	if (m_speed)
 		min_speed = m_gear?0.5:0.25;
-	else
-		min_speed = 0;
 
 	if (m_gear)
 	{
@@ -558,7 +556,7 @@ void monaco_state::update_player_speed()
 
 	/* min: 0; max: 6 */
 	/* 30 is derived by absolute maximum speed (above) divided by 6 */
-	desired_speed = 30*(accel?(m_gear*3+accel):min_speed);
+	double desired_speed = 30*(accel?(m_gear*3+accel):min_speed);
 
 	/* 1st gear */
 	if (!m_gear)
@@ -581,7 +579,8 @@ void monaco_state::update_player_speed()
 
 double monaco_state::get_player_delta( void )
 {
-	if( m_monaco_mode == MODE_ATTRACT || m_monaco_mode == MODE_START ) return 0;
+	if( m_monaco_mode == MODE_ATTRACT || m_monaco_mode == MODE_START )
+		return 0;
 	return m_speed/16.0;
 }
 
@@ -600,13 +599,11 @@ void monaco_state::HandlePlayer()
 
 void monaco_state::update_computer_cars( void )
 {
-	int i;
 	int delta = get_player_delta();
-	for( i=0; i<NUM_COMPUTER_CARS; i++ )
+	for(u8 i=0; i<NUM_COMPUTER_CARS; i++ )
 	{
 		int top_inset = m_track_top_inset;
 		int bottom_inset = m_track_bottom_inset;
-		int sx,sy;
 		m_xpos[i] += delta-m_computer_speed;
 		if( m_xpos[i] < -256 )
 			m_xpos[i] += SCREEN_WIDTH*2;
@@ -616,8 +613,8 @@ void monaco_state::update_computer_cars( void )
 
 		m_ypos[i] += m_dy[i];
 
-		sx = m_xpos[i];
-		sy = m_ypos[i];
+		int sx = m_xpos[i];
+		int sy = m_ypos[i];
 
 		if( ( m_dy[i]<0 && sy<top_inset ) ||
 			( m_dy[i]>0 && sy+16>SCREEN_HEIGHT-bottom_inset ) )
@@ -636,12 +633,7 @@ void monaco_state::HandleRescue( void )
 	if( m_rescue_xpos > -64 )
 	{
 		m_rescue_xpos -= kRESCUE_CAR_SPEED;
-		handle_collision(
-			m_rescue_xpos,
-			(SCREEN_HEIGHT-32)/2,
-			64,
-			32,
-			COLLISION_CRASH );
+		handle_collision(m_rescue_xpos, (SCREEN_HEIGHT-32)/2, 64, 32, COLLISION_CRASH );
 	}
 }
 
@@ -650,36 +642,32 @@ void monaco_state::HandlePool( void )
 	if( m_pool_xpos < SCREEN_WIDTH )
 	{
 		m_pool_xpos += get_player_delta();
-		handle_collision(
-			m_pool_xpos,
-			(SCREEN_HEIGHT-32)/2,
-			32,
-			32,
-			COLLISION_POOL );
+		handle_collision(m_pool_xpos, (SCREEN_HEIGHT-32)/2, 32, 32, COLLISION_POOL );
 	}
 }
 
 void monaco_state::GameOver()
 {
-	m_monaco_mode = MODE_ATTRACT;			/* this causes speed to be zero */
-	m_rank_display = m_rank;		/* show rank on led display */
-	monaco_word_w (m_rank, m_score);	/* save players score in RAM */
+	m_monaco_mode = MODE_ATTRACT;           /* this causes speed to be zero */
+	m_rank_display = m_rank;        /* show rank on led display */
+	monaco_word_w (m_rank, m_score);    /* save players score in RAM */
 	m_led_high1 = monaco_word_r(1);
 	m_led_high2 = monaco_word_r(2);
-	m_led_high3 = monaco_word_r(3);	/* show the 5 highest scores on led display */
+	m_led_high3 = monaco_word_r(3); /* show the 5 highest scores on led display */
 	m_led_high4 = monaco_word_r(4);
 	m_led_high5 = monaco_word_r(5);
-	m_samples->stop(0);				/* turn off engine sounds */
+	m_samples->stop(0);             /* turn off engine sounds */
 	m_samples->stop(1);
 	m_samples->stop(2);
 }
 
 void monaco_state::HandleEvents()
 {
+	if (m_monaco_mode == MODE_ATTRACT)
+		return;
+
 	int score = m_score>>8;
 	int event = (score)%1000;
-
-	if (m_monaco_mode == MODE_ATTRACT) return;
 
 	if( m_page_current == PAGE_SMOOTH &&
 		(score == 8000 || score == 8030 || event == 185 || event == 685)  )
@@ -690,7 +678,7 @@ void monaco_state::HandleEvents()
 	if( m_in_ext_play )
 	{
 		/* Extended Play */
-		if(	m_rescue_xpos<= -64 &&
+		if( m_rescue_xpos<= -64 &&
 			(machine().rand()&3) == 0 &&
 			(event == 0 || event == 75 || event == 125 || event == 250 || event == 500) )
 		{
@@ -699,21 +687,31 @@ void monaco_state::HandleEvents()
 		}
 
 		if( event == 0 ) m_page_next2 = PAGE_SMOOTH;
-		else if( event == 95 ) m_page_next2 = PAGE_GRAVEL;
-		else if( event == 150 ) m_page_next2 = PAGE_SMOOTH;
-		else if( event == 295 ) m_page_next2 = PAGE_SLIP;
-		else if( event == 475 ) m_page_next2 = PAGE_SMOOTH;
-		else if( event == 595 ) m_page_next2 = PAGE_BRIDGE;
-		else if( event == 635 ) m_page_next2 = PAGE_SMOOTH;
-		else if( event == 795 ) m_page_next2 = PAGE_TUNNEL;
+		else
+		if( event == 95 ) m_page_next2 = PAGE_GRAVEL;
+		else
+		if( event == 150 ) m_page_next2 = PAGE_SMOOTH;
+		else
+		if( event == 295 ) m_page_next2 = PAGE_SLIP;
+		else
+		if( event == 475 ) m_page_next2 = PAGE_SMOOTH;
+		else
+		if( event == 595 ) m_page_next2 = PAGE_BRIDGE;
+		else
+		if( event == 635 ) m_page_next2 = PAGE_SMOOTH;
+		else
+		if( event == 795 ) m_page_next2 = PAGE_TUNNEL;
 	}
 	else
 	{
 		/* Timed Play */
 		if( event == 0 ) m_page_next2 = PAGE_SMOOTH;
-		else if( event == 295 ) m_page_next2 = PAGE_SLIP;
-		else if( event == 450 ) m_page_next2 = PAGE_SMOOTH;
-		else if( event == 795 ) m_page_next2 = PAGE_TUNNEL;
+		else
+		if( event == 295 ) m_page_next2 = PAGE_SLIP;
+		else
+		if( event == 450 ) m_page_next2 = PAGE_SMOOTH;
+		else
+		if( event == 795 ) m_page_next2 = PAGE_TUNNEL;
 	}
 
 	if ((!m_time) && (!m_in_ext_play))
@@ -722,7 +720,7 @@ void monaco_state::HandleEvents()
 		{
 			/* Turn On Extended Play */
 			m_in_ext_play = 1;
-//			m_samples->start( 2, eSAMPLE_EXTEND );
+//          m_samples->start( 2, eSAMPLE_EXTEND );
 		}
 		else
 			m_lives = 0;
@@ -731,7 +729,8 @@ void monaco_state::HandleEvents()
 	if ((!m_lives) && (m_monaco_mode != MODE_ATTRACT))
 	{
 		/* Game Over */
-		if (m_rank == 1) m_samples->start (4, eSAMPLE_FANFARE);
+		if (m_rank == 1)
+			m_samples->start (4, eSAMPLE_FANFARE);
 
 		GameOver();
 	}
@@ -792,7 +791,7 @@ INTERRUPT_GEN_MEMBER( monaco_state::monaco_interrupt )
 			m_samples->start( 0, eSAMPLE_ENGINE, 1/*loop*/ );
 			m_score = 0;
 			m_bonus_score = 0;
-			m_rank_display = 0xffff;	/* rank is blank till game ends */
+			m_rank_display = 0xffff;    /* rank is blank till game ends */
 			m_lives = 1;
 			if (m_plays < 999) m_plays++;
 			m_rank = m_plays;
@@ -815,7 +814,7 @@ INTERRUPT_GEN_MEMBER( monaco_state::monaco_interrupt )
 
 	m_ticks++; /* for animation */
 
-	if(	m_page_next != PAGE_TUNNEL && m_page_current != PAGE_TUNNEL &&
+	if( m_page_next != PAGE_TUNNEL && m_page_current != PAGE_TUNNEL &&
 		m_page_next != PAGE_BRIDGE && m_page_current != PAGE_BRIDGE )
 	{
 		/* delta: player speed */
@@ -866,7 +865,7 @@ INTERRUPT_GEN_MEMBER( monaco_state::monaco_interrupt )
 		break;
 
 	case MODE_GRAVEL:
-//		m_samples->start (1, eSAMPLE_GRAVEL);  There is no code to make this mode occur
+//      m_samples->start (1, eSAMPLE_GRAVEL);  There is no code to make this mode occur
 		break;
 
 	case MODE_SLIP1:
@@ -893,7 +892,7 @@ INTERRUPT_GEN_MEMBER( monaco_state::monaco_interrupt )
 	case MODE_SPINOUT4:
 		if( m_player_ypos > 0 )
 		{
-			uint8_t temp = (m_anim_timer/2)&3;
+			u8 temp = (m_anim_timer/2)&3;
 			if (temp == 0) m_monaco_mode = MODE_SPINOUT1;
 			else if (temp == 1) m_monaco_mode = MODE_SPINOUT2;
 			else if (temp == 2) m_monaco_mode = MODE_SPINOUT3;
@@ -985,7 +984,7 @@ INTERRUPT_GEN_MEMBER( monaco_state::monaco_interrupt )
 	m_led_lives = m_lives;
 	m_led_time = m_time;
 	m_led_rank = m_rank_display;
-	//	m_led_rank = m_rank;	/* test to display real-time ranking */
+	//  m_led_rank = m_rank;    /* test to display real-time ranking */
 	m_led_plays = m_plays;
 	m_led_speed = m_speed;
 	m_right_page = m_page_current;
@@ -1384,27 +1383,27 @@ static gfx_layout belt_layout = {
 };
 
 static GFXDECODE_START( gfx_monaco )
-	GFXDECODE_ENTRY( "gfx1", 0x0100, unknown_layout,  0x00, 1)	/* PR125: unused; police car? */
-	GFXDECODE_ENTRY( "gfx1", 0x0200, explode_layout,  RED_CLUT, 2)	/* PR126: explosion */
-	GFXDECODE_ENTRY( "gfx1", 0x0400, player_layout,   PLAYER_CLUT, 1)	/* PR127: player's car */
-	GFXDECODE_ENTRY( "gfx1", 0x0600, player_layout,   PLAYER_CLUT, 1)	/* PR128: swerving (rough road) */
-	GFXDECODE_ENTRY( "gfx1", 0x0800, player_layout,   PLAYER_CLUT, 1)	/* PR129: spinout1 */
-	GFXDECODE_ENTRY( "gfx1", 0x0a00, player_layout,   PLAYER_CLUT, 1)	/* PR130: spinout2 */
-	GFXDECODE_ENTRY( "gfx1", 0x0c00, explode_layout,  CYAN_CLUT, 1)	/* PR131: spray */
-	GFXDECODE_ENTRY( "gfx1", 0x0e00, computer_layout, 0x00, 5)	/* PR132: computer car A,B */
-	GFXDECODE_ENTRY( "gfx1", 0x1000, text_layout,     CYAN_CLUT, 2)	/* PR133: text */
-	GFXDECODE_ENTRY( "gfx1", 0x1200, tree_layout,     TREE_CLUT, 1)	/* PR134: tree */
-	GFXDECODE_ENTRY( "gfx1", 0x1300, tree_layout,     TREE_CLUT, 1)	/* PR134: grass */
-	GFXDECODE_ENTRY( "gfx1", 0x1400, tree_layout,     SHRUB_CLUT, 1)	/* PR135: shrub */
-	GFXDECODE_ENTRY( "gfx1", 0x1600, house_layout,    HOUSE_CLUT, 1)	/* PR136: house */
-	GFXDECODE_ENTRY( "gfx1", 0x1800, tunnel_layout,   RED_CLUT, 1)	/* PR137: tunnel */
-	GFXDECODE_ENTRY( "gfx1", 0x1900, pool_layout,     CYAN_CLUT, 1)	/* PR137: pool (oil slick) */
-	GFXDECODE_ENTRY( "gfx1", 0x1900, belt_layout,     GRASS_CLUT, 2)	/* PR137: red/green belt */
-	GFXDECODE_ENTRY( "gfx1", 0x1a00, rescue_layout,   RESCUE_CLUT, 1)	/* PR138: rescue car */
-	GFXDECODE_ENTRY( "gfx1", 0x1c00, signal_layout,   YELLOW_CLUT, 1)	/* PR139: bridge signal (yellow on black)*/
-	GFXDECODE_ENTRY( "gfx1", 0x1c00, dummy_layout,    PLAYER_CLUT, 1)	/* PR139: dummy car */
-	GFXDECODE_ENTRY( "gfx1", 0x1e00, bridge_layout,   WATER_CLUT, 1)	/* PR140: bridge-water */
-	GFXDECODE_ENTRY( "gfx1", 0x2000, bridge_layout,   WATER_CLUT, 1)	/* PR141: bridge-pillar */
+	GFXDECODE_ENTRY( "gfx1", 0x0100, unknown_layout,  0x00, 1)  /* PR125: unused; police car? */
+	GFXDECODE_ENTRY( "gfx1", 0x0200, explode_layout,  RED_CLUT, 2)  /* PR126: explosion */
+	GFXDECODE_ENTRY( "gfx1", 0x0400, player_layout,   PLAYER_CLUT, 1)   /* PR127: player's car */
+	GFXDECODE_ENTRY( "gfx1", 0x0600, player_layout,   PLAYER_CLUT, 1)   /* PR128: swerving (rough road) */
+	GFXDECODE_ENTRY( "gfx1", 0x0800, player_layout,   PLAYER_CLUT, 1)   /* PR129: spinout1 */
+	GFXDECODE_ENTRY( "gfx1", 0x0a00, player_layout,   PLAYER_CLUT, 1)   /* PR130: spinout2 */
+	GFXDECODE_ENTRY( "gfx1", 0x0c00, explode_layout,  CYAN_CLUT, 1) /* PR131: spray */
+	GFXDECODE_ENTRY( "gfx1", 0x0e00, computer_layout, 0x00, 5)  /* PR132: computer car A,B */
+	GFXDECODE_ENTRY( "gfx1", 0x1000, text_layout,     CYAN_CLUT, 2) /* PR133: text */
+	GFXDECODE_ENTRY( "gfx1", 0x1200, tree_layout,     TREE_CLUT, 1) /* PR134: tree */
+	GFXDECODE_ENTRY( "gfx1", 0x1300, tree_layout,     TREE_CLUT, 1) /* PR134: grass */
+	GFXDECODE_ENTRY( "gfx1", 0x1400, tree_layout,     SHRUB_CLUT, 1)    /* PR135: shrub */
+	GFXDECODE_ENTRY( "gfx1", 0x1600, house_layout,    HOUSE_CLUT, 1)    /* PR136: house */
+	GFXDECODE_ENTRY( "gfx1", 0x1800, tunnel_layout,   RED_CLUT, 1)  /* PR137: tunnel */
+	GFXDECODE_ENTRY( "gfx1", 0x1900, pool_layout,     CYAN_CLUT, 1) /* PR137: pool (oil slick) */
+	GFXDECODE_ENTRY( "gfx1", 0x1900, belt_layout,     GRASS_CLUT, 2)    /* PR137: red/green belt */
+	GFXDECODE_ENTRY( "gfx1", 0x1a00, rescue_layout,   RESCUE_CLUT, 1)   /* PR138: rescue car */
+	GFXDECODE_ENTRY( "gfx1", 0x1c00, signal_layout,   YELLOW_CLUT, 1)   /* PR139: bridge signal (yellow on black)*/
+	GFXDECODE_ENTRY( "gfx1", 0x1c00, dummy_layout,    PLAYER_CLUT, 1)   /* PR139: dummy car */
+	GFXDECODE_ENTRY( "gfx1", 0x1e00, bridge_layout,   WATER_CLUT, 1)    /* PR140: bridge-water */
+	GFXDECODE_ENTRY( "gfx1", 0x2000, bridge_layout,   WATER_CLUT, 1)    /* PR141: bridge-pillar */
 GFXDECODE_END
 
 static const char *const monaco_sample_names[] =
@@ -1418,99 +1417,77 @@ static const char *const monaco_sample_names[] =
 	"6fanfare",
 	"6siren",
 	"6slip",
-//	"gravel",
-	0
+//  "gravel",
+	nullptr
 };
 
 /* ch 0 = engine; ch 1 = ambulance, puddle; ch 2 = extra car; ch 3 = crash; ch 4 = fanfare */
 
 void monaco_state::machine_reset()
 {
-	uint16_t i;
-	m_time = 0;			/* time remaining = 0 */
-	m_score = 0;		/* player score = 0 */
-	m_gear = 0;			/* low gear */
-	m_plays = 0;		/* no games played */
-	for (i = 0;i < 1000;i++)
-		monaco_word_w (i, 0);	/* delete all scores from RAM */
+	m_rank = 0;
+	m_rank_display = 0;
+	m_bonus_score = 0;
+	m_in_ext_play = 0;
+	m_lives = 0;
+	m_bShaking = 0;
+	m_speed = 0;
+	m_player_ypos = 0;
+	m_rescue_xpos = 0;
+	m_pool_xpos = 0;
+	m_scroll = 0;
+	m_distance = 0;
+	m_ticks = 0;
+	m_page_current = 0;
+	m_page_next = 0;
+	m_page_next2 = 0;
+	m_bSignalVisible = 0;
+	m_left_text = 0;
+	m_right_text = 0;
+	m_bExtendedPlay = 0;
+	m_left_page = 0;
+	m_right_page = 0;
+	m_top_inset = 0;
+	m_bottom_inset = 0;
+	m_player_x = 0;
+	m_player_y = 0;
+	m_player_tile = 0;
+	m_player_splash = 0;
+	m_pool_x = 0;
+	m_pool_y = 0;
+	m_rescue_x = 0;
+	m_rescue_y = 0;
+	m_rescue_tile = 0;
+	for(u8 i=0; i<NUM_COMPUTER_CARS; i++)
+	{
+		m_x[i] = 0;
+		m_y[i] = 0;
+		m_tile[i] = 0;
+		m_color[i] = 0;
+	}
+	m_led_high1 = 0;
+	m_led_high2 = 0;
+	m_led_high3 = 0;
+	m_led_high4 = 0;
+	m_led_high5 = 0;
+	m_led_score = 0;
+	m_led_time = 0;
+	m_led_rank = 0;
+	m_led_plays = 0;
+	m_led_lives = 0;
+	m_led_gear = 0;
+	m_led_speed = 0;
+	m_time = 0;         /* time remaining = 0 */
+	m_score = 0;        /* player score = 0 */
+	m_gear = 0;         /* low gear */
+	m_plays = 0;        /* no games played */
+	for (u16 i = 0;i < 1000;i++)
+		monaco_word_w (i, 0);   /* delete all scores from RAM */
 	GameOver();
 }
 
-void monaco_state::monaco(machine_config &config)
-{
-	/* basic machine hardware */
-	Z80(config, m_maincpu, 200);   // fake
-	m_maincpu->set_addrmap(AS_PROGRAM, &monaco_state::monaco_map);
-	m_maincpu->set_vblank_int("screen", FUNC(monaco_state::monaco_interrupt));
-
-	/* video hardware */
-	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
-	screen.set_refresh_hz(60);
-	screen.set_vblank_time(ATTOSECONDS_IN_USEC(4368));
-	screen.set_size(SCREEN_WIDTH, SCREEN_HEIGHT);
-	screen.set_visarea(0, SCREEN_WIDTH-1, 0, SCREEN_HEIGHT-1);
-	screen.set_screen_update(FUNC(monaco_state::screen_update_monaco));
-	screen.set_palette(m_palette);
-
-	GFXDECODE(config, m_gfxdecode, m_palette, gfx_monaco);
-	PALETTE(config, m_palette, palette_device::BLACK, 160);   // set up in video start
-
-	MCFG_VIDEO_START_OVERRIDE(monaco_state, monaco)
-
-	/* sound hardware */
-	SPEAKER(config, "mono").front_center();
-	SAMPLES(config, m_samples);
-	m_samples->set_channels(5);
-	m_samples->set_samples_names(monaco_sample_names);
-	m_samples->add_route(ALL_OUTPUTS, "mono", 0.90);
-}
-
-/*****************************************************************/
-
-ROM_START( monaco )
-	ROM_REGION( 0xf000, "maincpu", ROMREGION_ERASE00 ) /* fake */
-
-	ROM_REGION( 0x3000, "gfx1", 0 )
-	ROM_LOAD( "pr125", 512*0,  512, CRC(7a66ed4c) SHA1(514e129c334a551b931c90b063b073a9b4bdffc3) ) /* light data */
-	ROM_LOAD( "pr126", 512*1,  512, CRC(5d7a8f12) SHA1(b4f0d21b91a7cf7002f99c08788669c7c38be51d) ) /* explosion */
-	ROM_LOAD( "pr127", 512*2,  512, CRC(8ffdc2f0) SHA1(05cc3330c067965b8b90b5d27119fe9f26580a13) ) /* car(2)main */
-	ROM_LOAD( "pr128", 512*3,  512, CRC(dde29dea) SHA1(34c413edff991297471bd0bc193c4bd8ede4e468) ) /* car(2)rotated */
-	ROM_LOAD( "pr129", 512*4,  512, CRC(7b18af26) SHA1(3d1ff2610813544c3b9b65182f081272a9537640) ) /* car(2)rotated */
-	ROM_LOAD( "pr130", 512*5,  512, CRC(9ef1913b) SHA1(58830121781b8a13532eaf8ea13ec07f10522320) ) /* car(2) spinout */
-	ROM_LOAD( "pr131", 512*6,  512, CRC(ff31eb01) SHA1(fd6bcd92c4bd919bb1a96ca97688d46cb310b39d) ) /* splash */
-	ROM_LOAD( "pr132", 512*7,  512, CRC(6b8ad9bc) SHA1(be36e3b6b647d3a9565bc45903027c791dc889e5) ) /* car(2)(other) */
-	ROM_LOAD( "pr133", 512*8,  512, CRC(d50641d9) SHA1(bf399e9830c88e4d8f8fb386305f54ef766946d9) ) /* text(4) */
-	ROM_LOAD( "pr134", 512*9,  512, CRC(8ebd50bb) SHA1(98d51f503753d4d7191a09b509d26c1e049e981a) ) /* tree, grass */
-	ROM_LOAD( "pr135", 512*10, 512, CRC(986eda32) SHA1(73fa539d4c83748952d9339985208520fec955f3) ) /* shrub */
-	ROM_LOAD( "pr136", 512*11, 512, CRC(ecc5d1a2) SHA1(33bff7381785557a85e4c8bdd74679b59e0ed9d5) ) /* house */
-	ROM_LOAD( "pr137", 512*12, 512, CRC(ddd9004e) SHA1(5229c34578e66d9c51a05439a516513946ba69ed) ) /* tunnel, oil slip */
-	ROM_LOAD( "pr138", 512*13, 512, CRC(058e53cf) SHA1(7c3aaaca5a9e9ce3a3badd0dcc8360342673a397) ) /* firetruck */
-	ROM_LOAD( "pr139", 512*14, 512, CRC(e8ba0794) SHA1(eadd7425134f26b1c126bbcd3d3dabf4b2e1fe70) ) /* car, bridge symbol */
-	ROM_LOAD( "pr140", 512*15, 512, CRC(48e9971b) SHA1(c0c265cdc08727e3caaf49cdfe728a91c4c46ba2) ) /* bridge-water */
-	ROM_LOAD( "pr141", 512*16, 512, CRC(99934236) SHA1(ec271f3e690d5c57ead9132b22b9b1b966e4d170) ) /* bridge-pillar */
-
-	ROM_REGION( 32*3, "proms", 0 )
-	ROM_LOAD( "prm38", 0*32, 32, CRC(82dd0a0f) SHA1(3e7e475c3270853d70c1fe90a773172532b60cfb) ) /* acceleration related */
-	ROM_LOAD( "prm39", 1*32, 32, CRC(6acfa0da) SHA1(1e56da4cdf71a095eac29878969b831babac222b) ) /* regulates opponent car speed */
-
-//  ROM_LOAD( "prm-40", 2*32, 32, CRC(8030dac8) )
-/*  PR40 is in the Fanfare sound circuit and seems to access the particular
- *  notes for the fanfare sound (so PR40 may contain timing and pointer info
- *  on the melody).  The switch (SW1) I mentioned before that helped in tuning
- *  the fanfare sound with the 6 pots seems to help in making the tuning of each
- *  pot for output of one of three audio frequencies (262, 330, 392 Hz),
- *  instead of having to tune to 6 different frequencies (a production/test
- *  equipment issue).
- *  In any case, if we get a good sample of this fanfare sound, we will not
- *  need to bother with this circuit or PR40.  As far a I have seen, the
- *  fanfare sound only comes up at the end of the game if you have a top five
- *  score and possibly when you plug in the game.
- */
-ROM_END
-
 void monaco_state::init_monaco()
 {
-	int i;
 	const double dy_table[5] =
 	{
 		0.75,
@@ -1527,7 +1504,7 @@ void monaco_state::init_monaco()
 	m_track_top_delta = 1;
 
 	/* computer car */
-	for( i=0; i<NUM_COMPUTER_CARS; i++ )
+	for( u8 i=0; i<NUM_COMPUTER_CARS; i++ )
 	{
 		m_xpos[i] = i*32*3 + ((i>1)?192:0);
 		m_ypos[i] = (SCREEN_HEIGHT-16)/2;
@@ -1535,89 +1512,38 @@ void monaco_state::init_monaco()
 	}
 }
 
-/*          rom     parent  machine inp     init */
-GAMEL( 1979, monaco, 0, monaco, monaco, monaco_state, init_monaco, ROT90, "Sega", "Monaco GP", 0, layout_monaco )
-
-
-
-
 /* Monaco GP video hardware simulation */
 
 
-#define plot_pixel(bitmap,x,y,col)	do { bitmap.pix16(y, x) = col; } while (0)
-
 void monaco_state::draw_computer( bitmap_ind16 &bitmap, const rectangle clip )
 {
-	int i;
+	for(u8 i=0; i<NUM_COMPUTER_CARS; i++ )
+		m_gfxdecode->gfx(GFX_COMPUTER)->transpen(bitmap, clip,m_tile[i],m_color[i],0,0,m_x[i],m_y[i],0 );
 
-	for( i=0; i<NUM_COMPUTER_CARS; i++ )
-	{
-		m_gfxdecode->gfx(GFX_COMPUTER)->transpen(
-			bitmap, clip,
-			m_tile[i],
-			m_color[i],
-			0,0,
-			m_x[i],
-			m_y[i],
-			0 );
-	}
-
-	m_gfxdecode->gfx(GFX_RESCUE_CAR)->transpen(
-		bitmap, clip,
-		m_rescue_tile,
-		0, /* color */
-		0,0,
-		m_rescue_x,
-		m_rescue_y,
-		0 );
+	m_gfxdecode->gfx(GFX_RESCUE_CAR)->transpen(bitmap, clip,m_rescue_tile,0,0,0,m_rescue_x,m_rescue_y,0 );
 }
 
 void monaco_state::draw_pool( bitmap_ind16 &bitmap, const rectangle clip )
 {
-	m_gfxdecode->gfx(GFX_POOL)->transpen(
-		bitmap, clip,
-		0,0, /* tile,color */
-		0,0, /* flip */
-		m_pool_x,
-		m_pool_y,
-		0 );
+	m_gfxdecode->gfx(GFX_POOL)->transpen(bitmap, clip, 0, 0, 0, 0, m_pool_x, m_pool_y, 0 );
 }
 
 void monaco_state::draw_player( bitmap_ind16 &bitmap, const rectangle clip )
 {
-	int gfx;
-	int tile;
-
 	switch( m_player_splash )
 	{
 	case 0:
-		m_gfxdecode->gfx(GFX_SPRAY)->transpen( bitmap, clip,
-			2,0,0,0,
-			m_player_x,
-			m_player_y+32-8,
-			0);
-		m_gfxdecode->gfx(GFX_SPRAY)->transpen( bitmap, clip,
-			0,0,0,0,
-			m_player_x,
-			m_player_y-32+8,
-			0);
+		m_gfxdecode->gfx(GFX_SPRAY)->transpen( bitmap, clip, 2, 0, 0, 0, m_player_x, m_player_y+32-8, 0);
+		m_gfxdecode->gfx(GFX_SPRAY)->transpen( bitmap, clip, 0, 0, 0, 0, m_player_x, m_player_y-32+8, 0);
 		break;
 	case 1:
-		m_gfxdecode->gfx(GFX_SPRAY)->transpen( bitmap, clip,
-			3,0,0,0,
-			m_player_x,
-			m_player_y+32-8,
-			0);
-		m_gfxdecode->gfx(GFX_SPRAY)->transpen( bitmap, clip,
-			1,0,0,0,
-			m_player_x,
-			m_player_y-32+8,
-			0);
+		m_gfxdecode->gfx(GFX_SPRAY)->transpen( bitmap, clip, 3, 0, 0, 0, m_player_x, m_player_y+32-8, 0);
+		m_gfxdecode->gfx(GFX_SPRAY)->transpen( bitmap, clip, 1, 0, 0, 0, m_player_x, m_player_y-32+8, 0);
 		break;
 	}
 
-	tile = m_player_tile;
-	gfx = 0;
+	int tile = m_player_tile;
+	int gfx = 0;
 	if( tile>=0 )
 	{
 		switch( tile )
@@ -1640,12 +1566,7 @@ void monaco_state::draw_player( bitmap_ind16 &bitmap, const rectangle clip )
 		case 11: gfx = GFX_SHAKE; tile -= 10; break;
 		}
 
-		m_gfxdecode->gfx(gfx)->transpen( bitmap, clip,
-			tile,0,
-			0,0,
-			m_player_x,
-			m_player_y,
-			0);
+		m_gfxdecode->gfx(gfx)->transpen( bitmap, clip, tile, 0, 0, 0, m_player_x, m_player_y, 0);
 	}
 }
 
@@ -1654,16 +1575,25 @@ void monaco_state::draw_player( bitmap_ind16 &bitmap, const rectangle clip )
 void monaco_state::draw_strip( bitmap_ind16 &bitmap, int sy, int x0, int x1, int xpos, int pen )
 {
 	int sx;
-	if( x0<xpos ) x0 = xpos;
-	if( x1>xpos+PAGE_SIZE ) x1 = xpos+PAGE_SIZE;
-	if( x0<0 ) x0 = 0;
-	if( x1>SCREEN_WIDTH ) x1 = SCREEN_WIDTH;
-	for( sx=x0; sx<x1; sx++ ) plot_pixel( bitmap,sx,sy,pen );
+	if( x0 < xpos )
+		x0 = xpos;
+	if( x1 > (xpos+PAGE_SIZE) )
+		x1 = xpos+PAGE_SIZE;
+	if( x0 < 0 )
+		x0 = 0;
+	if( x1 > SCREEN_WIDTH )
+		x1 = SCREEN_WIDTH;
+	for( sx=x0; sx<x1; sx++ )
+		do
+		{
+			bitmap.pix(sy, sx) = pen;
+		}
+		while (0);
 }
 
 void monaco_state::DrawSmoothZone( bitmap_ind16 &bitmap, const rectangle clip, int xpos )
 {
-	const uint8_t data[14] =
+	static const u8 data[14] =
 	{
 		GFX_GRASS,GFX_GRASS,GFX_GRASS,
 		GFX_TREE,GFX_GRASS,GFX_TREE,
@@ -1673,39 +1603,26 @@ void monaco_state::DrawSmoothZone( bitmap_ind16 &bitmap, const rectangle clip, i
 	};
 	int top_inset = m_top_inset;
 	int bottom_inset = m_bottom_inset;
-	int i;
 
 	draw_strip( bitmap, top_inset, xpos, xpos+PAGE_SIZE, xpos, YELLOW_PEN );
 	draw_strip( bitmap, SCREEN_HEIGHT-1 - bottom_inset, xpos, xpos+PAGE_SIZE, xpos, YELLOW_PEN );
 
-	for( i=0; i<14; i++ )
+	for( u8 i=0; i<14; i++ )
 	{
 		int code = data[i];
 		gfx_element *gfx = m_gfxdecode->gfx(code);
 		gfx_element *belt = m_gfxdecode->gfx((code==GFX_HOUSE)?GFX_DUMMY:GFX_BELT);
-		int j;
 
-		for( j=0; j<3; j++ )
+		for( u8 j=0; j<3; j++ )
 		{
-			gfx->opaque( bitmap, clip,
-				0,0, /* number, color */
-				0,0, /* no flip */
-				xpos, m_top_inset-32-16-j*32 );
+			gfx->opaque( bitmap, clip, 0, 0, 0, 0, xpos, m_top_inset-32-16-j*32 );
 
-			gfx->opaque( bitmap, clip,
-				0,0, /* number, color */
-				0,0, /* no flip */
-				xpos,SCREEN_HEIGHT-m_bottom_inset+j*32+16-8 );
+			gfx->opaque( bitmap, clip, 0, 0, 0, 0, xpos,SCREEN_HEIGHT-m_bottom_inset+j*32+16-8 );
 		}
-		belt->opaque( bitmap, clip,
-			0,0, /* number, color */
-			0,0, /* no flip */
-			xpos, m_top_inset-16 );
 
-		belt->opaque( bitmap, clip,
-			0,0, /* number, color */
-			0,0, /* no flip */
-			xpos,SCREEN_HEIGHT-m_bottom_inset );
+		belt->opaque( bitmap, clip, 0, 0, 0, 0, xpos, m_top_inset-16 );
+
+		belt->opaque( bitmap, clip, 0, 0, 0, 0, xpos,SCREEN_HEIGHT-m_bottom_inset );
 
 		xpos += 32;
 	}
@@ -1713,7 +1630,7 @@ void monaco_state::DrawSmoothZone( bitmap_ind16 &bitmap, const rectangle clip, i
 
 void monaco_state::DrawSlipZone( bitmap_ind16 &bitmap, const rectangle clip, int xpos )
 {
-	const uint8_t data[14] =
+	static const u8 data[14] =
 	{
 		GFX_SHRUB,GFX_SHRUB,GFX_SHRUB,
 		GFX_SHRUB,GFX_SHRUB,GFX_SHRUB,
@@ -1724,38 +1641,26 @@ void monaco_state::DrawSlipZone( bitmap_ind16 &bitmap, const rectangle clip, int
 
 	int top_inset = m_top_inset;
 	int bottom_inset = m_bottom_inset;
-	int i;
 
 	draw_strip( bitmap, top_inset, xpos, xpos+PAGE_SIZE, xpos, YELLOW_PEN );
 	draw_strip( bitmap, SCREEN_HEIGHT-1 - bottom_inset, xpos, xpos+PAGE_SIZE, xpos, YELLOW_PEN );
 
-	for( i=0; i<14; i++ ){
+	for( u8 i=0; i<14; i++ )
+	{
 		int code = data[i];
 		gfx_element *gfx = m_gfxdecode->gfx(code);
 		gfx_element *belt = m_gfxdecode->gfx((code==GFX_HOUSE)?GFX_DUMMY:GFX_BELT);
-		int j;
 
-		for( j=0; j<3; j++ ){
-			gfx->opaque( bitmap, clip,
-				0,0, /* number, color */
-				0,0, /* no flip */
-				xpos, top_inset-32-j*32-16 );
+		for( u8 j=0; j<3; j++ )
+		{
+			gfx->opaque( bitmap, clip, 0, 0, 0, 0, xpos, top_inset-32-j*32-16 );
 
-			gfx->opaque( bitmap, clip,
-				0,0, /* number, color */
-				0,0, /* no flip */
-				xpos,SCREEN_HEIGHT-bottom_inset+j*32+16-8 );
+			gfx->opaque( bitmap, clip, 0, 0, 0, 0, xpos,SCREEN_HEIGHT-bottom_inset+j*32+16-8 );
 		}
 
-		belt->opaque( bitmap, clip,
-			0,0, /* number, color */
-			0,0, /* no flip */
-			xpos, top_inset-16 );
+		belt->opaque( bitmap, clip, 0, 0, 0, 0, xpos, top_inset-16 );
 
-		belt->opaque( bitmap, clip,
-			0,0, /* number, color */
-			0,0, /* no flip */
-			xpos,SCREEN_HEIGHT-bottom_inset );
+		belt->opaque( bitmap, clip, 0, 0, 0, 0, xpos,SCREEN_HEIGHT-bottom_inset );
 
 		xpos += 32;
 	}
@@ -1763,7 +1668,7 @@ void monaco_state::DrawSlipZone( bitmap_ind16 &bitmap, const rectangle clip, int
 
 void monaco_state::DrawGravelZone( bitmap_ind16 &bitmap, const rectangle clip, int xpos )
 {
-	const uint8_t data[14] = {
+	static const u8 data[14] = {
 		GFX_SHRUB,GFX_SHRUB,GFX_SHRUB,
 		GFX_SHRUB,GFX_SHRUB,GFX_SHRUB,
 		GFX_SHRUB,GFX_HOUSE,
@@ -1772,63 +1677,43 @@ void monaco_state::DrawGravelZone( bitmap_ind16 &bitmap, const rectangle clip, i
 	};
 	int top_inset = m_top_inset;
 	int bottom_inset = m_bottom_inset;
-	int i;
 	int xpos0 = xpos;
 
-	for( i=0; i<14; i++ )
+	for( u8 i=0; i<14; i++ )
 	{
 		int code = data[i];
 		gfx_element *gfx = m_gfxdecode->gfx(code);
 		gfx_element *belt = m_gfxdecode->gfx((code==GFX_HOUSE)?GFX_DUMMY:GFX_BELT);
-		int j;
 		int ypos;
 
 		/* draw gravel */
 		if( data[i]!=GFX_HOUSE )
 		{
 			ypos = SCREEN_HEIGHT-bottom_inset-32;
-			m_gfxdecode->gfx(GFX_BELT)->opaque( bitmap, clip,
-				1,1, /* number, color */
-				0,0, /* no flip */
-				xpos, ypos+32-8 );
+			m_gfxdecode->gfx(GFX_BELT)->opaque( bitmap, clip, 1, 1, 0, 0, xpos, ypos+32-8 );
 			ypos-=24;
-			while( ypos>0 ){
-				m_gfxdecode->gfx(GFX_BELT)->opaque( bitmap, clip,
-					1,1, /* number, color */
-					0,0, /* no flip */
-					xpos, ypos );
+			while( ypos>0 )
+			{
+				m_gfxdecode->gfx(GFX_BELT)->opaque( bitmap, clip, 1, 1, 0, 0, xpos, ypos );
 				ypos -= 16;
 			}
 		}
 
-		for( j=0; j<3; j++ )
+		for( u8 j=0; j<3; j++ )
 		{
 			ypos = SCREEN_HEIGHT-bottom_inset+16+j*32-8;
-			gfx->opaque( bitmap, clip,
-				0,0, /* number, color */
-				0,0, /* no flip */
-				xpos, ypos );
+			gfx->opaque( bitmap, clip, 0, 0, 0, 0, xpos, ypos );
 		}
 
-		for( j=0; j<3; j++ )
+		for( u8 j=0; j<3; j++ )
 		{
 			ypos = top_inset-32-16-j*32;
-			gfx->opaque( bitmap, clip,
-				0,0, /* number, color */
-				0,0, /* no flip */
-				xpos, ypos );
+			gfx->opaque( bitmap, clip, 0, 0, 0, 0, xpos, ypos );
 		}
 
-		belt->opaque( bitmap, clip,
-			0,0, /* number, color */
-			0,0, /* no flip */
-			xpos, top_inset-16 );
+		belt->opaque( bitmap, clip, 0, 0, 0, 0, xpos, top_inset-16 );
 
-		belt->opaque( bitmap, clip,
-			0,0, /* number, color */
-			0,0, /* no flip */
-			xpos,SCREEN_HEIGHT-bottom_inset );
-
+		belt->opaque( bitmap, clip, 0, 0, 0, 0, xpos,SCREEN_HEIGHT-bottom_inset );
 
 		xpos += 32;
 	}
@@ -1841,30 +1726,21 @@ void monaco_state::DrawBridgeZone( bitmap_ind16 &bitmap, const rectangle clip, i
 	gfx_element *gfx1 = m_gfxdecode->gfx(GFX_BRIDGE1);
 	gfx_element *gfx2 = m_gfxdecode->gfx(GFX_BRIDGE2);
 
-	int i;
-	for( i=0; i<14; i++ )
+	for( u8 i=0; i<14; i++ )
 	{
-		int j;
-		gfx_element *gfx = (i==0)?gfx2:gfx1;
-		for( j=0; j<7; j++ )
+		gfx_element *gfx = (i==0) ? gfx2 : gfx1;
+		for( u8 j=0; j<7; j++ )
 		{
-			int flip;
-			for( flip=0; flip<=1; flip++ )
+			for( int flip=0; flip<=1; flip++ )
 			{
-				int ypos = flip?(SCREEN_HEIGHT-16-j*16)+8:j*16-8;
+				int ypos = flip ? (SCREEN_HEIGHT-16-j*16)+8 : j*16-8;
 				if( j<5 )
 				{ /* water */
-					gfx1->opaque( bitmap, clip,
-						0,0, /* number, color */
-						0,flip,
-						xpos, ypos );
+					gfx1->opaque( bitmap, clip, 0, 0, 0, flip, xpos, ypos );
 				}
 				else
 				{ /* edge of bridge */
-					gfx->opaque( bitmap, clip,
-						j-5,0, /* number, color */
-						0,flip,
-						xpos, ypos );
+					gfx->opaque( bitmap, clip, j-5, 0, 0, flip, xpos, ypos );
 				}
 			}
 		}
@@ -1887,27 +1763,19 @@ void monaco_state::DrawTunnelWall( bitmap_ind16 &bitmap, const rectangle clip, i
 	gfx_element *gfx = m_gfxdecode->gfx(GFX_TUNNEL);
 	int top_inset = m_top_inset - 16;
 	int bottom_inset = m_bottom_inset - 16;
-	int i;
 
 	clip2.min_x = clip.min_x;
 	clip2.max_x = clip.max_x;
 	clip2.max_y = clip.max_y;
 	clip2.min_y = SCREEN_HEIGHT-bottom_inset;
 
-	for( i=0; i<14; i++ )
+	for( u8 i=0; i<14; i++ )
 	{
-		int j;
-		for( j=0; j<2; j++ )
+		for( u8 j=0; j<2; j++ )
 		{
-			gfx->transpen( bitmap, clip,
-				1,0, /* number, color */
-				0,0, /* no flip */
-				xpos, top_inset-32-j*32, 0 );
+			gfx->transpen( bitmap, clip, 1, 0, 0, 0, xpos, top_inset-32-j*32, 0 );
 
-			gfx->transpen( bitmap, clip,
-				1,0, /* number, color */
-				0,0, /* no flip */
-				xpos, SCREEN_HEIGHT-bottom_inset+j*32 - 8, 0 );
+			gfx->transpen( bitmap, clip, 1, 0, 0, 0, xpos, SCREEN_HEIGHT-bottom_inset+j*32 - 8, 0 );
 		}
 		xpos += 32;
 	}
@@ -1919,8 +1787,8 @@ void monaco_state::draw_light_helper( bitmap_ind16 &bitmap, int xpos )
 	const unsigned char *source = memregion( "gfx1" )->base();
 	int x0 = m_player_x-128;
 	int y0 = m_player_y-48;
-	int sy;
-	for( sy=0; sy<SCREEN_HEIGHT; sy++ )
+
+	for( int sy=0; sy<SCREEN_HEIGHT; sy++ )
 	{
 		int i = sy-y0;
 		if( i<0 || i>=128 )
@@ -1989,13 +1857,9 @@ void monaco_state::draw_page( bitmap_ind16 &bitmap, const rectangle clip, int wh
 
 void monaco_state::draw_background( bitmap_ind16 &bitmap, const rectangle clip )
 {
-	draw_page(bitmap, clip,
-		m_right_page,
-		SCREEN_WIDTH-14*32+m_scroll );
+	draw_page(bitmap, clip, m_right_page, SCREEN_WIDTH-14*32+m_scroll );
 
-	draw_page(bitmap, clip,
-		m_left_page,
-		SCREEN_WIDTH-14*32*2+m_scroll );
+	draw_page(bitmap, clip, m_left_page, SCREEN_WIDTH-14*32*2+m_scroll );
 }
 
 void monaco_state::draw_text( bitmap_ind16 &bitmap, const rectangle clip )
@@ -2005,48 +1869,37 @@ void monaco_state::draw_text( bitmap_ind16 &bitmap, const rectangle clip )
 
 	if( m_left_text != -1 )
 	{
-		m_gfxdecode->gfx(GFX_TEXT)->zoom_transpen( bitmap, clip,
-			m_left_text,0,
-			0,0, /* flip */
-			sx-96,sy,
-			1<<16, 2<<16, 0
-		);
+		m_gfxdecode->gfx(GFX_TEXT)->zoom_transpen( bitmap, clip, m_left_text, 0, 0, 0, sx-96, sy, 1<<16, 2<<16, 0 );
 	}
 
 	if( m_right_text != -1 )
 	{
-		m_gfxdecode->gfx(GFX_TEXT)->zoom_transpen( bitmap, clip,
-			m_right_text,1,
-			0,0, /* flip */
-			SCREEN_WIDTH-32,sy,
-			1<<16, 2<<16, 0
-		);
+		m_gfxdecode->gfx(GFX_TEXT)->zoom_transpen( bitmap, clip, m_right_text, 1, 0, 0, SCREEN_WIDTH-32, sy, 1<<16, 2<<16, 0 );
 	}
 }
 
 /* last two values are L and H used to display in gear field (not supported officially)*/
-static const uint8_t led_map[12] = { 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x38,0x76 };
+static const u8 led_map[12] = { 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x38,0x76 };
 
 /* following outputs LED's for bezel. also displays time,score&speed text versions (text version disabled here) */
 
 void monaco_state::draw_leds( bitmap_ind16 &bitmap )
 {
 	int i; // must be signed
-	uint32_t data;
 
-//	data = m_speed;
-//	for( i=2; i>=0; i-- )
-//	{
-//		drawgfx_transpen( bitmap, led_font,
-//			data%10,0, /* number, color */
-//			0,1, /* no flip */
-//			9,SCREEN_HEIGHT-6-i*6,
-//			NULL, TRANSPARENCY_NONE,0 );
+//  u32 data = m_speed;
+//  for( i=2; i>=0; i-- )
+//  {
+//      drawgfx_transpen( bitmap, led_font,
+//          data%10,0, /* number, color */
+//          0,1, /* no flip */
+//          9,SCREEN_HEIGHT-6-i*6,
+//          NULL, TRANSPARENCY_NONE,0 );
 //
-//		data = data/10;
-//	}
+//      data = data/10;
+//  }
 
-	data = m_led_high1>>8;
+	u32 data = m_led_high1>>8;
 	for( i=3; i>=0; i-- )
 	{
 		m_out_digit[10+i] = led_map[data%10];
@@ -2084,11 +1937,11 @@ void monaco_state::draw_leds( bitmap_ind16 &bitmap )
 	data = m_led_score>>8;
 	for( i=3; i>=0; i-- )
 	{
-//		drawgfx_transpen( bitmap, led_font,
-//			data%10,0, /* number, color */
-//			0,1, /* no flip */
-//			0,SCREEN_HEIGHT-6-i*6,
-//			NULL, TRANSPARENCY_NONE,0 );
+//      drawgfx_transpen( bitmap, led_font,
+//          data%10,0, /* number, color */
+//          0,1, /* no flip */
+//          0,SCREEN_HEIGHT-6-i*6,
+//          NULL, TRANSPARENCY_NONE,0 );
 
 		m_out_digit[i] = led_map[data%10];
 		data = data/10;
@@ -2118,11 +1971,11 @@ void monaco_state::draw_leds( bitmap_ind16 &bitmap )
 	data = m_led_speed;
 	for( i=2; i>=0; i-- )
 	{
-//		drawgfx_transpen( bitmap, led_font,
-//			data%10,0, /* number, color */
-//			0,1, /* no flip */
-//			9,SCREEN_HEIGHT-6-i*6,
-//			NULL, TRANSPARENCY_NONE,0 );
+//      drawgfx_transpen( bitmap, led_font,
+//          data%10,0, /* number, color */
+//          0,1, /* no flip */
+//          9,SCREEN_HEIGHT-6-i*6,
+//          NULL, TRANSPARENCY_NONE,0 );
 //
 		m_out_digit[80+i] = led_map[data%10];
 		data = data/10;
@@ -2145,10 +1998,10 @@ void monaco_state::draw_leds( bitmap_ind16 &bitmap )
 	data = m_led_time>>8;
 	for( i=1; i>=0; i-- )
 	{
-//		drawgfx_opaque( bitmap, NULL, led_font,
-//			data%10,0, /* number, color */
-//			0,1, /* no flip */
-//			18,SCREEN_HEIGHT-6-i*6 );
+//      drawgfx_opaque( bitmap, NULL, led_font,
+//          data%10,0, /* number, color */
+//          0,1, /* no flip */
+//          18,SCREEN_HEIGHT-6-i*6 );
 
 		m_out_digit[i+4] = led_map[data%10];
 		data = data/10;
@@ -2159,15 +2012,15 @@ void monaco_state::draw_signal( bitmap_ind16 &bitmap )
 {
 	if( m_bSignalVisible )
 	{
-//		drawgfx_opaque(
-//			bitmap, NULL, machine().gfx[GFX_SIGNAL],
-//			0,0, /* number, color */
-//			0,0, /* no flip */
-//			32,(SCREEN_HEIGHT - 32)/2 );
+//      drawgfx_opaque(
+//          bitmap, NULL, machine().gfx[GFX_SIGNAL],
+//          0,0, /* number, color */
+//          0,0, /* no flip */
+//          32,(SCREEN_HEIGHT - 32)/2 );
 	}
 }
 
-uint32_t monaco_state::screen_update_monaco(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+u32 monaco_state::screen_update_monaco(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	const rectangle &visarea = screen.visible_area();
 	draw_background( bitmap, visarea );
@@ -2184,8 +2037,6 @@ uint32_t monaco_state::screen_update_monaco(screen_device &screen, bitmap_ind16 
 
 VIDEO_START_MEMBER( monaco_state, monaco )
 {
-	m_out_digit.resolve();
-
 	m_palette->set_pen_color( 0, 0x00,0x00,0x00 ); /* black (tire) */
 	m_palette->set_pen_color( 1, 0xff,0xff,0xff ); /* white (trim) */
 	/* computer car */
@@ -2254,3 +2105,81 @@ VIDEO_START_MEMBER( monaco_state, monaco )
 // 0,198,255: wet road
 // 255,215,0: yellow trim
 }
+
+void monaco_state::monaco(machine_config &config)
+{
+	/* basic machine hardware */
+	Z80(config, m_maincpu, 200);   // fake
+	m_maincpu->set_addrmap(AS_PROGRAM, &monaco_state::monaco_map);
+	m_maincpu->set_vblank_int("screen", FUNC(monaco_state::monaco_interrupt));
+
+	/* video hardware */
+	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
+	screen.set_refresh_hz(60);
+	screen.set_vblank_time(ATTOSECONDS_IN_USEC(4368));
+	screen.set_size(SCREEN_WIDTH, SCREEN_HEIGHT);
+	screen.set_visarea(0, SCREEN_WIDTH-1, 0, SCREEN_HEIGHT-1);
+	screen.set_screen_update(FUNC(monaco_state::screen_update_monaco));
+	screen.set_palette(m_palette);
+
+	GFXDECODE(config, m_gfxdecode, m_palette, gfx_monaco);
+	PALETTE(config, m_palette, palette_device::BLACK, 160);   // set up in video start
+
+	MCFG_VIDEO_START_OVERRIDE(monaco_state, monaco)
+
+	/* sound hardware */
+	SPEAKER(config, "mono").front_center();
+	SAMPLES(config, m_samples);
+	m_samples->set_channels(5);
+	m_samples->set_samples_names(monaco_sample_names);
+	m_samples->add_route(ALL_OUTPUTS, "mono", 0.5);
+}
+
+/*****************************************************************/
+
+ROM_START( monaco )
+	ROM_REGION( 0xf000, "maincpu", ROMREGION_ERASE00 ) /* fake */
+
+	ROM_REGION( 0x3000, "gfx1", 0 )
+	ROM_LOAD( "pr125", 512*0,  512, CRC(7a66ed4c) SHA1(514e129c334a551b931c90b063b073a9b4bdffc3) ) /* light data */
+	ROM_LOAD( "pr126", 512*1,  512, CRC(5d7a8f12) SHA1(b4f0d21b91a7cf7002f99c08788669c7c38be51d) ) /* explosion */
+	ROM_LOAD( "pr127", 512*2,  512, CRC(8ffdc2f0) SHA1(05cc3330c067965b8b90b5d27119fe9f26580a13) ) /* car(2)main */
+	ROM_LOAD( "pr128", 512*3,  512, CRC(dde29dea) SHA1(34c413edff991297471bd0bc193c4bd8ede4e468) ) /* car(2)rotated */
+	ROM_LOAD( "pr129", 512*4,  512, CRC(7b18af26) SHA1(3d1ff2610813544c3b9b65182f081272a9537640) ) /* car(2)rotated */
+	ROM_LOAD( "pr130", 512*5,  512, CRC(9ef1913b) SHA1(58830121781b8a13532eaf8ea13ec07f10522320) ) /* car(2) spinout */
+	ROM_LOAD( "pr131", 512*6,  512, CRC(ff31eb01) SHA1(fd6bcd92c4bd919bb1a96ca97688d46cb310b39d) ) /* splash */
+	ROM_LOAD( "pr132", 512*7,  512, CRC(6b8ad9bc) SHA1(be36e3b6b647d3a9565bc45903027c791dc889e5) ) /* car(2)(other) */
+	ROM_LOAD( "pr133", 512*8,  512, CRC(d50641d9) SHA1(bf399e9830c88e4d8f8fb386305f54ef766946d9) ) /* text(4) */
+	ROM_LOAD( "pr134", 512*9,  512, CRC(8ebd50bb) SHA1(98d51f503753d4d7191a09b509d26c1e049e981a) ) /* tree, grass */
+	ROM_LOAD( "pr135", 512*10, 512, CRC(986eda32) SHA1(73fa539d4c83748952d9339985208520fec955f3) ) /* shrub */
+	ROM_LOAD( "pr136", 512*11, 512, CRC(ecc5d1a2) SHA1(33bff7381785557a85e4c8bdd74679b59e0ed9d5) ) /* house */
+	ROM_LOAD( "pr137", 512*12, 512, CRC(ddd9004e) SHA1(5229c34578e66d9c51a05439a516513946ba69ed) ) /* tunnel, oil slip */
+	ROM_LOAD( "pr138", 512*13, 512, CRC(058e53cf) SHA1(7c3aaaca5a9e9ce3a3badd0dcc8360342673a397) ) /* firetruck */
+	ROM_LOAD( "pr139", 512*14, 512, CRC(e8ba0794) SHA1(eadd7425134f26b1c126bbcd3d3dabf4b2e1fe70) ) /* car, bridge symbol */
+	ROM_LOAD( "pr140", 512*15, 512, CRC(48e9971b) SHA1(c0c265cdc08727e3caaf49cdfe728a91c4c46ba2) ) /* bridge-water */
+	ROM_LOAD( "pr141", 512*16, 512, CRC(99934236) SHA1(ec271f3e690d5c57ead9132b22b9b1b966e4d170) ) /* bridge-pillar */
+
+	ROM_REGION( 32*3, "proms", 0 )
+	ROM_LOAD( "prm38", 0*32, 32, CRC(82dd0a0f) SHA1(3e7e475c3270853d70c1fe90a773172532b60cfb) ) /* acceleration related */
+	ROM_LOAD( "prm39", 1*32, 32, CRC(6acfa0da) SHA1(1e56da4cdf71a095eac29878969b831babac222b) ) /* regulates opponent car speed */
+
+//  ROM_LOAD( "prm-40", 2*32, 32, CRC(8030dac8) )  // rom not exist...
+/*  PR40 is in the Fanfare sound circuit and seems to access the particular
+ *  notes for the fanfare sound (so PR40 may contain timing and pointer info
+ *  on the melody).The switch (SW1) I mentioned before that helped in tuning
+ *  the fanfare sound with the 6 pots seems to help in making the tuning of each
+ *  pot for output of one of three audio frequencies (262, 330, 392 Hz),
+ *  instead of having to tune to 6 different frequencies (a production/test
+ *  equipment issue).
+ *  In any case, if we get a good sample of this fanfare sound, we will not
+ *  need to bother with this circuit or PR40.As far a I have seen, the
+ *  fanfare sound only comes up at the end of the game if you have a top five
+ *  score and possibly when you plug in the game.
+ */
+ROM_END
+
+} // anonymous namespace
+
+/*          rom     parent  machine inp     init */
+GAMEL( 1979, monaco, 0, monaco, monaco, monaco_state, init_monaco, ROT90, "Sega", "Monaco GP", 0, layout_monaco )
+

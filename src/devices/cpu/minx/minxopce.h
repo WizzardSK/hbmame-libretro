@@ -367,7 +367,7 @@ void minx_cpu_device::execute_one_ce()
 			break;
 		case 0xAE: { /* HALT */ m_halted = 1; }
 			break;
-		case 0xAF: { }
+		case 0xAF: { /* STOP */ }
 			break;
 
 		case 0xB0: { m_BA = ( m_BA & 0x00FF ) | ( AND8( ( m_BA >> 8 ), rdop() ) << 8 ); }
@@ -454,7 +454,7 @@ void minx_cpu_device::execute_one_ce()
 			break;
 		case 0xD8: { m_HL = ( m_HL & 0x00FF ) * ( m_BA & 0x00FF );  }
 			break;
-		case 0xD9: { int d = m_HL / ( m_BA & 0x00FF ); m_HL = ( ( m_HL - ( ( m_BA & 0x00FF ) * d ) ) << 8 ) | d; }
+		case 0xD9: { if ( m_BA & 0x00FF ) { int d = m_HL / ( m_BA & 0x00FF ); m_HL = ( ( m_HL - ( ( m_BA & 0x00FF ) * d ) ) << 8 ) | d; } }
 			break;
 		case 0xDA: { /* illegal operation? */ }
 			break;

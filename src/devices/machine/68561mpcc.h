@@ -62,26 +62,26 @@ public:
 	auto out_trxc_cb() { return m_out_trxc_cb.bind(); }
 	auto out_int_cb() { return m_out_int_cb.bind(); }
 
-	DECLARE_READ8_MEMBER( read );
-	DECLARE_WRITE8_MEMBER( write );
+	uint8_t read(offs_t offset);
+	void write(offs_t offset, uint8_t data);
 
 	// interrupt acknowledge
-	DECLARE_READ8_MEMBER( iack );
+	uint8_t iack(offs_t offset); // declared but not defined?
 
 	/* Callbacks to be called by others for signals driven by connected devices */
-	DECLARE_WRITE_LINE_MEMBER( write_rx );
-	DECLARE_WRITE_LINE_MEMBER( cts_w );
-	DECLARE_WRITE_LINE_MEMBER( dsr_w );
-	DECLARE_WRITE_LINE_MEMBER( dcd_w );
-	DECLARE_WRITE_LINE_MEMBER( rxc_w ) {} // { m_chanA->rxc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( txc_w ) {} // { m_chanA->txc_w(state); }
+	void write_rx(int state);
+	void cts_w(int state);
+	void dsr_w(int state);
+	void dcd_w(int state);
+	void rxc_w(int state) {} // { m_chanA->rxc_w(state); }
+	void txc_w(int state) {} // { m_chanA->txc_w(state); }
 
 protected:
 	mpcc_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint32_t variant);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_serial_interface overrides
 	virtual void tra_callback() override;

@@ -22,16 +22,16 @@ public:
 
 protected:
 	// device_t overrides
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual void device_start() override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual void device_start() override ATTR_COLD;
 
 	// device_sbus_slot_interface overrides
 	virtual void install_device() override;
 
-	DECLARE_READ32_MEMBER(unknown_r);
-	DECLARE_WRITE32_MEMBER(unknown_w);
-	DECLARE_READ32_MEMBER(rom_r);
+	uint32_t unknown_r(offs_t offset, uint32_t mem_mask = ~0);
+	void unknown_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
+	uint32_t rom_r(offs_t offset);
 
 private:
 	void mem_map(address_map &map) override;

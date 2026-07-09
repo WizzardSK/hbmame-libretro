@@ -2,7 +2,7 @@
 // copyright-holders:Aaron Giles
 /***************************************************************************
 
-    device.h
+    device.ipp
 
     Device interface functions.
 
@@ -21,14 +21,14 @@
 //  TYPE DEFINITIONS
 //**************************************************************************
 
-typedef device_delegate<void (u32)> clock_update_delegate;
+using clock_update_delegate = device_delegate<void (u32)>;
 
 
 //**************************************************************************
 //  MEMBER TEMPLATES
 //**************************************************************************
 
-namespace emu { namespace detail {
+namespace emu::detail {
 
 template <class DeviceClass> template <typename... Params>
 inline DeviceClass &device_type_impl<DeviceClass>::operator()(machine_config &mconfig, char const *tag, Params &&... args) const
@@ -60,21 +60,13 @@ inline DeviceClass &device_type_impl<DeviceClass>::operator()(machine_config_rep
 	return finder = result;
 }
 
+} // namespace emu::detail
 
-template <class DeviceClass, bool Required>
-inline device_delegate_helper::device_delegate_helper(device_finder<DeviceClass, Required> const &finder)
-	: device_delegate_helper(finder.finder_target().first, finder.finder_tag())
+template <typename... T>
+inline emu_timer *device_t::timer_alloc(T &&... args)
 {
+	return machine().scheduler().timer_alloc(timer_expired_delegate(std::forward<T>(args)...));
 }
-
-template <class DeviceClass, bool Required>
-inline void device_delegate_helper::set_tag(device_finder<DeviceClass, Required> const &finder)
-{
-	std::tie(m_base, m_tag) = finder.finder_target();
-}
-
-} } // namespace emu::detail
-
 
 template <typename Format, typename... Params>
 inline void device_t::popmessage(Format &&fmt, Params &&... args) const
@@ -88,7 +80,7 @@ inline void device_t::logerror(Format &&fmt, Params &&... args) const
 {
 	if (m_machine != nullptr && m_machine->allow_logging())
 	{
-		g_profiler.start(PROFILER_LOGERROR);
+		auto profile = g_profiler.start(PROFILER_LOGERROR);
 
 		// dump to the buffer
 		m_string_buffer.clear();
@@ -98,23 +90,17 @@ inline void device_t::logerror(Format &&fmt, Params &&... args) const
 		m_string_buffer.put('\0');
 
 		m_machine->strlog(&m_string_buffer.vec()[0]);
-
-		g_profiler.stop();
 	}
 }
 
 template <typename T, typename Ret, typename... Params>
-inline std::enable_if_t<device_memory_interface::is_related_class<device_t, T>::value> device_memory_interface::set_addrmap(int spacenum, Ret (T::*func)(Params... args))
+inline void device_memory_interface::set_addrmap(int spacenum, Ret (T::*func)(Params... args))
 {
 	device_t &dev(device().mconfig().current_device());
-	set_addrmap(spacenum, address_map_constructor(func, dev.tag(), &downcast<T &>(dev)));
-}
-
-template <typename T, typename Ret, typename... Params>
-inline std::enable_if_t<!device_memory_interface::is_related_class<device_t, T>::value> device_memory_interface::set_addrmap(int spacenum, Ret (T::*func)(Params... args))
-{
-	device_t &dev(device().mconfig().current_device());
-	set_addrmap(spacenum, address_map_constructor(func, dev.tag(), &dynamic_cast<T &>(dev)));
+	if constexpr (is_related_class<device_t, T>::value)
+		set_addrmap(spacenum, address_map_constructor(func, dev.tag(), &downcast<T &>(dev)));
+	else
+		set_addrmap(spacenum, address_map_constructor(func, dev.tag(), &dynamic_cast<T &>(dev)));
 }
 
 #endif // MAME_EMU_DEVICE_IPP

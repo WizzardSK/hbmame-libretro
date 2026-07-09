@@ -19,8 +19,8 @@ public:
 	void pvc_write_pack_color();
 //  void pvc_write_bankswitch(address_space &space);
 	uint32_t get_bank_base();
-	DECLARE_READ16_MEMBER(protection_r);
-	DECLARE_WRITE16_MEMBER(protection_w);
+	uint16_t protection_r(offs_t offset);
+	void protection_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
 
 	uint16_t m_cart_ram[0x1000];
 
@@ -31,8 +31,8 @@ public:
 	void kof2003h_decrypt_68k(uint8_t* rom, uint32_t size);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 };
 
 #endif // MAME_BUS_NEOGEO_PROT_PVC_H

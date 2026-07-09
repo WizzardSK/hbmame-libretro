@@ -52,9 +52,11 @@ void kc_d004_gide_device::kc_d004_gide_io(address_map &map)
 	map(0x00fc, 0x00ff).mirror(0xff00).rw(Z80CTC_TAG, FUNC(z80ctc_device::read), FUNC(z80ctc_device::write));
 }
 
-FLOPPY_FORMATS_MEMBER( kc_d004_device::floppy_formats )
-	FLOPPY_KC85_FORMAT
-FLOPPY_FORMATS_END
+void kc_d004_device::floppy_formats(format_registration &fr)
+{
+	fr.add_mfm_containers();
+	fr.add(FLOPPY_KC85_FORMAT);
+}
 
 static void kc_d004_floppies(device_slot_interface &device)
 {
@@ -69,21 +71,21 @@ static const z80_daisy_config kc_d004_daisy_chain[] =
 
 ROM_START( kc_d004 )
 	ROM_REGION(0x2000, Z80_TAG, 0)
-	ROM_LOAD_OPTIONAL("d004v20.bin",    0x0000, 0x2000, CRC(4f3494f1) SHA1(66f476de78fb474d9ac61c6eaffce3354fd66776))
+	ROM_LOAD("d004v20.bin",    0x0000, 0x2000, CRC(4f3494f1) SHA1(66f476de78fb474d9ac61c6eaffce3354fd66776))
 ROM_END
 
 ROM_START( kc_d004_gide )
 	ROM_REGION(0x2000, Z80_TAG, 0)
 	ROM_SYSTEM_BIOS(0, "v33_4", "ver 3.3 (KC 85/4)")
-	ROMX_LOAD("d004v33_4.bin",  0x0000, 0x2000, CRC(1451efd7) SHA1(9db201af408adb02254094dc7aa7185bf5a7b9b1), ROM_BIOS(0) ) // KC85/4-5
+	ROMX_LOAD("d004v33_4.bin", 0x0000, 0x2000, CRC(1451efd7) SHA1(9db201af408adb02254094dc7aa7185bf5a7b9b1), ROM_BIOS(0) ) // KC85/4-5
 	ROM_SYSTEM_BIOS(1, "v33_3", "ver 3.3 (KC 85/3)")
-	ROMX_LOAD( "d004v33_3.bin", 0x0000, 0x2000, CRC(945f3e4b) SHA1(cce5d9eea82582270660c8275336b15bf9906253), ROM_BIOS(1) ) // KC85/3
+	ROMX_LOAD("d004v33_3.bin", 0x0000, 0x2000, CRC(945f3e4b) SHA1(cce5d9eea82582270660c8275336b15bf9906253), ROM_BIOS(1) ) // KC85/3
 	ROM_SYSTEM_BIOS(2, "v30", "ver 3.0")
-	ROMX_LOAD("d004v30.bin",    0x0000, 0x2000, CRC(6fe0a283) SHA1(5582b2541a34a90c7a9516a6a222d4961fc54fcf), ROM_BIOS(2) ) // KC85/4-5
+	ROMX_LOAD("d004v30.bin",   0x0000, 0x2000, CRC(6fe0a283) SHA1(5582b2541a34a90c7a9516a6a222d4961fc54fcf), ROM_BIOS(2) ) // KC85/4-5
 	ROM_SYSTEM_BIOS(3, "v31", "ver 3.1")
-	ROMX_LOAD("d004v31.bin",    0x0000, 0x2000, CRC(712547de) SHA1(38b3164dce23573375fc0237f348d9a699fc6f9f), ROM_BIOS(3) ) // KC85/4-5
+	ROMX_LOAD("d004v31.bin",   0x0000, 0x2000, CRC(712547de) SHA1(38b3164dce23573375fc0237f348d9a699fc6f9f), ROM_BIOS(3) ) // KC85/4-5
 	ROM_SYSTEM_BIOS(4, "v32", "ver 3.2")
-	ROMX_LOAD("d004v32.bin",    0x0000, 0x2000, CRC(9a3d3511) SHA1(8232adb5e5f0b25b52f9873cff14831da3a0398a), ROM_BIOS(4) ) // KC85/4-5
+	ROMX_LOAD("d004v32.bin",   0x0000, 0x2000, CRC(9a3d3511) SHA1(8232adb5e5f0b25b52f9873cff14831da3a0398a), ROM_BIOS(4) ) // KC85/4-5
 ROM_END
 
 
@@ -129,7 +131,7 @@ void kc_d004_device::device_start()
 {
 	m_rom  = memregion(Z80_TAG)->base();
 
-	m_reset_timer = timer_alloc(TIMER_RESET);
+	m_reset_timer = timer_alloc(FUNC(kc_d004_device::reset_tick), this);
 }
 
 //-------------------------------------------------
@@ -183,17 +185,12 @@ const tiny_rom_entry *kc_d004_device::device_rom_region() const
 }
 
 //-------------------------------------------------
-//  device_timer - handler timer events
+//  reset_tick - reset the main CPU when needed
 //-------------------------------------------------
 
-void kc_d004_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(kc_d004_device::reset_tick)
 {
-	switch(id)
-	{
-		case TIMER_RESET:
-			m_cpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
-			break;
-	}
+	m_cpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 /*-------------------------------------------------
@@ -301,7 +298,7 @@ void kc_d004_device::io_write(offs_t offset, uint8_t data)
 //  FDC emulation
 //**************************************************************************
 
-READ8_MEMBER(kc_d004_device::hw_input_gate_r)
+uint8_t kc_d004_device::hw_input_gate_r()
 {
 	/*
 	    bit 7: DMA Request (DRQ from FDC)
@@ -327,7 +324,7 @@ READ8_MEMBER(kc_d004_device::hw_input_gate_r)
 	return hw_input_gate;
 }
 
-WRITE8_MEMBER(kc_d004_device::fdd_select_w)
+void kc_d004_device::fdd_select_w(uint8_t data)
 {
 	if (data & 0x01)
 		m_floppy = m_floppy0->get_device();
@@ -346,12 +343,12 @@ WRITE8_MEMBER(kc_d004_device::fdd_select_w)
 	m_fdc->set_floppy(m_floppy);
 }
 
-WRITE8_MEMBER(kc_d004_device::hw_terminal_count_w)
+void kc_d004_device::hw_terminal_count_w(uint8_t data)
 {
 	m_fdc->tc_w(true);
 }
 
-WRITE_LINE_MEMBER(kc_d004_device::fdc_irq)
+void kc_d004_device::fdc_irq(int state)
 {
 	if (state)
 		m_fdc->tc_w(false);
@@ -412,7 +409,7 @@ void kc_d004_gide_device::device_reset()
 //  GIDE read
 //-------------------------------------------------
 
-READ8_MEMBER(kc_d004_gide_device::gide_r)
+uint8_t kc_d004_gide_device::gide_r(offs_t offset)
 {
 	uint8_t data = 0xff;
 	uint8_t io_addr = offset & 0x0f;
@@ -440,11 +437,11 @@ READ8_MEMBER(kc_d004_gide_device::gide_r)
 			{
 				if (ide_cs == 0 )
 				{
-					m_ata_data = m_ata->read_cs0(io_addr & 0x07);
+					m_ata_data = m_ata->cs0_r(io_addr & 0x07);
 				}
 				else
 				{
-					m_ata_data = m_ata->read_cs1(io_addr & 0x07);
+					m_ata_data = m_ata->cs1_r(io_addr & 0x07);
 				}
 			}
 
@@ -461,7 +458,7 @@ READ8_MEMBER(kc_d004_gide_device::gide_r)
 //  GIDE write
 //-------------------------------------------------
 
-WRITE8_MEMBER(kc_d004_gide_device::gide_w)
+void kc_d004_gide_device::gide_w(offs_t offset, uint8_t data)
 {
 	uint8_t io_addr = offset & 0x0f;
 
@@ -470,7 +467,7 @@ WRITE8_MEMBER(kc_d004_gide_device::gide_w)
 		uint8_t rtc_addr = (offset >> 8) & 0x0f;
 
 		// TODO RTC-72421
-		logerror("GIDE %s wrire RTC 0x%02x 0x%02x\n", tag(), rtc_addr, data);
+		logerror("GIDE %s write RTC 0x%02x 0x%02x\n", tag(), rtc_addr, data);
 	}
 	else
 	{
@@ -489,11 +486,11 @@ WRITE8_MEMBER(kc_d004_gide_device::gide_w)
 			{
 				if (ide_cs == 0)
 				{
-					m_ata->write_cs0(io_addr & 0x07, m_ata_data);
+					m_ata->cs0_w(io_addr & 0x07, m_ata_data);
 				}
 				else
 				{
-					m_ata->write_cs1(io_addr & 0x07, m_ata_data);
+					m_ata->cs1_w(io_addr & 0x07, m_ata_data);
 				}
 			}
 		}

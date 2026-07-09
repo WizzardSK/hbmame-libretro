@@ -26,13 +26,12 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual uint32_t execute_min_cycles() const noexcept override { return 1; }
 	virtual uint32_t execute_max_cycles() const noexcept override { return 4; }
-	virtual uint32_t execute_input_lines() const noexcept override { return 3; }
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
 
@@ -52,7 +51,7 @@ private:
 	PAIR m_gr[8];     /* general regs, some are 16bit, some 32bit */
 	union
 	{
-		unsigned char m_r[8];             /* pointer registers, 4 for earch bank */
+		unsigned char m_r[8];             /* pointer registers, 4 for each bank */
 		struct {
 			unsigned char m_r0[4];
 			unsigned char m_r1[4];
@@ -71,9 +70,9 @@ private:
 
 	int m_g_cycles;
 
-	address_space *m_program;
-	memory_access_cache<1, -1, ENDIANNESS_BIG> *m_cache;
-	address_space *m_io;
+	memory_access<16, 1, -1, ENDIANNESS_BIG>::cache m_cache;
+	memory_access<16, 1, -1, ENDIANNESS_BIG>::specific m_program;
+	memory_access< 4, 1,  0, ENDIANNESS_BIG>::specific m_io;
 
 	void update_P();
 	uint32_t read_unknown(int reg);

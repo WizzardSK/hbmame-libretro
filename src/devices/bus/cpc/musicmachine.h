@@ -23,21 +23,21 @@ public:
 	// construction/destruction
 	cpc_musicmachine_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_WRITE8_MEMBER(dac_w);
-	DECLARE_READ8_MEMBER(acia_r);
-	DECLARE_WRITE8_MEMBER(acia_w);
-	DECLARE_WRITE8_MEMBER(irqsel_w);
-	DECLARE_WRITE_LINE_MEMBER(irq_w);
+	void dac_w(uint8_t data);
+	uint8_t acia_r(offs_t offset);
+	void acia_w(offs_t offset, uint8_t data);
+	void irqsel_w(uint8_t data);
+	void irq_w(int state);
 
 	void write_acia_clock(u8 data) { m_acia->write_txc(data); m_acia->write_rxc(data); }
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	cpc_expansion_slot_device *m_slot;

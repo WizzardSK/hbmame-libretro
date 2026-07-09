@@ -27,18 +27,18 @@ class sony_ldp1000_device : public laserdisc_device
 {
 public:
 	// construction/destruction
-	sony_ldp1000_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	sony_ldp1000_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	// I/O operations TODO: both actually protected
-	DECLARE_WRITE8_MEMBER( command_w );
-	DECLARE_READ8_MEMBER( status_r );
+	void command_w(uint8_t data);
+	uint8_t status_r();
 
 protected:
 	// device-level overrides
 	virtual void device_validity_check(validity_checker &valid) const override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
 
 	virtual void player_vsync(const vbi_metadata &vbi, int fieldnum, const attotime &curtime) override;
 	virtual int32_t player_update(const vbi_metadata &vbi, int fieldnum, const attotime &curtime) override;

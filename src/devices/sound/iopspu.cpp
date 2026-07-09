@@ -31,10 +31,10 @@ void iop_spu_device::device_start()
 	m_ram = std::make_unique<uint16_t[]>(2 * 1024 * 1024); // ?
 
 	if (!m_core[0].m_autodma_done_timer_hack)
-		m_core[0].m_autodma_done_timer_hack = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(iop_spu_device::autodma_done_timer_hack), this), 0);
+		m_core[0].m_autodma_done_timer_hack = timer_alloc(FUNC(iop_spu_device::autodma_done_timer_hack), this);
 
 	if (!m_core[1].m_autodma_done_timer_hack)
-		m_core[1].m_autodma_done_timer_hack = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(iop_spu_device::autodma_done_timer_hack), this), (void*)1);
+		m_core[1].m_autodma_done_timer_hack = timer_alloc(FUNC(iop_spu_device::autodma_done_timer_hack), this);
 
 	save_item(NAME(m_core[0].m_status));
 	save_item(NAME(m_core[0].m_start_port_addr));
@@ -89,7 +89,7 @@ void iop_spu_device::dma_done(int bank)
 	core.m_status &= ~STATUS_DMA_ACTIVE;
 }
 
-void iop_spu_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+void iop_spu_device::sound_stream_update(sound_stream &stream)
 {
 	// TODO
 }
@@ -119,7 +119,7 @@ void iop_spu_device::port_write(int bank, uint16_t data)
 		core.m_curr_port_addr = 0x2800 >> 1;
 }
 
-READ16_MEMBER(iop_spu_device::read)
+uint16_t iop_spu_device::read(offs_t offset, uint16_t mem_mask)
 {
 	return reg_read(BIT(offset, 9), (offset << 1) & 0x3ff, mem_mask);
 }
@@ -171,7 +171,7 @@ uint16_t iop_spu_device::reg_read(int bank, uint32_t offset, uint16_t mem_mask)
 	return ret;
 }
 
-WRITE16_MEMBER(iop_spu_device::write)
+void iop_spu_device::write(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	reg_write(BIT(offset, 9), (offset << 1) & 0x3ff, data, mem_mask);
 }

@@ -66,7 +66,7 @@
         - Turrican: Allows the game to start
 
         Changed PLX and PLY to set NZ flags. Fixes:
-        - Afterburner: Graphics unpacking
+        - After Burner: Graphics unpacking
         - Aoi Blink: Collision detection with background
 
         Fixed the decimal version of ADC/SBC to *not* update the V flag,
@@ -113,7 +113,6 @@
 #include "emu.h"
 #include "h6280.h"
 #include "6280dasm.h"
-#include "debugger.h"
 
 /* 6280 flags */
 enum
@@ -170,10 +169,10 @@ DEFINE_DEVICE_TYPE(H6280, h6280_device, "h6280", "Hudson Soft HuC6280")
 
 h6280_device::h6280_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: cpu_device(mconfig, H6280, tag, owner, clock)
-	, device_mixer_interface(mconfig, *this, 2)
+	, device_mixer_interface(mconfig, *this)
 	, m_program_config("program", ENDIANNESS_LITTLE, 8, 21, 0, 16, 0, address_map_constructor(FUNC(h6280_device::internal_map), this))
 	, m_io_config("io", ENDIANNESS_LITTLE, 8, 2)
-	, m_port_in_cb(*this)
+	, m_port_in_cb(*this, 0)
 	, m_port_out_cb(*this)
 	, m_psg(*this, "psg")
 	, m_timer_scale(1)
@@ -233,15 +232,12 @@ const h6280_device::ophandler h6280_device::s_opcodetable[256] =
 void h6280_device::device_add_mconfig(machine_config &config)
 {
 	C6280(config, m_psg, DERIVED_CLOCK(1,2));
-	m_psg->add_route(0, *this, 1.0, AUTO_ALLOC_INPUT, 0);
-	m_psg->add_route(1, *this, 1.0, AUTO_ALLOC_INPUT, 1);
+	m_psg->add_route(0, *this, 1.0, 0);
+	m_psg->add_route(1, *this, 1.0, 1);
 }
 
 void h6280_device::device_start()
 {
-	m_port_in_cb.resolve();
-	m_port_out_cb.resolve_safe();
-
 	// register our state for the debugger
 	state_add(STATE_GENPC,      "GENPC",        m_pc.w.l).noshow();
 	state_add(STATE_GENPCBASE,  "CURPC",        m_pc.w.l).noshow();
@@ -320,9 +316,9 @@ void h6280_device::device_reset()
 #endif
 	m_io_buffer = 0;
 
-	m_program = &space(AS_PROGRAM);
-	m_cache = m_program->cache<0, 0, ENDIANNESS_LITTLE>();
-	m_io = &space(AS_IO);
+	space(AS_PROGRAM).cache(m_cache);
+	space(AS_PROGRAM).specific(m_program);
+	space(AS_IO).specific(m_io);
 
 	/* set I and B flags */
 	P = _fI | _fB;
@@ -414,14 +410,14 @@ inline void h6280_device::check_and_take_irq_lines()
 		if ( m_irq_state[0] != CLEAR_LINE &&
 				!(m_irq_mask & 0x2) )
 		{
+			standard_irq_callback(0, PCW);
 			do_interrupt(H6280_IRQ1_VEC);
-			standard_irq_callback(0);
 		} else
 		if ( m_irq_state[1] != CLEAR_LINE &&
 				!(m_irq_mask & 0x1) )
 		{
+			standard_irq_callback(1, PCW);
 			do_interrupt(H6280_IRQ2_VEC);
-			standard_irq_callback(1);
 		}
 	}
 }
@@ -1605,7 +1601,7 @@ inline uint8_t h6280_device::smb(int bit, uint8_t tmp)
 inline void h6280_device::st0(uint8_t tmp)
 {
 	clear_t();
-	m_io->write_byte(0x0000,tmp);
+	m_io.write_byte(0x0000,tmp);
 }
 
 /* 6280 ********************************************************
@@ -1614,7 +1610,7 @@ inline void h6280_device::st0(uint8_t tmp)
 inline void h6280_device::st1(uint8_t tmp)
 {
 	clear_t();
-	m_io->write_byte(0x0002,tmp);
+	m_io.write_byte(0x0002,tmp);
 }
 
 /* 6280 ********************************************************
@@ -1623,7 +1619,7 @@ inline void h6280_device::st1(uint8_t tmp)
 inline void h6280_device::st2(uint8_t tmp)
 {
 	clear_t();
-	m_io->write_byte(0x0003,tmp);
+	m_io.write_byte(0x0003,tmp);
 }
 
 /* 6280 ********************************************************
@@ -2274,17 +2270,6 @@ uint32_t h6280_device::execute_max_cycles() const noexcept
 
 
 //-------------------------------------------------
-//  execute_input_lines - return the number of
-//  input/interrupt lines
-//-------------------------------------------------
-
-uint32_t h6280_device::execute_input_lines() const noexcept
-{
-	return 4;
-}
-
-
-//-------------------------------------------------
 //  execute_input_edge_triggered - return true if
 //  the input line has an asynchronous edge trigger
 //-------------------------------------------------
@@ -2329,7 +2314,7 @@ void h6280_device::execute_set_input(int inputnum, int state)
 uint8_t h6280_device::program_read8(offs_t addr)
 {
 	check_vdc_vce_penalty(addr);
-	return m_program->read_byte(translated(addr));
+	return m_program.read_byte(translated(addr));
 }
 
 /***************************************************************
@@ -2338,7 +2323,7 @@ uint8_t h6280_device::program_read8(offs_t addr)
 void h6280_device::program_write8(offs_t addr, uint8_t data)
 {
 	check_vdc_vce_penalty(addr);
-	m_program->write_byte(translated(addr), data);
+	m_program.write_byte(translated(addr), data);
 }
 
 /***************************************************************
@@ -2346,7 +2331,7 @@ void h6280_device::program_write8(offs_t addr, uint8_t data)
  ***************************************************************/
 uint8_t h6280_device::program_read8z(offs_t addr)
 {
-	return m_program->read_byte((m_mmr[1] << 13) | (addr & 0x1fff));
+	return m_program.read_byte((m_mmr[1] << 13) | (addr & 0x1fff));
 }
 
 /***************************************************************
@@ -2354,7 +2339,7 @@ uint8_t h6280_device::program_read8z(offs_t addr)
  ***************************************************************/
 void h6280_device::program_write8z(offs_t addr, uint8_t data)
 {
-	m_program->write_byte((m_mmr[1] << 13) | (addr & 0x1fff), data);
+	m_program.write_byte((m_mmr[1] << 13) | (addr & 0x1fff), data);
 }
 
 /***************************************************************
@@ -2362,8 +2347,8 @@ void h6280_device::program_write8z(offs_t addr, uint8_t data)
  ***************************************************************/
 uint16_t h6280_device::program_read16(offs_t addr)
 {
-	return m_program->read_byte(translated(addr)) |
-			(m_program->read_byte(translated(addr + 1)) << 8);
+	return m_program.read_byte(translated(addr)) |
+			(m_program.read_byte(translated(addr + 1)) << 8);
 }
 
 /***************************************************************
@@ -2373,13 +2358,13 @@ uint16_t h6280_device::program_read16z(offs_t addr)
 {
 	if ((addr & 0xff) == 0xff)
 	{
-		return m_program->read_byte((m_mmr[1] << 13) | (addr & 0x1fff)) |
-				(m_program->read_byte((m_mmr[1] << 13) | ((addr - 0xff) & 0x1fff)) << 8);
+		return m_program.read_byte((m_mmr[1] << 13) | (addr & 0x1fff)) |
+				(m_program.read_byte((m_mmr[1] << 13) | ((addr - 0xff) & 0x1fff)) << 8);
 	}
 	else
 	{
-		return m_program->read_byte((m_mmr[1] << 13) | (addr & 0x1fff)) |
-				(m_program->read_byte((m_mmr[1] << 13) | ((addr + 1) & 0x1fff)) << 8);
+		return m_program.read_byte((m_mmr[1] << 13) | (addr & 0x1fff)) |
+				(m_program.read_byte((m_mmr[1] << 13) | ((addr + 1) & 0x1fff)) << 8);
 	}
 }
 
@@ -2388,7 +2373,7 @@ uint16_t h6280_device::program_read16z(offs_t addr)
  ***************************************************************/
 void h6280_device::push(uint8_t value)
 {
-	m_program->write_byte((m_mmr[1] << 13) | m_sp.d, value);
+	m_program.write_byte((m_mmr[1] << 13) | m_sp.d, value);
 	S--;
 }
 
@@ -2398,7 +2383,7 @@ void h6280_device::push(uint8_t value)
 void h6280_device::pull(uint8_t &value)
 {
 	S++;
-	value = m_program->read_byte((m_mmr[1] << 13) | m_sp.d);
+	value = m_program.read_byte((m_mmr[1] << 13) | m_sp.d);
 }
 
 /***************************************************************
@@ -2406,7 +2391,7 @@ void h6280_device::pull(uint8_t &value)
  ***************************************************************/
 uint8_t h6280_device::read_opcode()
 {
-	return m_cache->read_byte(translated(PCW));
+	return m_cache.read_byte(translated(PCW));
 }
 
 /***************************************************************
@@ -2414,7 +2399,7 @@ uint8_t h6280_device::read_opcode()
  ***************************************************************/
 uint8_t h6280_device::read_opcode_arg()
 {
-	return m_cache->read_byte(translated(PCW));
+	return m_cache.read_byte(translated(PCW));
 }
 
 
@@ -2510,7 +2495,7 @@ void h6280_device::set_irq_line(int irqline, int state)
 //  REGISTER HANDLING
 //**************************************************************************
 
-READ8_MEMBER( h6280_device::irq_status_r )
+uint8_t h6280_device::irq_status_r(offs_t offset)
 {
 	int status;
 
@@ -2534,7 +2519,7 @@ READ8_MEMBER( h6280_device::irq_status_r )
 	}
 }
 
-WRITE8_MEMBER( h6280_device::irq_status_w )
+void h6280_device::irq_status_w(offs_t offset, uint8_t data)
 {
 	m_io_buffer = data;
 	switch (offset & 3)
@@ -2554,13 +2539,13 @@ WRITE8_MEMBER( h6280_device::irq_status_w )
 	}
 }
 
-READ8_MEMBER( h6280_device::timer_r )
+uint8_t h6280_device::timer_r()
 {
 	/* only returns countdown */
 	return ((m_timer_value >> 10) & 0x7F) | (m_io_buffer & 0x80);
 }
 
-WRITE8_MEMBER( h6280_device::timer_w )
+void h6280_device::timer_w(offs_t offset, uint8_t data)
 {
 	m_io_buffer = data;
 	switch (offset & 1)
@@ -2581,34 +2566,35 @@ WRITE8_MEMBER( h6280_device::timer_w )
 	}
 }
 
-READ8_MEMBER( h6280_device::port_r )
+uint8_t h6280_device::port_r()
 {
-	if (!m_port_in_cb.isnull())
+	if (!m_port_in_cb.isunset())
 		return m_port_in_cb();
 	else
 		return m_io_buffer;
 }
 
-WRITE8_MEMBER( h6280_device::port_w )
+void h6280_device::port_w(uint8_t data)
 {
 	m_io_buffer = data;
 
 	m_port_out_cb(data);
 }
 
-READ8_MEMBER( h6280_device::io_buffer_r )
+uint8_t h6280_device::io_buffer_r()
 {
 	return m_io_buffer;
 }
 
-WRITE8_MEMBER( h6280_device::psg_w )
+void h6280_device::psg_w(offs_t offset, uint8_t data)
 {
 	m_io_buffer = data;
 	m_psg->c6280_w(offset, data);
 }
 
-bool h6280_device::memory_translate(int spacenum, int intention, offs_t &address)
+bool h6280_device::memory_translate(int spacenum, int intention, offs_t &address, address_space *&target_space)
 {
+	target_space = &space(spacenum);
 	if (spacenum == AS_PROGRAM)
 		address = translated(address);
 

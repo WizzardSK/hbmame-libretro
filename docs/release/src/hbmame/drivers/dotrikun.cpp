@@ -1,4 +1,4 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/dotrikun.cpp"
 #include "speaker.h"
@@ -96,6 +96,8 @@ Colours:
 
 ***************************************************************************/
 
+namespace {
+
 class mineswp_state : public dotrikun_state
 {
 public:
@@ -110,7 +112,7 @@ private:
 
 	void mineswp_map(address_map &map);
 	void mineswp_io(address_map &map);
-	DECLARE_WRITE8_MEMBER(mineswp_color_w);
+	void mineswp_color_w(u8 data);
 	virtual void machine_start() override;
 	required_device<beep_device> m_beep;
 };
@@ -123,7 +125,7 @@ private:
 *******************************************************************/
 
 
-WRITE8_MEMBER( mineswp_state::mineswp_color_w )
+void mineswp_state::mineswp_color_w(u8 data)
 {
 	// d0-d2: fg palette
 	// d3: sound bit
@@ -198,5 +200,7 @@ ROM_START( mineswp )
 	ROM_FILL(0x000A, 1, 0x03)
 ROM_END
 
+} // anonymous namespace
 
-GAMEL( 1998, mineswp, 0, mineswp, dotrikun, mineswp_state, init_0, ROT0, "J-Rom", "Mine Sweeper [h]", MACHINE_SUPPORTS_SAVE, layout_dotrikun )
+GAME( 1998, mineswp, 0, mineswp, dotrikun, mineswp_state, empty_init, ROT0, "J-Rom", "Mine Sweeper [h]", MACHINE_SUPPORTS_SAVE )
+

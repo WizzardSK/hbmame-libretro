@@ -30,7 +30,7 @@ DEFINE_DEVICE_TYPE(C64_IEEE488, c64_ieee488_device, "c64_ieee488", "C64 IEEE-488
 //  tpi6525_interface tpi_intf
 //-------------------------------------------------
 
-READ8_MEMBER( c64_ieee488_device::tpi_pa_r )
+uint8_t c64_ieee488_device::tpi_pa_r()
 {
 	/*
 
@@ -59,7 +59,7 @@ READ8_MEMBER( c64_ieee488_device::tpi_pa_r )
 	return data;
 }
 
-WRITE8_MEMBER( c64_ieee488_device::tpi_pa_w )
+void c64_ieee488_device::tpi_pa_w(uint8_t data)
 {
 	/*
 
@@ -84,7 +84,7 @@ WRITE8_MEMBER( c64_ieee488_device::tpi_pa_w )
 	m_bus->host_nrfd_w(BIT(data, 7));
 }
 
-READ8_MEMBER( c64_ieee488_device::tpi_pc_r )
+uint8_t c64_ieee488_device::tpi_pc_r(offs_t offset)
 {
 	/*
 
@@ -111,7 +111,7 @@ READ8_MEMBER( c64_ieee488_device::tpi_pc_r )
 	return data;
 }
 
-WRITE8_MEMBER( c64_ieee488_device::tpi_pc_w )
+void c64_ieee488_device::tpi_pc_w(uint8_t data)
 {
 	/*
 
@@ -143,7 +143,7 @@ WRITE8_MEMBER( c64_ieee488_device::tpi_pc_w )
 
 void c64_ieee488_device::device_add_mconfig(machine_config &config)
 {
-	TPI6525(config, m_tpi, 0);
+	TPI6525(config, m_tpi);
 	m_tpi->in_pa_cb().set(FUNC(c64_ieee488_device::tpi_pa_r));
 	m_tpi->out_pa_cb().set(FUNC(c64_ieee488_device::tpi_pa_w));
 	m_tpi->in_pb_cb().set(m_bus, FUNC(ieee488_device::dio_r));
@@ -151,7 +151,7 @@ void c64_ieee488_device::device_add_mconfig(machine_config &config)
 	m_tpi->in_pc_cb().set(FUNC(c64_ieee488_device::tpi_pc_r));
 	m_tpi->out_pc_cb().set(FUNC(c64_ieee488_device::tpi_pc_w));
 
-	IEEE488(config, m_bus, 0);
+	IEEE488(config, m_bus);
 	ieee488_slot_device::add_cbm_defaults(config, nullptr);
 
 	C64_EXPANSION_SLOT(config, m_exp, DERIVED_CLOCK(1, 1), c64_expansion_cards, nullptr);

@@ -86,18 +86,18 @@ void sg1000_expansion_slot_device::device_start()
 // has only 3 address lines (A0, A1, A2).
 
 
-READ8_MEMBER(sg1000_expansion_slot_device::read)
+uint8_t sg1000_expansion_slot_device::read(offs_t offset)
 {
 	uint8_t data = 0xff;
 	if (m_device)
-		data = m_device->peripheral_r(space, offset & 0x07);
+		data = m_device->peripheral_r(offset & 0x07);
 	return data;
 }
 
-WRITE8_MEMBER(sg1000_expansion_slot_device::write)
+void sg1000_expansion_slot_device::write(offs_t offset, uint8_t data)
 {
 	if (m_device)
-		m_device->peripheral_w(space, offset & 0x07, data);
+		m_device->peripheral_w(offset & 0x07, data);
 }
 
 
@@ -124,5 +124,6 @@ bool sg1000_expansion_slot_device::is_writeable(uint8_t offset)
 void sg1000_expansion_devices(device_slot_interface &device)
 {
 	device.option_add("sk1100", SEGA_SK1100);
+	device.option_add("sk1100e", SEGA_SK1100E);
 	device.option_add("fm", SEGA_FM_UNIT);
 }

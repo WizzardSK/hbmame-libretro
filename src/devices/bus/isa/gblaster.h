@@ -22,19 +22,19 @@ public:
 	// construction/destruction
 	isa8_gblaster_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER(saa1099_16_r);
-	DECLARE_WRITE8_MEMBER(saa1099_1_16_w);
-	DECLARE_WRITE8_MEMBER(saa1099_2_16_w);
-	DECLARE_READ8_MEMBER(detect_r);
-	DECLARE_WRITE8_MEMBER(detect_w);
+	uint8_t saa1099_16_r(offs_t offset);
+	void saa1099_1_16_w(offs_t offset, uint8_t data);
+	void saa1099_2_16_w(offs_t offset, uint8_t data);
+	uint8_t detect_r(offs_t offset);
+	void detect_w(offs_t offset, uint8_t data);
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	// internal state

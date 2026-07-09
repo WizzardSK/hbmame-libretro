@@ -28,41 +28,39 @@ public:
 	void set_be(int be) { m_be = be; }
 	void set_autoconfig(int autoconfig) { m_autoconfig = autoconfig; }
 	void set_irq_num(int irq_num) { m_irq_num = irq_num; }
-	virtual void config_map(address_map &map) override;
-	void set_simm_size(int index, int size) { m_simm_size[index] = size; };
-	void set_simm0_size(int size) { m_simm_size[0] = size; };
-	void set_simm1_size(int size) { m_simm_size[1] = size; };
+	virtual void config_map(address_map &map) override ATTR_COLD;
+	void set_simm_size(int index, int size) { m_simm_size[index] = size; }
+	void set_simm0_size(int size) { m_simm_size[0] = size; }
+	void set_simm1_size(int size) { m_simm_size[1] = size; }
 
-	DECLARE_WRITE_LINE_MEMBER(pci_stall);
+	void pci_stall(int state);
 
 	// pci bus
-	DECLARE_READ32_MEMBER(  pci_config_r);
-	DECLARE_WRITE32_MEMBER( pci_config_w);
+	uint32_t pci_config_r(offs_t offset, uint32_t mem_mask = ~0);
+	void pci_config_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
 	// cpu bus
-	DECLARE_READ32_MEMBER (cpu_if_r);
-	DECLARE_WRITE32_MEMBER(cpu_if_w);
+	uint32_t cpu_if_r(offs_t offset);
+	void cpu_if_w(address_space &space, offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	DECLARE_READ32_MEMBER (master_mem0_r);
-	DECLARE_WRITE32_MEMBER(master_mem0_w);
+	uint32_t master_mem0_r(offs_t offset, uint32_t mem_mask = ~0);
+	void master_mem0_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	DECLARE_READ32_MEMBER (master_mem1_r);
-	DECLARE_WRITE32_MEMBER(master_mem1_w);
+	uint32_t master_mem1_r(offs_t offset, uint32_t mem_mask = ~0);
+	void master_mem1_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
-	DECLARE_READ32_MEMBER (master_io_r);
-	DECLARE_WRITE32_MEMBER(master_io_w);
+	uint32_t master_io_r(offs_t offset, uint32_t mem_mask = ~0);
+	void master_io_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
 	// devices
-	DECLARE_READ32_MEMBER (ras_0_r);
-	DECLARE_WRITE32_MEMBER(ras_0_w);
-	DECLARE_READ32_MEMBER(ras_1_r);
-	DECLARE_WRITE32_MEMBER(ras_1_w);
-	DECLARE_READ32_MEMBER(ras_2_r);
-	DECLARE_WRITE32_MEMBER(ras_2_w);
-	DECLARE_READ32_MEMBER(ras_3_r);
-	DECLARE_WRITE32_MEMBER(ras_3_w);
-	DECLARE_READ32_MEMBER (cs_0_r);
-	DECLARE_WRITE32_MEMBER(cs_0_w);
+	uint32_t ras_0_r(offs_t offset, uint32_t mem_mask = ~0);
+	void ras_0_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
+	uint32_t ras_1_r(offs_t offset, uint32_t mem_mask = ~0);
+	void ras_1_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
+	uint32_t ras_2_r(offs_t offset, uint32_t mem_mask = ~0);
+	void ras_2_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
+	uint32_t ras_3_r(offs_t offset, uint32_t mem_mask = ~0);
+	void ras_3_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
 	// Enums
 	enum proc_addr_bank {ADDR_RAS1_0, ADDR_RAS3_2, ADDR_CS2_0, ADDR_CS3_BCS, ADDR_PCI_IO, ADDR_PCI_MEM0, ADDR_PCI_MEM1, ADDR_NUM};
@@ -75,8 +73,8 @@ protected:
 
 	address_space *m_cpu_space;
 	virtual space_config_vector memory_space_config() const override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 
 private:
@@ -106,6 +104,8 @@ private:
 	int m_irq_num;
 	int m_simm_size[4];
 
+	int m_irq_state;
+	uint32_t m_irq_pending;
 	int m_pci_stall_state;
 	int m_retry_count;
 	int m_pci_cpu_stalled;
@@ -119,7 +119,7 @@ private:
 	required_memory_region m_romRegion;
 	optional_memory_region m_updateRegion;
 
-	void cpu_map(address_map &map);
+	void cpu_map(address_map &map) ATTR_COLD;
 
 	void map_cpu_space();
 
@@ -148,7 +148,7 @@ private:
 	galileo_addr_map dma_addr_map[proc_addr_bank::ADDR_NUM];
 	int dma_fetch_next(address_space &space, int which);
 	TIMER_CALLBACK_MEMBER(perform_dma);
-	address_space* dma_decode_address(uint32_t &addr);
+	address_space* dma_decode_address(offs_t &addr);
 };
 
 // Supports R4600/4650/4700/R5000 CPUs

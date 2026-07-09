@@ -1,10 +1,10 @@
 // license:BSD-3-Clause
-// copyright-holders:Ryan Holtz
+// copyright-holders:Vas Crabb
 /***************************************************************************
 
-    ui/barcode.h
+    ui/about.h
 
-    "About" modal
+    About box
 
 ***************************************************************************/
 #ifndef MAME_FRONTEND_UI_ABOUT_H
@@ -12,24 +12,32 @@
 
 #pragma once
 
-#include "ui/menu.h"
+#include "ui/text.h"
+#include "ui/textbox.h"
 
+#include <optional>
+#include <string>
 #include <vector>
+
 
 namespace ui {
 
-class menu_about : public menu
+class menu_about : public menu_textbox
 {
 public:
-	menu_about(mame_ui_manager &mui, render_container &container);
+	menu_about(mame_ui_manager &mui, render_target &target);
 	virtual ~menu_about() override;
 
-private:
-	virtual void populate(float &customtop, float &custombottom) override;
-	virtual void handle() override;
+protected:
+	virtual void recompute_metrics(uint32_t width, uint32_t height, float aspect) override;
+	virtual void custom_render(uint32_t flags, void *selectedref, float top, float bottom, float origx1, float origy1, float origx2, float origy2) override;
 
-	bool m_pause_checked;
-	bool m_was_paused;
+	virtual void populate_text(std::optional<text_layout> &layout, float &width, int &lines) override;
+
+private:
+	virtual void populate() override;
+
+	std::vector<std::string> const m_header;
 };
 
 } // namespace ui

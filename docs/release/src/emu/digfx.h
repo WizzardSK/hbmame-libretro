@@ -25,7 +25,7 @@
 
 constexpr u8 MAX_GFX_ELEMENTS = 32;
 constexpr u16 MAX_GFX_PLANES = 8;
-// HBMAME - needed by monaco
+// MESSUI - needed by monaco
 constexpr u16 MAX_GFX_SIZE = 64;
 
 
@@ -200,7 +200,7 @@ private:
 };
 
 // iterator
-typedef device_interface_iterator<device_gfx_interface> gfx_interface_iterator;
+typedef device_interface_enumerator<device_gfx_interface> gfx_interface_enumerator;
 
 
 #endif  /* MAME_EMU_DIGFX_H */

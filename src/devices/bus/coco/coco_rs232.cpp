@@ -36,7 +36,7 @@ namespace
 	{
 	public:
 		// construction/destruction
-		coco_rs232_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+		coco_rs232_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
 			: device_t(mconfig, COCO_RS232, tag, owner, clock)
 			, device_cococart_interface(mconfig, *this)
 			, m_eprom(*this, "eprom")
@@ -45,9 +45,9 @@ namespace
 		}
 
 		// optional information overrides
-		virtual void device_add_mconfig(machine_config &config) override;
+		virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
-		WRITE_LINE_MEMBER(uart_irq_w)
+		void uart_irq_w(int state)
 		{
 			set_line_value(line::CART, state != 0);
 		}
@@ -61,20 +61,20 @@ namespace
 					write8sm_delegate(*m_uart, FUNC(mos6551_device::write)));
 		}
 
-		virtual const tiny_rom_entry *device_rom_region() const override;
+		virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
 
 		// CoCo cartridge level overrides
-		virtual uint8_t *get_cart_base() override
+		virtual u8 *get_cart_base() override
 		{
 			return m_eprom->base();
 		}
 
-		virtual memory_region* get_cart_memregion() override
+		virtual memory_region *get_cart_memregion() override
 		{
 			return m_eprom;
 		}
 
-		virtual DECLARE_READ8_MEMBER(cts_read) override;
+		virtual u8 cts_read(offs_t offset) override;
 
 	private:
 		// internal state
@@ -90,7 +90,7 @@ IMPLEMENTATION
 
 void coco_rs232_device::device_add_mconfig(machine_config &config)
 {
-	MOS6551(config, m_uart, 0);
+	MOS6551(config, m_uart);
 	m_uart->set_xtal(1.8432_MHz_XTAL);
 	m_uart->irq_handler().set(FUNC(coco_rs232_device::uart_irq_w));
 	m_uart->txd_handler().set(PORT_TAG, FUNC(rs232_port_device::write_txd));
@@ -120,7 +120,7 @@ const tiny_rom_entry *coco_rs232_device::device_rom_region() const
 //  cts_read
 //-------------------------------------------------
 
-READ8_MEMBER(coco_rs232_device::cts_read)
+u8 coco_rs232_device::cts_read(offs_t offset)
 {
 	return m_eprom->base()[offset & 0x0fff];
 }

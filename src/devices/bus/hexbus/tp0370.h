@@ -16,17 +16,17 @@
 
 #pragma once
 
-namespace bus { namespace hexbus {
+namespace bus::hexbus {
 
 class ibc_device : public device_t
 {
 public:
-	ibc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-	void device_start() override;
-	void device_reset() override;
+	ibc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
+	void device_start() override ATTR_COLD;
+	void device_reset() override ATTR_COLD;
 
-	DECLARE_READ8_MEMBER( read );
-	DECLARE_WRITE8_MEMBER( write );
+	uint8_t read(offs_t offset);
+	void write(offs_t offset, uint8_t data);
 
 	// Callbacks
 	auto int_cb() { return m_int.bind(); }
@@ -69,7 +69,7 @@ private:
 	void set_lines(bool bav, bool hsk);
 };
 
-}   }
+} // namespace bus::hexbus
 
 DECLARE_DEVICE_TYPE_NS(IBC, bus::hexbus, ibc_device)
 #endif

@@ -80,13 +80,12 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual uint32_t execute_min_cycles() const noexcept override { return 2; }
 	virtual uint32_t execute_max_cycles() const noexcept override { return 21; }
-	virtual uint32_t execute_input_lines() const noexcept override { return 1; }
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
 
@@ -137,8 +136,8 @@ private:
 	uint8_t   m_sleeping;       /* low-consumption state */
 	int     m_monitor_id;
 	int     m_monitor_in;
-	address_space *m_program;
-	memory_access_cache<0, 0, ENDIANNESS_LITTLE> *m_cache;
+	memory_access<20, 0, 0, ENDIANNESS_LITTLE>::cache m_cache;
+	memory_access<20, 0, 0, ENDIANNESS_LITTLE>::specific m_program;
 	int m_icount;
 	int64_t m_debugger_temp;
 

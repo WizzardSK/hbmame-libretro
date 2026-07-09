@@ -11,6 +11,7 @@
 
 /*
 /*/
+!/.github/
 !/3rdparty/
 !/android-project/
 !/benchmarks/
@@ -27,12 +28,13 @@
 !/regtests/
 !/samples/
 !/scripts/
+/scripts/src/*.a
+/scripts/hbmame_hbmame/
 !/src/
 !/shaders/
 !/tests/
 !/doxygen/
 !/web/
-!/.drone.yml
 !/.gitattributes
 !/.gitignore
 !/.travis.yml
@@ -42,6 +44,7 @@
 !/*.bdf
 !/LICENSE
 /.idea
+.vscode
 docs/build
 docs/source/_build
 regtests/chdman/temp

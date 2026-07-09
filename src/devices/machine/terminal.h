@@ -21,7 +21,7 @@ INPUT_PORTS_EXTERN( generic_terminal );
 class generic_terminal_device : public device_t
 {
 public:
-	generic_terminal_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	generic_terminal_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	template <typename... T>
 	void set_keyboard_callback(T &&... args)
@@ -34,17 +34,16 @@ public:
 	void kbd_put(u8 data);
 
 protected:
-	enum { BELL_TIMER_ID = 20'000 };
-
 	generic_terminal_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, unsigned w, unsigned h);
 
 	virtual void term_write(uint8_t data);
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
-	virtual ioport_constructor device_input_ports() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual void send_key(uint8_t code) { if (!m_keyboard_cb.isnull()) m_keyboard_cb(code); }
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual void send_key(uint8_t code) { m_keyboard_cb(code); }
+
+	TIMER_CALLBACK_MEMBER(bell_off);
 
 	required_ioport m_io_term_conf;
 

@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -49,15 +49,15 @@ static const char * StatusString(int iStatus);
 
 #define MAX_AUDITBOX_TEXT   0x7FFFFFFE
 
-static volatile HWND hAudit;
-static volatile int rom_index = 0;
-static volatile int roms_correct = 0;
-static volatile int roms_incorrect = 0;
-static volatile int sample_index = 0;
-static volatile int samples_correct = 0;
-static volatile int samples_incorrect = 0;
-static volatile BOOL bPaused = FALSE;
-static volatile BOOL bCancel = FALSE;
+static HWND hAudit;
+static int rom_index = 0;
+static int roms_correct = 0;
+static int roms_incorrect = 0;
+static int sample_index = 0;
+static int samples_correct = 0;
+static int samples_incorrect = 0;
+static BOOL bPaused = FALSE;
+static BOOL bCancel = FALSE;
 static int m_choice = 0;
 
 /***************************************************************************
@@ -122,7 +122,11 @@ const char * GetAuditString(int audit_result)
 		return "No";
 
 	default:
-		printf("unknown audit value %i\n",audit_result);
+		if (audit_result == -1)
+			printf("GetAuditString: Audit value -1, try doing a full F5 audit\n");
+		else
+			printf("GetAuditString: Unknown audit value %i\n",audit_result);
+		fflush(stdout);
 	}
 
 	return "?";
@@ -404,6 +408,7 @@ static void ProcessNextSample()
 			SendDlgItemMessage(hAudit, IDC_SAMPLES_TOTAL, WM_SETTEXT, 0, (LPARAM)buffer);
 			break;
 		}
+		[[fallthrough]];
 	default:
 		if ((DriverUsesSamples(sample_index)) || (m_choice == 1))
 		{
@@ -433,7 +438,7 @@ static void CLIB_DECL DetailsPrintf(const char *fmt, ...)
 	// so see which one's currently instantiated
 	HWND hEdit = GetDlgItem(hAudit, IDC_AUDIT_DETAILS);
 	if (hEdit ==  NULL)
-		hEdit = GetDlgItem(hAudit, IDC_AUDIT_DETAILS_PROP);
+		hEdit = GetDlgItem(hAudit, IDC_AUDIT_DETAILS_PROP0);
 
 	if (hEdit == NULL)
 	{
@@ -488,3 +493,4 @@ static const char * StatusString(int iStatus)
 
 	return ptr;
 }
+

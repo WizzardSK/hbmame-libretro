@@ -2,7 +2,7 @@
 // copyright-holders:Peter Trauner
 /*****************************************************************************
  *
- *   cpustate->h
+ *   lh6801.h
  *   portable lh5801 emulator interface
  *
  *
@@ -71,15 +71,14 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual uint64_t execute_clocks_to_cycles(uint64_t clocks) const noexcept override { return (clocks + 2 - 1) / 2; }
 	virtual uint64_t execute_cycles_to_clocks(uint64_t cycles) const noexcept override { return (cycles * 2); }
 	virtual uint32_t execute_min_cycles() const noexcept override { return 2; }
 	virtual uint32_t execute_max_cycles() const noexcept override { return 19; }
-	virtual uint32_t execute_input_lines() const noexcept override { return 2; }
 	virtual bool execute_input_edge_triggered(int inputnum) const noexcept override { return inputnum == LH5801_LINE_MI || inputnum == INPUT_LINE_NMI; }
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
@@ -99,9 +98,9 @@ private:
 
 	devcb_read8 m_in_func;
 
-	address_space *m_program;         //ME0
-	address_space *m_io;              //ME1
-	memory_access_cache<0, 0, ENDIANNESS_LITTLE> *m_cache;
+	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::cache m_cache;
+	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::specific m_program; // ME0
+	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::specific m_io;      // ME1
 
 	PAIR m_s;
 	PAIR m_p;

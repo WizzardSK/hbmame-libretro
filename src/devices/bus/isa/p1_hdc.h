@@ -29,12 +29,12 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
 
 private:
 	required_device<wd2010_device> m_hdc;
@@ -42,8 +42,8 @@ private:
 	// uint8_t m_ram[0x800];
 
 public:
-	DECLARE_READ8_MEMBER(p1_HDC_r);
-	DECLARE_WRITE8_MEMBER(p1_HDC_w);
+	uint8_t p1_HDC_r(offs_t offset);
+	void p1_HDC_w(offs_t offset, uint8_t data);
 };
 
 

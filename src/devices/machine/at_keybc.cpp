@@ -90,7 +90,6 @@
 #include "emu.h"
 #include "at_keybc.h"
 
-#define LOG_GENERAL (1U << 0)
 #define LOG_COMMAND (1U << 1)
 #define LOG_STATUS  (1U << 2)
 
@@ -147,14 +146,14 @@ DEFINE_DEVICE_TYPE(PS2_KEYBOARD_CONTROLLER, ps2_keyboard_controller_device, "ps2
 
 uint8_t at_kbc_device_base::data_r()
 {
-	u8 const data = m_mcu->upi41_master_r(machine().dummy_space(), 0U);
+	u8 const data = m_mcu->upi41_master_r(0U);
 	LOG("data_r 0x%02x (%s)\n", data, machine().describe_context());
 	return data;
 }
 
 uint8_t at_kbc_device_base::status_r()
 {
-	u8 const data = m_mcu->upi41_master_r(machine().dummy_space(), 1U);
+	u8 const data = m_mcu->upi41_master_r(1U);
 	LOGMASKED(LOG_STATUS, "status_r 0x%02x%s%s%s%s%s%s%s%s (%s)\n", data,
 		BIT(data, 7) ? " PER" : "", BIT(data, 6) ? " RTO" : "",
 		BIT(data, 5) ? " TTO" : "", BIT(data, 4) ? "" : " INH",
@@ -272,12 +271,12 @@ void at_kbc_device_base::command_w(uint8_t data)
 	machine().scheduler().synchronize(timer_expired_delegate(FUNC(at_kbc_device_base::write_command), this), unsigned(data));
 }
 
-WRITE_LINE_MEMBER(at_kbc_device_base::kbd_clk_w)
+void at_kbc_device_base::kbd_clk_w(int state)
 {
 	machine().scheduler().synchronize(timer_expired_delegate(FUNC(at_kbc_device_base::set_kbd_clk_in), this), state);
 }
 
-WRITE_LINE_MEMBER(at_kbc_device_base::kbd_data_w)
+void at_kbc_device_base::kbd_data_w(int state)
 {
 	machine().scheduler().synchronize(timer_expired_delegate(FUNC(at_kbc_device_base::set_kbd_data_in), this), state);
 }
@@ -292,13 +291,8 @@ at_kbc_device_base::at_kbc_device_base(machine_config const &mconfig, device_typ
 {
 }
 
-void at_kbc_device_base::device_resolve_objects()
+at_kbc_device_base::~at_kbc_device_base()
 {
-	m_hot_res_cb.resolve_safe();
-	m_gate_a20_cb.resolve_safe();
-	m_kbd_irq_cb.resolve_safe();
-	m_kbd_clk_cb.resolve_safe();
-	m_kbd_data_cb.resolve_safe();
 }
 
 void at_kbc_device_base::device_start()
@@ -358,12 +352,12 @@ inline u8 at_kbc_device_base::kbd_data_r() const
 
 TIMER_CALLBACK_MEMBER(at_kbc_device_base::write_data)
 {
-	m_mcu->upi41_master_w(machine().dummy_space(), 0U, u8(u32(param)));
+	m_mcu->upi41_master_w(0U, u8(u32(param)));
 }
 
 TIMER_CALLBACK_MEMBER(at_kbc_device_base::write_command)
 {
-	m_mcu->upi41_master_w(machine().dummy_space(), 1U, u8(u32(param)));
+	m_mcu->upi41_master_w(1U, u8(u32(param)));
 }
 
 TIMER_CALLBACK_MEMBER(at_kbc_device_base::set_kbd_clk_in)
@@ -383,6 +377,10 @@ TIMER_CALLBACK_MEMBER(at_kbc_device_base::set_kbd_data_in)
 
 at_keyboard_controller_device::at_keyboard_controller_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock)
 	: at_kbc_device_base(mconfig, AT_KEYBOARD_CONTROLLER, tag, owner, clock)
+{
+}
+
+at_keyboard_controller_device::~at_keyboard_controller_device()
 {
 }
 
@@ -425,14 +423,14 @@ uint8_t ps2_keyboard_controller_device::data_r()
 {
 	set_kbd_irq(0U);
 	set_aux_irq(0U);
-	u8 const data = m_mcu->upi41_master_r(machine().dummy_space(), 0U);
+	u8 const data = m_mcu->upi41_master_r(0U);
 	LOG("data_r 0x%02x (%s)\n", data, machine().describe_context());
 	return data;
 }
 
 uint8_t ps2_keyboard_controller_device::status_r()
 {
-	u8 const data = m_mcu->upi41_master_r(machine().dummy_space(), 1U);
+	u8 const data = m_mcu->upi41_master_r(1U);
 	LOGMASKED(LOG_STATUS, "status_r 0x%02x%s%s%s%s%s%s%s%s (%s)\n", data,
 		BIT(data, 7) ? " PER" : "",     BIT(data, 6) ? " GTO" : "",
 		BIT(data, 5) ? " AUX_OBF" : "", BIT(data, 4) ? "" : " INH",
@@ -442,12 +440,12 @@ uint8_t ps2_keyboard_controller_device::status_r()
 	return data;
 }
 
-WRITE_LINE_MEMBER(ps2_keyboard_controller_device::aux_clk_w)
+void ps2_keyboard_controller_device::aux_clk_w(int state)
 {
 	machine().scheduler().synchronize(timer_expired_delegate(FUNC(ps2_keyboard_controller_device::set_aux_clk_in), this), state);
 }
 
-WRITE_LINE_MEMBER(ps2_keyboard_controller_device::aux_data_w)
+void ps2_keyboard_controller_device::aux_data_w(int state)
 {
 	machine().scheduler().synchronize(timer_expired_delegate(FUNC(ps2_keyboard_controller_device::set_aux_data_in), this), state);
 }
@@ -459,6 +457,10 @@ ps2_keyboard_controller_device::ps2_keyboard_controller_device(machine_config co
 	, m_aux_irq(0U)
 	, m_aux_clk_in(1U), m_aux_clk_out(1U), m_aux_data_in(1U), m_aux_data_out(1U)
 	, m_p2_data(0xffU)
+{
+}
+
+ps2_keyboard_controller_device::~ps2_keyboard_controller_device()
 {
 }
 
@@ -478,18 +480,11 @@ void ps2_keyboard_controller_device::device_add_mconfig(machine_config &config)
 	m_mcu->t1_in_cb().set([this] () { return aux_clk_r(); });
 }
 
-void ps2_keyboard_controller_device::device_resolve_objects()
-{
-	at_kbc_device_base::device_resolve_objects();
-
-	m_aux_irq_cb.resolve_safe();
-	m_aux_clk_cb.resolve_safe();
-	m_aux_data_cb.resolve_safe();
-}
-
 void ps2_keyboard_controller_device::device_start()
 {
 	at_kbc_device_base::device_start();
+
+	m_aux_irq_timer = timer_alloc(FUNC(ps2_keyboard_controller_device::set_aux_irq_timer_callback), this);
 
 	save_item(NAME(m_aux_irq));
 	save_item(NAME(m_aux_clk_in));
@@ -559,6 +554,17 @@ void ps2_keyboard_controller_device::p2_w(uint8_t data)
 	if (BIT(data & ~m_p2_data, 4))
 		set_kbd_irq(1U);
 	if (BIT(data & ~m_p2_data, 5))
-		set_aux_irq(1U);
+	{
+		// HACK: delay raising the aux irq until compaq queues the data
+		if (m_mcu->pcbase() == 0x7ba)
+			m_aux_irq_timer->adjust(attotime::from_hz(clock() / 16));
+		else
+			set_aux_irq(1U);
+	}
 	m_p2_data = data;
+}
+
+TIMER_CALLBACK_MEMBER(ps2_keyboard_controller_device::set_aux_irq_timer_callback)
+{
+	set_aux_irq(1U);
 }

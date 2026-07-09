@@ -74,14 +74,20 @@ void a2bus_softcard_device::device_reset()
 	m_bEnabled = false;
 
 	m_FirstZ80Boot = true;
-	m_z80->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+	m_z80->set_input_line(Z80_INPUT_LINE_WAIT, ASSERT_LINE);
+}
+
+void a2bus_softcard_device::reset_from_bus()
+{
+	m_z80->reset();
+	device_reset();
 }
 
 void a2bus_softcard_device::write_cnxx(uint8_t offset, uint8_t data)
 {
 	if (!m_bEnabled)
 	{
-		m_z80->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+		m_z80->set_input_line(Z80_INPUT_LINE_WAIT, CLEAR_LINE);
 		raise_slot_dma();
 
 		if (m_FirstZ80Boot)
@@ -94,13 +100,13 @@ void a2bus_softcard_device::write_cnxx(uint8_t offset, uint8_t data)
 	}
 	else
 	{
-		m_z80->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+		m_z80->set_input_line(Z80_INPUT_LINE_WAIT, ASSERT_LINE);
 		lower_slot_dma();
 		m_bEnabled = false;
 	}
 }
 
-READ8_MEMBER( a2bus_softcard_device::dma_r )
+uint8_t a2bus_softcard_device::dma_r(offs_t offset)
 {
 	if (m_bEnabled)
 	{
@@ -138,7 +144,7 @@ READ8_MEMBER( a2bus_softcard_device::dma_r )
 //  dma_w -
 //-------------------------------------------------
 
-WRITE8_MEMBER( a2bus_softcard_device::dma_w )
+void a2bus_softcard_device::dma_w(offs_t offset, uint8_t data)
 {
 	if (m_bEnabled)
 	{
@@ -167,9 +173,4 @@ WRITE8_MEMBER( a2bus_softcard_device::dma_w )
 			slot_dma_write(offset&0xfff, data);
 		}
 	}
-}
-
-bool a2bus_softcard_device::take_c800()
-{
-	return false;
 }

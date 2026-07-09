@@ -46,7 +46,8 @@
 		Cpp11        = "-std=c++11",
 		Cpp14        = "-std=c++14",
 		Cpp17        = "-std=c++17",
-		CppLatest    = "-std=c++2a",
+		Cpp20        = "-std=c++20",
+		CppLatest    = "-std=c++2b",
 		NoExceptions = "-fno-exceptions",
 		NoRTTI       = "-fno-rtti",
 		UnsignedChar = "-funsigned-char",
@@ -115,7 +116,21 @@
 			cxx        = "$(EMSCRIPTEN)/em++",
 			ar         = "$(EMSCRIPTEN)/emar",
 			cppflags   = "-MMD -MP",
-		}
+		},
+		NX32 = {
+			cc         = "clang",
+			cxx        = "clang++",
+			ar         = "armv7l-nintendo-nx-eabihf-ar",
+			cppflags   = "-MMD -MP",
+			flags      = "-march=armv7l",
+		},
+		NX64 = {
+			cc         = "clang",
+			cxx        = "clang++",
+			ar         = "aarch64-nintendo-nx-elf-ar",
+			cppflags   = "-MMD -MP",
+			flags      = "-march=aarch64",
+		},
 	}
 
 	local platforms = premake.gcc.platforms
@@ -278,8 +293,6 @@
 	function premake.gcc.wholearchive(lib)
 		if premake.gcc.llvm then
 			return {"-force_load", lib}
-				elseif os.get() == "macosx" then
-			return {"-Wl,-force_load", lib}
 		else
 			return {"-Wl,--whole-archive", lib, "-Wl,--no-whole-archive"}
 		end

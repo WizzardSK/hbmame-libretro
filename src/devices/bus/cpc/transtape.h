@@ -22,21 +22,21 @@ public:
 	cpc_transtape_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// optional information overrides
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual ioport_constructor device_input_ports() const override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 	virtual void set_mapping(uint8_t type) override;
-	virtual WRITE_LINE_MEMBER( romen_w ) override { m_romen = state; }
+	virtual void romen_w(int state) override { m_romen = state; }
 
-	DECLARE_READ8_MEMBER(input_r);
-	DECLARE_WRITE8_MEMBER(output_w);
+	uint8_t input_r();
+	void output_w(uint8_t data);
 	DECLARE_INPUT_CHANGED_MEMBER(button_red_w);
 	DECLARE_INPUT_CHANGED_MEMBER(button_black_w);
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	cpc_expansion_slot_device *m_slot;

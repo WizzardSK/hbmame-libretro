@@ -19,9 +19,9 @@ DEFINE_DEVICE_TYPE(NG_MEMCARD, ng_memcard_device, "ng_memcard", "NeoGeo Memory C
 //  ng_memcard_device - constructor
 //-------------------------------------------------
 
-ng_memcard_device::ng_memcard_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+ng_memcard_device::ng_memcard_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
 	: device_t(mconfig, NG_MEMCARD, tag, owner, clock),
-		device_image_interface(mconfig, *this)
+		device_memcard_image_interface(mconfig, *this)
 {
 }
 
@@ -41,17 +41,17 @@ void ng_memcard_device::device_start()
     with the given index
 -------------------------------------------------*/
 
-image_init_result ng_memcard_device::call_load()
+std::pair<std::error_condition, std::string> ng_memcard_device::call_load()
 {
 	if(length() != 0x800)
-		return image_init_result::FAIL;
+		return std::make_pair(image_error::INVALIDLENGTH, "Unsupported memory card size (only 2K cards are supported)");
 
 	fseek(0, SEEK_SET);
 	size_t ret = fread(m_memcard_data, 0x800);
 	if(ret != 0x800)
-		return image_init_result::FAIL;
+		return std::make_pair(image_error::UNSPECIFIED, "Error reading file");
 
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 void ng_memcard_device::call_unload()
@@ -60,24 +60,24 @@ void ng_memcard_device::call_unload()
 	fwrite(m_memcard_data, 0x800);
 }
 
-image_init_result ng_memcard_device::call_create(int format_type, util::option_resolution *format_options)
+std::pair<std::error_condition, std::string> ng_memcard_device::call_create(int format_type, util::option_resolution *format_options)
 {
 	memset(m_memcard_data, 0, 0x800);
 
 	size_t ret = fwrite(m_memcard_data, 0x800);
 	if(ret != 0x800)
-		return image_init_result::FAIL;
+		return std::make_pair(image_error::UNSPECIFIED, "Error writing file");
 
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 
-READ8_MEMBER(ng_memcard_device::read)
+u8 ng_memcard_device::read(offs_t offset)
 {
 	return m_memcard_data[offset];
 }
 
-WRITE8_MEMBER(ng_memcard_device::write)
+void ng_memcard_device::write(offs_t offset, u8 data)
 {
 	m_memcard_data[offset] = data;
 }

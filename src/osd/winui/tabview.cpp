@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -202,8 +202,7 @@ void TabView_Reset(HWND hwndTabView)
 	pTabViewInfo = GetTabViewInfo(hwndTabView);
 
 	printf("TabView_Reset: B\n");fflush(stdout);
-	BOOL b_res = TabCtrl_DeleteAllItems(hwndTabView);
-	b_res++;
+	(void)TabCtrl_DeleteAllItems(hwndTabView);
 
 	TC_ITEM tci;
 	memset(&tci, 0, sizeof(tci));
@@ -219,8 +218,7 @@ void TabView_Reset(HWND hwndTabView)
 			if( !t_text )
 				return;
 			tci.pszText = t_text;
-			HRESULT res = TabCtrl_InsertItem(hwndTabView, i, &tci);
-			res++;
+			(void)TabCtrl_InsertItem(hwndTabView, i, &tci);
 			free(t_text);
 		}
 	}
@@ -266,5 +264,4 @@ BOOL SetupTabView(HWND hwndTabView, const struct TabViewOptions *pOptions)
 	printf("SetupTabView: Finished\n");fflush(stdout);
 	return true;
 }
-
 

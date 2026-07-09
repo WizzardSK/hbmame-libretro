@@ -1,9 +1,10 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
-#include "../mame/drivers/galaga.cpp"
+#include "../mame/namco/galaga.cpp"
+#include "includes/galaga.h"
 
 // Produce pacman death sound in galagost
-WRITE8_MEMBER( galaga_hbmame::galaga_sample_w )
+void galaga_hbmame::galaga_sample_w(offs_t offset, u8 data)
 {
 	switch ( data )
 	{
@@ -12,7 +13,7 @@ WRITE8_MEMBER( galaga_hbmame::galaga_sample_w )
 		case 0x10: /* soft bang */
 			break;
 		default:
-			m_06xx->data_w ( space, offset, data );
+			m_06xx->data_w ( offset, data );
 	}
 }
 
@@ -20,13 +21,13 @@ static const char *const galagost_sample_names[] =
 {
 	"*galagost",
 	"bang",
-	0   /* end of array */
+	nullptr   /* end of array */
 };
 
 void galaga_hbmame::galagost_map(address_map &map) {
 	map(0x0000,0x3fff).rom().nopw();  /* the only area different for each CPU */
 	map(0x6800,0x6807).r(FUNC(galaga_hbmame::bosco_dsw_r));
-	map(0x6800,0x681f).w("namco",FUNC(namco_device::pacman_sound_w));
+	map(0x6800, 0x681f).w(m_namco_sound, FUNC(namco_wsg_device::pacman_sound_w));
 	map(0x6820,0x6827).w("misclatch",FUNC(ls259_device::write_d0));
 	map(0x6830,0x6830).w("watchdog",FUNC(watchdog_timer_device::reset_w));
 	map(0x7000,0x70ff).r("06xx",FUNC(namco_06xx_device::data_r)).w(FUNC(galaga_hbmame::galaga_sample_w));
@@ -50,8 +51,10 @@ void galaga_hbmame::galagost(machine_config &config)
 	m_samples->add_route(ALL_OUTPUTS, "mono", 0.75);
 }
 
-// galaga hacks
 
+/******
+ Galaga
+*********/
 ROM_START( galagabl )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gg1-1",        0x0000, 0x1000, CRC(a3a0f743) SHA1(6907773db7c002ecde5e41853603d53387c5c7cd) )
@@ -84,6 +87,7 @@ ROM_START( galagabl )
 	ROM_LOAD( "prom-1.1d",    0x0000, 0x0100, CRC(7a2815b4) SHA1(085ada18c498fdb18ecedef0ea8fe9217edb7b46) )
 	ROM_LOAD( "prom-2.5c",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
+
 
 ROM_START( galagab2 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -118,6 +122,7 @@ ROM_START( galagab2 )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
+
 ROM_START( galaga84 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gg1_1b.3p",    0x0000, 0x1000, CRC(ab036c9f) SHA1(ca7f5da42d4e76fd89bb0b35198a23c01462fbfe) )
@@ -151,6 +156,7 @@ ROM_START( galaga84 )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
+
 ROM_START( galagads )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3200a.bin",    0x0000, 0x1000, CRC(3ef0b053) SHA1(0c04a362b737998c0952a753fb3fd8c8a17e9b46) )
@@ -180,6 +186,7 @@ ROM_START( galagads )
 	ROM_REGION( 0x0100, "namco", 0 )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
+
 
 ROM_START( galaga99 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -211,6 +218,7 @@ ROM_START( galaga99 )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
+
 ROM_START( galagaf )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3200a.bin",    0x0000, 0x1000, CRC(3ef0b053) SHA1(0c04a362b737998c0952a753fb3fd8c8a17e9b46) )
@@ -241,8 +249,9 @@ ROM_START( galagaf )
 	ROM_LOAD( "prom-2.5c",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
 
+
 /* This set has the fix proposed by Don Hodges at the page:
-	http://donhodges.com/galaga_stage_256_fix.htm */
+    http://donhodges.com/galaga_stage_256_fix.htm */
 ROM_START( galagap )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gg1_1b.3p",    0x0000, 0x1000, CRC(ab036c9f) SHA1(ca7f5da42d4e76fd89bb0b35198a23c01462fbfe) )
@@ -276,6 +285,7 @@ ROM_START( galagap )
 	ROM_LOAD( "prom-2.5c",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
 
+
 ROM_START( galagix )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gg1-1",        0x0000, 0x1000, CRC(a3a0f743) SHA1(6907773db7c002ecde5e41853603d53387c5c7cd) )
@@ -306,6 +316,7 @@ ROM_START( galagix )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
+
 ROM_START( galagost )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3200a.bin",    0x0000, 0x1000, CRC(3ef0b053) SHA1(0c04a362b737998c0952a753fb3fd8c8a17e9b46) )
@@ -325,7 +336,7 @@ ROM_START( galagost )
 	ROM_REGION( 0x2000, "gfx2", 0 )
 	ROM_LOAD( "gost_07e_g10.bin",  0x0000, 0x1000, CRC(0758b90f) SHA1(89cc8db9457fa5f56b49930590f32aba1bc55323) )
 	ROM_LOAD( "gost_07h_g09.bin",  0x1000, 0x1000, CRC(53f1332b) SHA1(04136e52008c4ad4813529d633fd9b8c71e6ccc0) )
-	
+
 	ROM_REGION( 0x0320, "proms", 0 )
 	ROM_LOAD( "prom-5.5n",    0x0000, 0x0020, CRC(54603c6b) SHA1(1a6dea13b4af155d9cb5b999a75d4f1eb9c71346) )
 	ROM_LOAD( "2n.bin",       0x0020, 0x0100, CRC(a547d33b) SHA1(7323084320bb61ae1530d916f5edd8835d4d2461) )
@@ -335,6 +346,7 @@ ROM_START( galagost )
 	ROM_REGION( 0x0100, "namco", 0 )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
+
 
 ROM_START( galagosb )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -355,7 +367,7 @@ ROM_START( galagosb )
 	ROM_REGION( 0x2000, "gfx2", 0 )
 	ROM_LOAD( "gost_07e_g10.bin",  0x0000, 0x1000, CRC(0758b90f) SHA1(89cc8db9457fa5f56b49930590f32aba1bc55323) )
 	ROM_LOAD( "gosb_07h_g09.bin",  0x1000, 0x1000, CRC(0339291c) SHA1(4958a78b6afb9f2b4f46d3c0f654843c077686a9) )
-	
+
 	ROM_REGION( 0x0320, "proms", 0 )
 	ROM_LOAD( "prom-5.5n",    0x0000, 0x0020, CRC(54603c6b) SHA1(1a6dea13b4af155d9cb5b999a75d4f1eb9c71346) )
 	ROM_LOAD( "2n.bin",       0x0020, 0x0100, CRC(a547d33b) SHA1(7323084320bb61ae1530d916f5edd8835d4d2461) )
@@ -366,6 +378,7 @@ ROM_START( galagosb )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
+
 ROM_START( galaped )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3200a.bin",    0x0000, 0x1000, CRC(3ef0b053) SHA1(0c04a362b737998c0952a753fb3fd8c8a17e9b46) )
@@ -375,7 +388,7 @@ ROM_START( galaped )
 
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "3600fast.bin", 0x0000, 0x1000, CRC(23d586e5) SHA1(43346c69385e9091e64cff6c027ac2689cafcbb9) )
-	
+
 	ROM_REGION( 0x10000, "sub2", 0 )
 	ROM_LOAD( "3700g.bin",    0x0000, 0x1000, CRC(b07f0aa4) SHA1(7528644a8480d0be2d0d37069515ed319e94778f) )
 
@@ -395,6 +408,7 @@ ROM_START( galaped )
 	ROM_REGION( 0x0100, "namco", 0 )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
+
 
 ROM_START( galgaxin )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -426,6 +440,7 @@ ROM_START( galgaxin )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
+
 ROM_START( galagaef )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3200a.bin",    0x0000, 0x1000, CRC(3ef0b053) SHA1(0c04a362b737998c0952a753fb3fd8c8a17e9b46) )
@@ -455,6 +470,7 @@ ROM_START( galagaef )
 	ROM_LOAD( "prom-1.1d",    0x0000, 0x0100, CRC(7a2815b4) SHA1(085ada18c498fdb18ecedef0ea8fe9217edb7b46) )
 	ROM_LOAD( "prom-2.5c",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
+
 
 ROM_START( terror )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -486,6 +502,7 @@ ROM_START( terror )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
+
 ROM_START( vgalaga )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3200a.bin",    0x0000, 0x1000, CRC(3ef0b053) SHA1(0c04a362b737998c0952a753fb3fd8c8a17e9b46) )
@@ -515,6 +532,7 @@ ROM_START( vgalaga )
 	ROM_REGION( 0x0100, "namco", 0 )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
+
 
 ROM_START( vgalagam )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -546,6 +564,7 @@ ROM_START( vgalagam )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
+
 ROM_START( vgalagaf )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3200a.bin",    0x0000, 0x1000, CRC(3ef0b053) SHA1(0c04a362b737998c0952a753fb3fd8c8a17e9b46) )
@@ -576,8 +595,102 @@ ROM_START( vgalagaf )
 	ROM_LOAD( "1d.bin",       0x0000, 0x0100, CRC(86d92b24) SHA1(6bef9102b97c83025a2cf84e89d95f2d44c3d2ed) )
 ROM_END
 
-// xevious hacks
 
+ROM_START( galaga01 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "01_1b.3p",     0x0000, 0x1000, CRC(d7dffd9c) SHA1(2c7090b0f45647c8b1b97bf2fbc140063b46f6e8) )
+	ROM_LOAD( "01_2b.3m",     0x1000, 0x1000, CRC(ab7cbd28) SHA1(c7cca7d01c720511588125b52b1c6a527747a3f5) )
+	ROM_LOAD( "01_3.2m",      0x2000, 0x1000, CRC(75bcd999) SHA1(cfb6137545665f48afa1f7db3433199f9b3b5fb8) )
+	ROM_LOAD( "01_4b.2l",     0x3000, 0x1000, CRC(114f2ae5) SHA1(80f3273908aa485d7397a7b86d7cf05bcac8286c) )
+
+	ROM_REGION( 0x10000, "sub", 0 )
+	ROM_LOAD( "gg1_5b.3f",    0x0000, 0x1000, CRC(bb5caae3) SHA1(e957a581463caac27bc37ca2e2a90f27e4f62b6f) )
+
+	ROM_REGION( 0x10000, "sub2", 0 )
+	ROM_LOAD( "gg1_7b.2c",    0x0000, 0x1000, CRC(d016686b) SHA1(44c1a04fba3c7c826ff484185cb881b4b22e6657) )
+
+	ROM_REGION( 0x1000, "gfx1", 0 )
+	ROM_LOAD( "gg1_9.4l",     0x0000, 0x1000, CRC(58b2f47c) SHA1(62f1279a784ab2f8218c4137c7accda00e6a3490) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "gg1_11.4d",    0x0000, 0x1000, CRC(ad447c80) SHA1(e697c180178cabd1d32483c5d8889a40633f7857) )
+	ROM_LOAD( "gg1_10.4f",    0x1000, 0x1000, CRC(dd6f1afc) SHA1(c340ed8c25e0979629a9a1730edc762bd72d0cff) )
+
+	ROM_REGION( 0x0220, "proms", 0 )
+	ROM_LOAD( "prom-5.5n",    0x0000, 0x0020, CRC(54603c6b) SHA1(1a6dea13b4af155d9cb5b999a75d4f1eb9c71346) )
+	ROM_LOAD( "prom-4.2n",    0x0020, 0x0100, CRC(59b6edab) SHA1(0281de86c236c88739297ff712e0a4f5c8bf8ab9) )
+	ROM_LOAD( "prom-3.1c",    0x0120, 0x0100, CRC(4a04bb6b) SHA1(cdd4bc1013f5c11984fdc4fd10e2d2e27120c1e5) )
+
+	ROM_REGION( 0x0200, "namco", 0 )
+	ROM_LOAD( "prom-1.1d",    0x0000, 0x0100, CRC(7a2815b4) SHA1(085ada18c498fdb18ecedef0ea8fe9217edb7b46) )
+	ROM_LOAD( "prom-2.5c",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
+ROM_END
+
+
+ROM_START( galaga02 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "02_1b.3p",     0x0000, 0x1000, CRC(b6f16ca7) SHA1(69c98eb9e4ecb268e9a20cc3a566b6b83a5b9d3d) )
+	ROM_LOAD( "02_2b.3m",     0x1000, 0x1000, CRC(e0faff40) SHA1(98c28fadfc8098acef6781ed399de6f7ae8582f1) )
+	ROM_LOAD( "gg1_3.2m",     0x2000, 0x1000, CRC(753ce503) SHA1(481f443aea3ed3504ec2f3a6bfcf3cd47e2f8f81) )
+	ROM_LOAD( "02_4b.2l",     0x3000, 0x1000, CRC(16f469ef) SHA1(ab493ab138df2bce42eb951032ed704dd8755897) )
+
+	ROM_REGION( 0x10000, "sub", 0 )
+	ROM_LOAD( "gg1_5b.3f",    0x0000, 0x1000, CRC(bb5caae3) SHA1(e957a581463caac27bc37ca2e2a90f27e4f62b6f) )
+
+	ROM_REGION( 0x10000, "sub2", 0 )
+	ROM_LOAD( "gg1_7b.2c",    0x0000, 0x1000, CRC(d016686b) SHA1(44c1a04fba3c7c826ff484185cb881b4b22e6657) )
+
+	ROM_REGION( 0x1000, "gfx1", 0 )
+	ROM_LOAD( "gg1_9.4l",     0x0000, 0x1000, CRC(58b2f47c) SHA1(62f1279a784ab2f8218c4137c7accda00e6a3490) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "gg1_11.4d",    0x0000, 0x1000, CRC(ad447c80) SHA1(e697c180178cabd1d32483c5d8889a40633f7857) )
+	ROM_LOAD( "gg1_10.4f",    0x1000, 0x1000, CRC(dd6f1afc) SHA1(c340ed8c25e0979629a9a1730edc762bd72d0cff) )
+
+	ROM_REGION( 0x0220, "proms", 0 )
+	ROM_LOAD( "prom-5.5n",    0x0000, 0x0020, CRC(54603c6b) SHA1(1a6dea13b4af155d9cb5b999a75d4f1eb9c71346) )
+	ROM_LOAD( "prom-4.2n",    0x0020, 0x0100, CRC(59b6edab) SHA1(0281de86c236c88739297ff712e0a4f5c8bf8ab9) )
+	ROM_LOAD( "prom-3.1c",    0x0120, 0x0100, CRC(4a04bb6b) SHA1(cdd4bc1013f5c11984fdc4fd10e2d2e27120c1e5) )
+
+	ROM_REGION( 0x0200, "namco", 0 )
+	ROM_LOAD( "prom-1.1d",    0x0000, 0x0100, CRC(7a2815b4) SHA1(085ada18c498fdb18ecedef0ea8fe9217edb7b46) )
+	ROM_LOAD( "prom-2.5c",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
+ROM_END
+
+ROM_START( galaga03 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "03_1b.3p",     0x0000, 0x1000, CRC(35768124) SHA1(41f3bf262eae71e0ca7f0cbf459565d2d6c2b5ec) )
+	ROM_LOAD( "03_2b.3m",     0x1000, 0x1000, CRC(873b6c48) SHA1(ce67e08d3249f4dd27a1e70625ea2262dfc41c1a) )
+	ROM_LOAD( "gg1_3.2m",     0x2000, 0x1000, CRC(753ce503) SHA1(481f443aea3ed3504ec2f3a6bfcf3cd47e2f8f81) )
+	ROM_LOAD( "02_4b.2l",     0x3000, 0x1000, CRC(16f469ef) SHA1(ab493ab138df2bce42eb951032ed704dd8755897) )
+
+	ROM_REGION( 0x10000, "sub", 0 )
+	ROM_LOAD( "gg1_5b.3f",    0x0000, 0x1000, CRC(bb5caae3) SHA1(e957a581463caac27bc37ca2e2a90f27e4f62b6f) )
+
+	ROM_REGION( 0x10000, "sub2", 0 )
+	ROM_LOAD( "gg1_7b.2c",    0x0000, 0x1000, CRC(d016686b) SHA1(44c1a04fba3c7c826ff484185cb881b4b22e6657) )
+
+	ROM_REGION( 0x1000, "gfx1", 0 )
+	ROM_LOAD( "gg1_9.4l",     0x0000, 0x1000, CRC(58b2f47c) SHA1(62f1279a784ab2f8218c4137c7accda00e6a3490) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "gg1_11.4d",    0x0000, 0x1000, CRC(ad447c80) SHA1(e697c180178cabd1d32483c5d8889a40633f7857) )
+	ROM_LOAD( "gg1_10.4f",    0x1000, 0x1000, CRC(dd6f1afc) SHA1(c340ed8c25e0979629a9a1730edc762bd72d0cff) )
+
+	ROM_REGION( 0x0220, "proms", 0 )
+	ROM_LOAD( "prom-5.5n",    0x0000, 0x0020, CRC(54603c6b) SHA1(1a6dea13b4af155d9cb5b999a75d4f1eb9c71346) )
+	ROM_LOAD( "prom-4.2n",    0x0020, 0x0100, CRC(59b6edab) SHA1(0281de86c236c88739297ff712e0a4f5c8bf8ab9) )
+	ROM_LOAD( "prom-3.1c",    0x0120, 0x0100, CRC(4a04bb6b) SHA1(cdd4bc1013f5c11984fdc4fd10e2d2e27120c1e5) )
+
+	ROM_REGION( 0x0200, "namco", 0 )
+	ROM_LOAD( "prom-1.1d",    0x0000, 0x0100, CRC(7a2815b4) SHA1(085ada18c498fdb18ecedef0ea8fe9217edb7b46) )
+	ROM_LOAD( "prom-2.5c",    0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
+ROM_END
+
+
+/******
+ Xevios
+*********/
 ROM_START( battlesh )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "bg1.d9",      0x0000, 0x2000, CRC(b6e4f4f3) SHA1(ceaaa63b50e75dcb05aeb68574336dfe56a8434a) )
@@ -624,6 +737,7 @@ ROM_START( battlesh )
 	ROM_LOAD( "xvi-2.7n",     0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
+
 
 ROM_START( gaous )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -672,6 +786,7 @@ ROM_START( gaous )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
 
+
 ROM_START( sxvioush )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cpu_3p.rom",   0x0000, 0x1000, CRC(1c8d27d5) SHA1(2c41303d8c74acb5840295a4b460a39a9a8e21bb) )
@@ -719,6 +834,7 @@ ROM_START( sxvioush )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
 
+
 ROM_START( xviousah )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "xea-1m-a.bin", 0x0000, 0x2000, CRC(8c2b50ec) SHA1(f770873b711d838556dde67a8aac8a7f572fcc5b) )
@@ -761,6 +877,7 @@ ROM_START( xviousah )
 	ROM_LOAD( "xvi-2.7n",     0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
+
 
 ROM_START( xevioush )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -809,6 +926,7 @@ ROM_START( xevioush )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
 
+
 ROM_START( xeviousp )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "xvip_1.3p",    0x0000, 0x1000, CRC(09c5fef9) SHA1(1111912763c818afc13e4dfd088877cf78bc30b4) )
@@ -822,7 +940,7 @@ ROM_START( xeviousp )
 
 	ROM_REGION( 0x10000, "sub2", 0 )
 	ROM_LOAD( "xvi_7.2c",     0x0000, 0x1000, CRC(dd35cf1c) SHA1(f8d1f8e019d8198308443c2e7e815d0d04b23d14) )
-	
+
 	ROM_REGION( 0x1000, "gfx1", 0 )
 	ROM_LOAD( "xvip_12.3b",   0x0000, 0x1000, CRC(08f184f1) SHA1(bcbf89b92c311a78db516b557b982ed51907c49d) )
 
@@ -855,6 +973,7 @@ ROM_START( xeviousp )
 	ROM_LOAD( "xvi-2.7n",     0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
+
 
 ROM_START( xevious3 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -903,6 +1022,7 @@ ROM_START( xevious3 )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
 
+
 ROM_START( xevious4 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "xvi_1.3p",     0x0000, 0x1000, CRC(09964dda) SHA1(4882b25b0938a903f3a367455ba788a30759b5b0) )
@@ -950,6 +1070,7 @@ ROM_START( xevious4 )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
 
+
 ROM_START( xevious5 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "xvi_1.3p",     0x0000, 0x1000, CRC(09964dda) SHA1(4882b25b0938a903f3a367455ba788a30759b5b0) )
@@ -996,6 +1117,7 @@ ROM_START( xevious5 )
 	ROM_LOAD( "xvi-2.7n",     0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
 	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
+
 
 ROM_START( xeviblk )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -1045,53 +1167,14 @@ ROM_START( xeviblk )
 ROM_END
 
 
-GAME( 1984, galaga84, galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "hack", "Galaga '84", MACHINE_SUPPORTS_SAVE )
-GAME( 1999, galaga99, galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Jerky and Sil", "Galaga '99", MACHINE_SUPPORTS_SAVE )
-GAME( 1981, galagab2, galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "bootleg", "Galaga (bootleg)", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, galagabl, galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "bootleg", "Galaga (Namco 1982)", MACHINE_SUPPORTS_SAVE )
-GAME( 1981, galagads, galaga,  galaga,   galagamw, galaga_state,  init_galaga,  ROT90, "hack", "Galaga (fast shoot)", MACHINE_SUPPORTS_SAVE )
-GAME( 2000, galagaef, galaga,  galaga,   galagamw, galaga_state,  init_galaga,  ROT90, "hack", "Galaga (Enduring Freedom)", MACHINE_SUPPORTS_SAVE )
-GAME( 1981, galagaf,  galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Namco", "Galaga (Fast Shoot Hack)", MACHINE_SUPPORTS_SAVE )
-GAME( 2007, galagap,  galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Don Hodges", "Galaga (patched)", MACHINE_SUPPORTS_SAVE )
-GAME( 1981, galagix,  galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Grand Master Peter", "Galagix", MACHINE_SUPPORTS_SAVE )
-GAME( 2002, galagost, galaga,  galagost, galaga,   galaga_hbmame, init_galaga,  ROT90, "Twisty", "Galaga Ghost (Set 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 2002, galagosb, galaga,  galagost, galaga,   galaga_hbmame, init_galaga,  ROT90, "Twisty", "Galaga Ghost (Set 2 - 2002-11-28)", MACHINE_SUPPORTS_SAVE )
-GAME( 1998, galaped,  galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Cary Barnhard", "Galapede (Fast Shoot)", MACHINE_SUPPORTS_SAVE )
-GAME( 1998, galgaxin, galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "T-Bone", "Galagalaxian", MACHINE_SUPPORTS_SAVE )
-GAME( 2000, terror,   galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Hack", "Terrorist", MACHINE_SUPPORTS_SAVE )
-GAME( 2000, vgalaga,  galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Hack", "Vector Galaga", MACHINE_SUPPORTS_SAVE )
-GAME( 2000, vgalagam, galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Hack", "Vector Galaga Midway", MACHINE_SUPPORTS_SAVE )
-GAME( 2000, vgalagaf, galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Hack", "Vector Galaga Fast Shoot", MACHINE_SUPPORTS_SAVE )
-GAME( 2002, battlesh, xevious, battles,  xevious,  battles_state, driver_init, ROT90, "bootleg", "Battles 2002", MACHINE_SUPPORTS_SAVE )
-GAME( 2005, gaous,    xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco (Hack)", "Gaous", MACHINE_SUPPORTS_SAVE )
-GAME( 2002, sxvioush, xevious, xevious,  sxevious, xevious_state, init_xevious, ROT90, "Namco", "Super Xevious 2002", MACHINE_SUPPORTS_SAVE )
-GAME( 2004, xeviblk,  xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious Black", MACHINE_SUPPORTS_SAVE )
-GAME( 2002, xevious3, xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious 2003", MACHINE_SUPPORTS_SAVE )
-GAME( 2004, xevious4, xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious 2004", MACHINE_SUPPORTS_SAVE )
-GAME( 2004, xevious5, xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious 2005", MACHINE_SUPPORTS_SAVE )
-GAME( 2002, xevioush, xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious 2002", MACHINE_SUPPORTS_SAVE )
-GAME( 2001, xeviousp, xevious, xevious,  sxevious, xevious_state, init_xevious, ROT90, "bootleg", "Xevious Plus! (Release 2)", MACHINE_SUPPORTS_SAVE )
-GAME( 2002, xviousah, xevious, xevious,  xeviousa, xevious_state, init_xevious, ROT90, "Namco (Atari license)", "Xevious 2002 (Atari set 1)", MACHINE_SUPPORTS_SAVE )
-
-
-// PSmame (c) gaston90 used with permission
-
- /****************************************************
-         Proyecto Shadows Mame Build Plus
-*****************************************************/
-
- /******
- Xevios
-*********/
-
-ROM_START( sxeviouss01 )
-	ROM_REGION( 0x10000, "maincpu", 0 ) 
+ROM_START( sxevious01 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cpu_3phc01.rom",   0x0000, 0x1000, CRC(e3b9ac69) SHA1(6a7a75e69b06455cef6f3a0d57c1aef5a8c10640) )
 	ROM_LOAD( "xvip_2.3m",    0x1000, 0x1000, CRC(a2cf842d) SHA1(9bb24b3527f2cad8c9b916f9a815ea4f747dc337) )
 	ROM_LOAD( "xvip_3.2m",    0x2000, 0x1000, CRC(7ab657cd) SHA1(a27ad33b2808417dff8e27d0e2b503092f505bb0) )
 	ROM_LOAD( "xv3_4hc01.2l",     0x3000, 0x1000, CRC(98a6a475) SHA1(ae098d47c8a6fe9b2368ecaa9aec1cf084b9d25b) )
 
-	ROM_REGION( 0x10000, "sub", 0 ) 
+	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "xv3_5hc01.3f",     0x0000, 0x1000, CRC(7a963207) SHA1(d15233ac9ac5c2f6b337b8f408852eba5359a414) )
 	ROM_LOAD( "xv3_6hc01.3j",     0x1000, 0x1000, CRC(02de74e6) SHA1(326d2a81fbf4c0b0b371483bef6ccf7a1f93960f) )
 
@@ -1102,13 +1185,13 @@ ROM_START( sxeviouss01 )
 	ROM_LOAD( "xvip_12.3b",   0x0000, 0x1000, CRC(08f184f1) SHA1(bcbf89b92c311a78db516b557b982ed51907c49d) )
 
 	ROM_REGION( 0x2000, "gfx2", 0 )
-	ROM_LOAD( "xvi_13.3c",    0x0000, 0x1000, CRC(de60ba25) SHA1(32bc09be5ff8b52ee3a26e0ac3ebc2d4107badb7) )    
-	ROM_LOAD( "xvi_14.3d",    0x1000, 0x1000, CRC(535cdbbc) SHA1(fb9ffe5fc43e0213231267e98d605d43c15f61e8) ) 
+	ROM_LOAD( "xvi_13.3c",    0x0000, 0x1000, CRC(de60ba25) SHA1(32bc09be5ff8b52ee3a26e0ac3ebc2d4107badb7) )
+	ROM_LOAD( "xvi_14.3d",    0x1000, 0x1000, CRC(535cdbbc) SHA1(fb9ffe5fc43e0213231267e98d605d43c15f61e8) )
 
 	ROM_REGION( 0xa000, "gfx3", 0 )
-	ROM_LOAD( "xvi_15.4m",    0x0000, 0x2000, CRC(dc2c0ecb) SHA1(19ddbd9805f77f38c9a9a1bb30dba6c720b8609f) )  
-	ROM_LOAD( "xvi_17.4p",    0x2000, 0x2000, CRC(dfb587ce) SHA1(acff2bf5cde85a16cdc98a52cdea11f77fadf25a) ) 
-	ROM_LOAD( "xvi_16.4n",    0x4000, 0x1000, CRC(605ca889) SHA1(3bf380ef76c03822a042ecc73b5edd4543c268ce) ) 
+	ROM_LOAD( "xvi_15.4m",    0x0000, 0x2000, CRC(dc2c0ecb) SHA1(19ddbd9805f77f38c9a9a1bb30dba6c720b8609f) )
+	ROM_LOAD( "xvi_17.4p",    0x2000, 0x2000, CRC(dfb587ce) SHA1(acff2bf5cde85a16cdc98a52cdea11f77fadf25a) )
+	ROM_LOAD( "xvi_16.4n",    0x4000, 0x1000, CRC(605ca889) SHA1(3bf380ef76c03822a042ecc73b5edd4543c268ce) )
 	ROM_LOAD( "xvip_16.4n",   0x5000, 0x1000, CRC(00babaa1) SHA1(b946510a9c5b6c1dd6e6bab1ba3217a9d449a477) )
 	ROM_FILL(                 0x9000, 0x1000, 0x00 )
 
@@ -1121,17 +1204,98 @@ ROM_START( sxeviouss01 )
 	ROM_LOAD( "xvi-8.6a",     0x0000, 0x0100, CRC(5cc2727f) SHA1(0dc1e63a47a4cb0ba75f6f1e0c15e408bb0ee2a1) )
 	ROM_LOAD( "xvi-9.6d",     0x0100, 0x0100, CRC(5c8796cc) SHA1(63015e3c0874afc6b1ca032f1ffb8f90562c77c8) )
 	ROM_LOAD( "xvi-10.6e",    0x0200, 0x0100, CRC(3cb60975) SHA1(c94d5a5dd4d8a08d6d39c051a4a722581b903f45) )
-	ROM_LOAD( "xvi-7.4h",     0x0300, 0x0200, CRC(22d98032) SHA1(ec6626828c79350417d08b98e9631ad35edd4a41) ) 
+	ROM_LOAD( "xvi-7.4h",     0x0300, 0x0200, CRC(22d98032) SHA1(ec6626828c79350417d08b98e9631ad35edd4a41) )
 	ROM_LOAD( "xvi-6.4f",     0x0500, 0x0200, CRC(3a7599f0) SHA1(a4bdf58c190ca16fc7b976c97f41087a61fdb8b8) )
 	ROM_LOAD( "xvi-4.3l",     0x0700, 0x0200, CRC(fd8b9d91) SHA1(87ddf0b9d723aabb422d6d416aa9ec6bc246bf34) )
 	ROM_LOAD( "xvi-5.3m",     0x0900, 0x0200, CRC(bf906d82) SHA1(776168a73d3b9f0ce05610acc8a623deae0a572b) )
 
-	ROM_REGION( 0x0200, "namco", 0 )  
+	ROM_REGION( 0x0200, "namco", 0 )
 	ROM_LOAD( "xvi-2.7n",     0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
-	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) ) 
+	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
 ROM_END
 
-/*    YEAR  NAME            PARENT    MACHINE        INPUT       INIT             MONITOR COMPANY                 FULLNAME FLAGS */
-// Xevios
-GAME( 1984, sxeviouss01,  xevious, xevious, sxevious, xevious_state, init_xevious, ROT90, "hack", "Xevious Plus! (Release 1)", MACHINE_SUPPORTS_SAVE )
+
+ROM_START( hyxevious )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "hyxvi_1.3p",     0x0000, 0x1000, CRC(3083987b) SHA1(8dd09a93f960660721283d8cb69407ce1c6ae574) )
+	ROM_LOAD( "hyxvi_2.3m",     0x1000, 0x1000, CRC(dd07d018) SHA1(519775ed9145d2c8aa21cfff0c09697a30f06a8f) )
+	ROM_LOAD( "hyxvi_3.2m",     0x2000, 0x1000, CRC(79c0fb2f) SHA1(93ceb4a9594fd1151ad2f95e4c0c6a90b2d7bfee) )
+	ROM_LOAD( "hyxvi_4.2l",     0x3000, 0x1000, CRC(ec88d2bc) SHA1(3132df4bd626366fa4ee3cf3ee15575a2f62ed71) )
+
+	ROM_REGION( 0x10000, "sub", 0 )
+	ROM_LOAD( "hyxvi_5.3f",     0x0000, 0x1000, CRC(d921841a) SHA1(ff3431d63c15da8e035fd8386bfa96699d2e8a81) )
+	ROM_LOAD( "hyxvi_6.3j",     0x1000, 0x1000, CRC(c13e8374) SHA1(d43572b64e343c1724359fd296b1b1963b90899d) )
+
+	ROM_REGION( 0x10000, "sub2", 0 )
+	ROM_LOAD( "xvi_7.2c",     0x0000, 0x1000, CRC(dd35cf1c) SHA1(f8d1f8e019d8198308443c2e7e815d0d04b23d14) )
+
+	ROM_REGION( 0x1000, "gfx1", 0 )
+	ROM_LOAD( "xvi_12.3b",    0x0000, 0x1000, CRC(088c8b26) SHA1(9c3b61dfca2f84673a78f7f66e363777a8f47a59) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "xvi_13.3c",    0x0000, 0x1000, CRC(de60ba25) SHA1(32bc09be5ff8b52ee3a26e0ac3ebc2d4107badb7) )
+	ROM_LOAD( "xvi_14.3d",    0x1000, 0x1000, CRC(535cdbbc) SHA1(fb9ffe5fc43e0213231267e98d605d43c15f61e8) )
+
+	ROM_REGION( 0xa000, "gfx3", 0 )
+	ROM_LOAD( "xvi_15.4m",    0x0000, 0x2000, CRC(dc2c0ecb) SHA1(19ddbd9805f77f38c9a9a1bb30dba6c720b8609f) )
+	ROM_LOAD( "xvi_17.4p",    0x2000, 0x2000, CRC(dfb587ce) SHA1(acff2bf5cde85a16cdc98a52cdea11f77fadf25a) )
+	ROM_LOAD( "xvi_16.4n",    0x4000, 0x1000, CRC(605ca889) SHA1(3bf380ef76c03822a042ecc73b5edd4543c268ce) )
+	ROM_LOAD( "xvi_18.4r",    0x5000, 0x2000, CRC(02417d19) SHA1(b5f830dd2cf25cf154308d2e640f0ecdcda5d8cd) )
+	ROM_FILL(                 0x9000, 0x1000, 0x00 )
+
+	ROM_REGION( 0x4000, "gfx4", 0 )
+	ROM_LOAD( "xvi_9.2a",     0x0000, 0x1000, CRC(57ed9879) SHA1(3106d1aacff06cf78371bd19967141072b32b7d7) )
+	ROM_LOAD( "xvi_10.2b",    0x1000, 0x2000, CRC(ae3ba9e5) SHA1(49064b25667ffcd81137cd5e800df4b78b182a46) )
+	ROM_LOAD( "xvi_11.2c",    0x3000, 0x1000, CRC(31e244dd) SHA1(3f7eac12863697a98e1122111801606759e44b2a) )
+
+	ROM_REGION( 0x0b00, "proms", 0 )
+	ROM_LOAD( "xvi-8.6a",     0x0000, 0x0100, CRC(5cc2727f) SHA1(0dc1e63a47a4cb0ba75f6f1e0c15e408bb0ee2a1) )
+	ROM_LOAD( "xvi-9.6d",     0x0100, 0x0100, CRC(5c8796cc) SHA1(63015e3c0874afc6b1ca032f1ffb8f90562c77c8) )
+	ROM_LOAD( "xvi-10.6e",    0x0200, 0x0100, CRC(3cb60975) SHA1(c94d5a5dd4d8a08d6d39c051a4a722581b903f45) )
+	ROM_LOAD( "xvi-7.4h",     0x0300, 0x0200, CRC(22d98032) SHA1(ec6626828c79350417d08b98e9631ad35edd4a41) )
+	ROM_LOAD( "xvi-6.4f",     0x0500, 0x0200, CRC(3a7599f0) SHA1(a4bdf58c190ca16fc7b976c97f41087a61fdb8b8) )
+	ROM_LOAD( "xvi-4.3l",     0x0700, 0x0200, CRC(fd8b9d91) SHA1(87ddf0b9d723aabb422d6d416aa9ec6bc246bf34) )
+	ROM_LOAD( "xvi-5.3m",     0x0900, 0x0200, CRC(bf906d82) SHA1(776168a73d3b9f0ce05610acc8a623deae0a572b) )
+
+	ROM_REGION( 0x0200, "namco", 0 )
+	ROM_LOAD( "xvi-2.7n",     0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
+	ROM_LOAD( "xvi-1.5n",     0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )
+ROM_END
+
+
+/*    YEAR  NAME          PARENT   MACHINE   INPUT     CLASS          INIT          MONITOR COMPANY                 FULLNAME FLAGS */
+// Galaga
+GAME( 1984, galaga84,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "hack", "Galaga '84", MACHINE_SUPPORTS_SAVE )
+GAME( 1999, galaga99,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Jerky and Sil", "Galaga '99", MACHINE_SUPPORTS_SAVE )
+GAME( 1981, galagab2,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "bootleg", "Galaga (bootleg)", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, galagabl,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "bootleg", "Galaga (Namco 1982)", MACHINE_SUPPORTS_SAVE )
+GAME( 1981, galagads,     galaga,  galaga,   galagamw, galaga_state,  init_galaga,  ROT90, "hack", "Galaga (fast shoot)", MACHINE_SUPPORTS_SAVE )
+GAME( 2000, galagaef,     galaga,  galaga,   galagamw, galaga_state,  init_galaga,  ROT90, "hack", "Galaga (Enduring Freedom)", MACHINE_SUPPORTS_SAVE )
+GAME( 1981, galagaf,      galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Namco", "Galaga (Fast Shoot Hack)", MACHINE_SUPPORTS_SAVE )
+GAME( 2007, galagap,      galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Don Hodges", "Galaga (patched)", MACHINE_SUPPORTS_SAVE )
+GAME( 1981, galagix,      galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Grand Master Peter", "Galagix", MACHINE_SUPPORTS_SAVE )
+GAME( 2002, galagost,     galaga,  galagost, galaga,   galaga_hbmame, init_galaga,  ROT90, "Twisty", "Galaga Ghost (Set 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 2002, galagosb,     galaga,  galagost, galaga,   galaga_hbmame, init_galaga,  ROT90, "Twisty", "Galaga Ghost (Set 2, 2002-11-28)", MACHINE_SUPPORTS_SAVE )
+GAME( 1998, galaped,      galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Cary Barnhard", "Galapede (Fast Shoot)", MACHINE_SUPPORTS_SAVE )
+GAME( 1998, galgaxin,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "T-Bone", "Galagalaxian", MACHINE_SUPPORTS_SAVE )
+GAME( 2000, terror,       galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Hack", "Terrorist", MACHINE_SUPPORTS_SAVE )
+GAME( 2000, vgalaga,      galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Hack", "Vector Galaga", MACHINE_SUPPORTS_SAVE )
+GAME( 2000, vgalagam,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Hack", "Vector Galaga Midway", MACHINE_SUPPORTS_SAVE )
+GAME( 2000, vgalagaf,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Hack", "Vector Galaga Fast Shoot", MACHINE_SUPPORTS_SAVE )
+GAME( 2024, galaga01,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Paul Goes", "Galaga Wave Mixer (2024-04-02)", MACHINE_SUPPORTS_SAVE )
+GAME( 2024, galaga02,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Paul Goes", "Galaga Challenging Only", MACHINE_SUPPORTS_SAVE )
+GAME( 2024, galaga03,     galaga,  galaga,   galaga,   galaga_state,  init_galaga,  ROT90, "Paul Goes", "Galaga Challenging Only (2024-03-26)", MACHINE_SUPPORTS_SAVE )
+// Xevious
+GAME( 2002, battlesh,     xevious, battles,  xevious,  battles_state, init_xevious, ROT90, "bootleg", "Battles 2002", MACHINE_SUPPORTS_SAVE )
+GAME( 2005, gaous,        xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco (Hack)", "Gaous", MACHINE_SUPPORTS_SAVE )
+GAME( 2002, sxvioush,     xevious, xevious,  sxevious, xevious_state, init_xevious, ROT90, "Namco", "Super Xevious 2002", MACHINE_SUPPORTS_SAVE )
+GAME( 2004, xeviblk,      xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious Black", MACHINE_SUPPORTS_SAVE )
+GAME( 2002, xevious3,     xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious 2003", MACHINE_SUPPORTS_SAVE )
+GAME( 2004, xevious4,     xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious 2004", MACHINE_SUPPORTS_SAVE )
+GAME( 2004, xevious5,     xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious 2005", MACHINE_SUPPORTS_SAVE )
+GAME( 2002, xevioush,     xevious, xevious,  xevious,  xevious_state, init_xevious, ROT90, "Namco", "Xevious 2002", MACHINE_SUPPORTS_SAVE )
+GAME( 2001, xeviousp,     xevious, xevious,  sxevious, xevious_state, init_xevious, ROT90, "bootleg", "Xevious Plus! (Release 2)", MACHINE_SUPPORTS_SAVE )
+GAME( 2002, xviousah,     xevious, xevious,  xeviousa, xevious_state, init_xevious, ROT90, "Namco (Atari license)", "Xevious 2002 (Atari set 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1984, sxevious01,   xevious, xevious,  sxevious, xevious_state, init_xevious, ROT90, "hack", "Xevious Plus! (Release 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 2026, hyxevious,    xevious, xevious,  sxevious, xevious_state, init_xevious, ROT90, "Zeroco", "Hyper Xevious", MACHINE_SUPPORTS_SAVE )
 

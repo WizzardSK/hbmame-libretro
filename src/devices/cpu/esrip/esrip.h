@@ -103,16 +103,15 @@ protected:
 	};
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_stop() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_stop() override ATTR_COLD;
 
 	void make_ops();
 
 	// device_execute_interface overrides
 	virtual uint32_t execute_min_cycles() const noexcept override;
 	virtual uint32_t execute_max_cycles() const noexcept override;
-	virtual uint32_t execute_input_lines() const noexcept override;
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
 
@@ -176,8 +175,8 @@ protected:
 	std::vector<uint16_t> m_ipt_ram;
 	uint8_t   *m_lbrm;
 
-	address_space *m_program;
-	memory_access_cache<3, -3, ENDIANNESS_BIG> *m_cache;
+	memory_access<9, 3, -3, ENDIANNESS_BIG>::cache m_cache;
+	memory_access<9, 3, -3, ENDIANNESS_BIG>::specific m_program;
 
 	int     m_icount;
 

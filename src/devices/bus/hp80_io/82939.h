@@ -27,12 +27,12 @@ public:
 	virtual ~hp82939_io_card_device();
 
 protected:
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	// device-level overrides
-	virtual ioport_constructor device_input_ports() const override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	virtual void install_read_write_handlers(address_space& space , uint16_t base_addr) override;
 
@@ -46,12 +46,12 @@ private:
 	required_device<ins8250_device> m_uart;
 	required_ioport m_sw12;
 
-	DECLARE_READ8_MEMBER(p1_r);
-	DECLARE_WRITE8_MEMBER(p1_w);
-	DECLARE_READ8_MEMBER(p2_r);
-	DECLARE_READ8_MEMBER(cpu_r);
-	DECLARE_WRITE8_MEMBER(cpu_w);
-	void cpu_io_map(address_map &map);
+	uint8_t p1_r();
+	void p1_w(uint8_t data);
+	uint8_t p2_r();
+	uint8_t cpu_r(offs_t offset);
+	void cpu_w(offs_t offset, uint8_t data);
+	void cpu_io_map(address_map &map) ATTR_COLD;
 };
 
 // device type definition

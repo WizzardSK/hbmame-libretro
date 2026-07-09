@@ -23,14 +23,16 @@
 #include <cctype>
 
 #include "imgtool.h"
-#include "formats/imageutl.h"
+#include "filter.h"
+
+#include "multibyte.h"
 
 
 /***************************************************************************
     CONSTANTS
 ***************************************************************************/
 
-#define EOLN (CRLF == 1 ? "\r" : (CRLF == 2 ? "\n" : (CRLF == 3 ? "\r\n" : NULL)))
+#define EOLN (CRLF == 1 ? "\r" : (CRLF == 2 ? "\n" : (CRLF == 3 ? "\r\n" : nullptr)))
 
 
 
@@ -51,7 +53,9 @@ struct basictoken_tableent
 struct basictokens
 {
 	uint16_t baseaddress;
+	uint8_t size_pos;
 	unsigned int skip_bytes : 15;
+	unsigned char bytes[20];
 	unsigned int be : 1;
 	const basictoken_tableent *entries;
 	int num_entries;
@@ -75,7 +79,8 @@ static imgtoolerr_t basic_readfile(const basictokens *tokens,
 	imgtoolerr_t err;
 	imgtool::stream::ptr mem_stream;
 	uint8_t line_header[4];
-	uint16_t line_number; //, address;
+	[[maybe_unused]] uint16_t address;
+	uint16_t line_number;
 	uint8_t b, shift;
 	int i;
 	int in_string = false;
@@ -101,15 +106,13 @@ static imgtoolerr_t basic_readfile(const basictokens *tokens,
 		/* pluck the address and line number out */
 		if (tokens->be)
 		{
-			//address = (uint16_t)
-			pick_integer_be(line_header, 0, 2);
-			line_number = (uint16_t) pick_integer_be(line_header, 2, 2);
+			address = get_u16be(&line_header[0]);
+			line_number = get_u16be(&line_header[2]);
 		}
 		else
 		{
-			//address = (uint16_t)
-			pick_integer_le(line_header, 0, 2);
-			line_number = (uint16_t) pick_integer_le(line_header, 2, 2);
+			address = get_u16le(&line_header[0]);
+			line_number = get_u16le(&line_header[2]);
 		}
 
 		/* write the line number */
@@ -181,7 +184,7 @@ static imgtoolerr_t basic_writefile(const basictokens *tokens,
 	int i, j, pos, in_quotes;
 	uint16_t line_number;
 	uint8_t line_header[4];
-	uint8_t file_header[3];
+	uint8_t file_size[2];
 	const basictoken_tableent *token_table;
 	const char *token;
 	uint8_t token_shift, token_value;
@@ -192,9 +195,8 @@ static imgtoolerr_t basic_writefile(const basictokens *tokens,
 	if (!mem_stream)
 		return IMGTOOLERR_OUTOFMEMORY;
 
-	/* skip first few bytes */
-	mem_stream->fill(0x00, tokens->skip_bytes);
-
+	/* write header */
+	mem_stream->write(tokens->bytes, tokens->skip_bytes);
 	/* loop until the file is complete */
 	while(!eof)
 	{
@@ -206,7 +208,7 @@ static imgtoolerr_t basic_writefile(const basictokens *tokens,
 			if ((c == '\r') || (c == '\n'))
 				break;
 
-			if (pos <= ARRAY_LENGTH(buf) - 1)
+			if (pos <= std::size(buf) - 1)
 			{
 				buf[pos++] = c;
 			}
@@ -242,13 +244,13 @@ static imgtoolerr_t basic_writefile(const basictokens *tokens,
 			memset(&line_header, 0, sizeof(line_header));
 			if (tokens->be)
 			{
-				place_integer_be(line_header, 0, 2, address);
-				place_integer_be(line_header, 2, 2, line_number);
+				put_u16be(&line_header[0], address);
+				put_u16be(&line_header[2], line_number);
 			}
 			else
 			{
-				place_integer_le(line_header, 0, 2, address);
-				place_integer_le(line_header, 2, 2, line_number);
+				put_u16le(&line_header[0], address);
+				put_u16le(&line_header[2], line_number);
 			}
 
 			/* emit line header */
@@ -320,22 +322,20 @@ static imgtoolerr_t basic_writefile(const basictokens *tokens,
 	mem_stream->fill(0x00, 2);
 
 	/* reset stream */
-	mem_stream->seek(0, SEEK_SET);
+	mem_stream->seek(tokens->size_pos, SEEK_SET);
 
 	/* this is somewhat gross */
 	if (tokens->skip_bytes >= 3)
 	{
 		if (tokens->be)
 		{
-			place_integer_be(file_header, 0, 1, 0xFF);
-			place_integer_be(file_header, 1, 2, mem_stream->size());
+			put_u16be(file_size, mem_stream->size());
 		}
 		else
 		{
-			place_integer_le(file_header, 0, 1, 0xFF);
-			place_integer_le(file_header, 1, 2, mem_stream->size());
+			put_u16le(file_size, mem_stream->size());
 		}
-		mem_stream->write(file_header, 3);
+		mem_stream->write(file_size, 2);
 		mem_stream->seek(0, SEEK_SET);
 	}
 
@@ -603,25 +603,32 @@ static const char *const dragonbas_statements[] =
 	"=",        /* 0xcb */
 	"<",        /* 0xcc */
 	"USING",    /* 0xcd */
-	"DIR",      /* 0xce */
-	"DRIVE",    /* 0xcf */
-	"FIELD",    /* 0xd0 */
-	"FILES",    /* 0xd1 */
-	"KILL",     /* 0xd2 */
-	"LOAD",     /* 0xd3 */
-	"LSET",     /* 0xd4 */
-	"MERGE",    /* 0xd5 */
-	"RENAME",   /* 0xd6 */
-	"RSET",     /* 0xd7 */
-	"SAVE",     /* 0xd8 */
-	"WRITE",    /* 0xd9 */
-	"VERIFY",   /* 0xda */
-	"UNLOAD",   /* 0xdb */
-	"DSKINI",   /* 0xdc */
-	"BACKUP",   /* 0xdd */
-	"COPY",     /* 0xde */
-	"DSKI$",    /* 0xdf */
-	"DSKO$"     /* 0xe0 */
+	"AUTO",     /* 0xce */
+	"BACKUP",   /* 0xcf */
+	"BEEP",     /* 0xd0 */
+	"BOOT",     /* 0xd1 */
+	"CHAIN",    /* 0xd2 */
+	"COPY",     /* 0xd3 */
+	"CREATE",   /* 0xd4 */
+	"DIR",      /* 0xd5 */
+	"DRIVE",    /* 0xd6 */
+	"DSKINIT",  /* 0xd7 */
+	"FREAD",    /* 0xd8 */
+	"FWRITE",   /* 0xd9 */
+	"ERROR",    /* 0xda */
+	"KILL",     /* 0xdb */
+	"LOAD",     /* 0xdc */
+	"MERGE",    /* 0xdd */
+	"PROTECT",  /* 0xde */
+	"WAIT",     /* 0xdf */
+	"RENAME",   /* 0xe0 */
+	"SAVE",     /* 0xe1 */
+	"SREAD",    /* 0xe2 */
+	"SWRITE",   /* 0xe3 */
+	"VERIFY",   /* 0xe4 */
+	"FROM",     /* 0xe5 */
+	"FLREAD",   /* 0xe6 */
+	"SWAP"      /* 0xe7 */
 };
 
 static const char *const dragonbas_functions[] =
@@ -660,11 +667,13 @@ static const char *const dragonbas_functions[] =
 	"PPOINT",   /* 0xff9f */
 	"STRING$",  /* 0xffa0 */
 	"USR",      /* 0xffa1 */
-	"CVN",      /* 0xffa2 */
+	"LOF",      /* 0xffa2 */
 	"FREE",     /* 0xffa3 */
-	"LOC",      /* 0xffa4 */
-	"LOF",      /* 0xffa5 */
-	"MKN$"      /* 0xffa6 */
+	"ERL",      /* 0xffa4 */
+	"ERR",      /* 0xffa5 */
+	"HIMEM",    /* 0xffa6 */
+	"LOC",      /* 0xffa7 */
+	"FRE$"      /* 0xffa8 */
 };
 
 static const char *const vzbas[] =
@@ -1024,58 +1033,58 @@ static const char *const basic_10[] = /* "BASIC 1.0" - supported by pet */
 	"LEFT$",          /* 0xc8 */
 	"RIGHT$",         /* 0xc9 */
 	"MID$",           /* 0xca */
-	NULL,               /* 0xcb */
-	NULL,               /* 0xcc */
-	NULL,               /* 0xcd */
-	NULL,               /* 0xce */
-	NULL,               /* 0xcf */
-	NULL,               /* 0xd0 */
-	NULL,               /* 0xd1 */
-	NULL,               /* 0xd2 */
-	NULL,               /* 0xd3 */
-	NULL,               /* 0xd4 */
-	NULL,               /* 0xd5 */
-	NULL,               /* 0xd6 */
-	NULL,               /* 0xd7 */
-	NULL,               /* 0xd8 */
-	NULL,               /* 0xd9 */
-	NULL,               /* 0xda */
-	NULL,               /* 0xdb */
-	NULL,               /* 0xdc */
-	NULL,               /* 0xdd */
-	NULL,               /* 0xde */
-	NULL,               /* 0xdf */
-	NULL,               /* 0xe0 */
-	NULL,               /* 0xe1 */
-	NULL,               /* 0xe2 */
-	NULL,               /* 0xe3 */
-	NULL,               /* 0xe4 */
-	NULL,               /* 0xe5 */
-	NULL,               /* 0xe6 */
-	NULL,               /* 0xe7 */
-	NULL,               /* 0xe8 */
-	NULL,               /* 0xe9 */
-	NULL,               /* 0xea */
-	NULL,               /* 0xeb */
-	NULL,               /* 0xec */
-	NULL,               /* 0xed */
-	NULL,               /* 0xee */
-	NULL,               /* 0xef */
-	NULL,               /* 0xf0 */
-	NULL,               /* 0xf1 */
-	NULL,               /* 0xf2 */
-	NULL,               /* 0xf3 */
-	NULL,               /* 0xf4 */
-	NULL,               /* 0xf5 */
-	NULL,               /* 0xf6 */
-	NULL,               /* 0xf7 */
-	NULL,               /* 0xf8 */
-	NULL,               /* 0xf9 */
-	NULL,               /* 0xfa */
-	NULL,               /* 0xfb */
-	NULL,               /* 0xfc */
-	NULL,               /* 0xfd */
-	NULL,               /* 0xfe */
+	nullptr,          /* 0xcb */
+	nullptr,          /* 0xcc */
+	nullptr,          /* 0xcd */
+	nullptr,          /* 0xce */
+	nullptr,          /* 0xcf */
+	nullptr,          /* 0xd0 */
+	nullptr,          /* 0xd1 */
+	nullptr,          /* 0xd2 */
+	nullptr,          /* 0xd3 */
+	nullptr,          /* 0xd4 */
+	nullptr,          /* 0xd5 */
+	nullptr,          /* 0xd6 */
+	nullptr,          /* 0xd7 */
+	nullptr,          /* 0xd8 */
+	nullptr,          /* 0xd9 */
+	nullptr,          /* 0xda */
+	nullptr,          /* 0xdb */
+	nullptr,          /* 0xdc */
+	nullptr,          /* 0xdd */
+	nullptr,          /* 0xde */
+	nullptr,          /* 0xdf */
+	nullptr,          /* 0xe0 */
+	nullptr,          /* 0xe1 */
+	nullptr,          /* 0xe2 */
+	nullptr,          /* 0xe3 */
+	nullptr,          /* 0xe4 */
+	nullptr,          /* 0xe5 */
+	nullptr,          /* 0xe6 */
+	nullptr,          /* 0xe7 */
+	nullptr,          /* 0xe8 */
+	nullptr,          /* 0xe9 */
+	nullptr,          /* 0xea */
+	nullptr,          /* 0xeb */
+	nullptr,          /* 0xec */
+	nullptr,          /* 0xed */
+	nullptr,          /* 0xee */
+	nullptr,          /* 0xef */
+	nullptr,          /* 0xf0 */
+	nullptr,          /* 0xf1 */
+	nullptr,          /* 0xf2 */
+	nullptr,          /* 0xf3 */
+	nullptr,          /* 0xf4 */
+	nullptr,          /* 0xf5 */
+	nullptr,          /* 0xf6 */
+	nullptr,          /* 0xf7 */
+	nullptr,          /* 0xf8 */
+	nullptr,          /* 0xf9 */
+	nullptr,          /* 0xfa */
+	nullptr,          /* 0xfb */
+	nullptr,          /* 0xfc */
+	nullptr,          /* 0xfd */
+	nullptr,          /* 0xfe */
 	"{PI}"            /* 0xff - A single character shaped as greek lowercase 'PI' */
 };
 
@@ -1157,57 +1166,57 @@ static const char *const basic_20[] = /* "BASIC 2.0" - supported by vic20 & clon
 	"RIGHT$",         /* 0xc9 */
 	"MID$",           /* 0xca */
 	"GO",             /* 0xcb */
-	NULL,               /* 0xcc */
-	NULL,               /* 0xcd */
-	NULL,               /* 0xce */
-	NULL,               /* 0xcf */
-	NULL,               /* 0xd0 */
-	NULL,               /* 0xd1 */
-	NULL,               /* 0xd2 */
-	NULL,               /* 0xd3 */
-	NULL,               /* 0xd4 */
-	NULL,               /* 0xd5 */
-	NULL,               /* 0xd6 */
-	NULL,               /* 0xd7 */
-	NULL,               /* 0xd8 */
-	NULL,               /* 0xd9 */
-	NULL,               /* 0xda */
-	NULL,               /* 0xdb */
-	NULL,               /* 0xdc */
-	NULL,               /* 0xdd */
-	NULL,               /* 0xde */
-	NULL,               /* 0xdf */
-	NULL,               /* 0xe0 */
-	NULL,               /* 0xe1 */
-	NULL,               /* 0xe2 */
-	NULL,               /* 0xe3 */
-	NULL,               /* 0xe4 */
-	NULL,               /* 0xe5 */
-	NULL,               /* 0xe6 */
-	NULL,               /* 0xe7 */
-	NULL,               /* 0xe8 */
-	NULL,               /* 0xe9 */
-	NULL,               /* 0xea */
-	NULL,               /* 0xeb */
-	NULL,               /* 0xec */
-	NULL,               /* 0xed */
-	NULL,               /* 0xee */
-	NULL,               /* 0xef */
-	NULL,               /* 0xf0 */
-	NULL,               /* 0xf1 */
-	NULL,               /* 0xf2 */
-	NULL,               /* 0xf3 */
-	NULL,               /* 0xf4 */
-	NULL,               /* 0xf5 */
-	NULL,               /* 0xf6 */
-	NULL,               /* 0xf7 */
-	NULL,               /* 0xf8 */
-	NULL,               /* 0xf9 */
-	NULL,               /* 0xfa */
-	NULL,               /* 0xfb */
-	NULL,               /* 0xfc */
-	NULL,               /* 0xfd */
-	NULL,               /* 0xfe */
+	nullptr,          /* 0xcc */
+	nullptr,          /* 0xcd */
+	nullptr,          /* 0xce */
+	nullptr,          /* 0xcf */
+	nullptr,          /* 0xd0 */
+	nullptr,          /* 0xd1 */
+	nullptr,          /* 0xd2 */
+	nullptr,          /* 0xd3 */
+	nullptr,          /* 0xd4 */
+	nullptr,          /* 0xd5 */
+	nullptr,          /* 0xd6 */
+	nullptr,          /* 0xd7 */
+	nullptr,          /* 0xd8 */
+	nullptr,          /* 0xd9 */
+	nullptr,          /* 0xda */
+	nullptr,          /* 0xdb */
+	nullptr,          /* 0xdc */
+	nullptr,          /* 0xdd */
+	nullptr,          /* 0xde */
+	nullptr,          /* 0xdf */
+	nullptr,          /* 0xe0 */
+	nullptr,          /* 0xe1 */
+	nullptr,          /* 0xe2 */
+	nullptr,          /* 0xe3 */
+	nullptr,          /* 0xe4 */
+	nullptr,          /* 0xe5 */
+	nullptr,          /* 0xe6 */
+	nullptr,          /* 0xe7 */
+	nullptr,          /* 0xe8 */
+	nullptr,          /* 0xe9 */
+	nullptr,          /* 0xea */
+	nullptr,          /* 0xeb */
+	nullptr,          /* 0xec */
+	nullptr,          /* 0xed */
+	nullptr,          /* 0xee */
+	nullptr,          /* 0xef */
+	nullptr,          /* 0xf0 */
+	nullptr,          /* 0xf1 */
+	nullptr,          /* 0xf2 */
+	nullptr,          /* 0xf3 */
+	nullptr,          /* 0xf4 */
+	nullptr,          /* 0xf5 */
+	nullptr,          /* 0xf6 */
+	nullptr,          /* 0xf7 */
+	nullptr,          /* 0xf8 */
+	nullptr,          /* 0xf9 */
+	nullptr,          /* 0xfa */
+	nullptr,          /* 0xfb */
+	nullptr,          /* 0xfc */
+	nullptr,          /* 0xfd */
+	nullptr,          /* 0xfe */
 	"{PI}"            /* 0xff - A single character shaped as greek lowercase 'PI' */
 };
 
@@ -2935,17 +2944,19 @@ static const char *const basic_100[] = /* "BASIC 10.0" - supported by c65 & clon
 
 static const basictoken_tableent cocobas_tokenents[] =
 {
-	{ 0x00, 0x80,   cocobas_statements, ARRAY_LENGTH(cocobas_statements) },
-	{ 0xff, 0x80,   cocobas_functions,  ARRAY_LENGTH(cocobas_functions) }
+	{ 0x00, 0x80,   cocobas_statements, std::size(cocobas_statements) },
+	{ 0xff, 0x80,   cocobas_functions,  std::size(cocobas_functions) }
 };
 
 static const basictokens cocobas_tokens =
 {
 	0x2600,
+	1,
 	3,
+	{0xFF, 0x00, 0x00},
 	true,
 	cocobas_tokenents,
-	ARRAY_LENGTH(cocobas_tokenents)
+	std::size(cocobas_tokenents)
 };
 
 static imgtoolerr_t cocobas_readfile(imgtool::partition &partition, const char *filename,
@@ -2960,7 +2971,7 @@ static imgtoolerr_t cocobas_writefile(imgtool::partition &partition, const char 
 	return basic_writefile(&cocobas_tokens, partition, filename, fork, sourcef, opts);
 }
 
-void filter_cocobas_getinfo(uint32_t state, union filterinfo *info)
+void filter_cocobas_getinfo(uint32_t state, imgtool::filterinfo *info)
 {
 	switch(state)
 	{
@@ -2979,17 +2990,19 @@ void filter_cocobas_getinfo(uint32_t state, union filterinfo *info)
 
 static const basictoken_tableent dragonbas_tokenents[] =
 {
-	{ 0x00, 0x80,   dragonbas_statements,   ARRAY_LENGTH(dragonbas_statements) },
-	{ 0xff, 0x80,   dragonbas_functions,    ARRAY_LENGTH(dragonbas_functions) }
+	{ 0x00, 0x80,   dragonbas_statements,   std::size(dragonbas_statements) },
+	{ 0xff, 0x80,   dragonbas_functions,    std::size(dragonbas_functions) }
 };
 
 static const basictokens dragonbas_tokens =
 {
-	0x2600,
+	0x2415,
 	4,
+	9,
+	{0x55, 0x01, 0x24, 0x01, 0x00, 0x2A, 0x8B, 0x8D, 0xAA},
 	true,
 	dragonbas_tokenents,
-	ARRAY_LENGTH(dragonbas_tokenents)
+	std::size(dragonbas_tokenents)
 };
 
 static imgtoolerr_t dragonbas_readfile(imgtool::partition &partition, const char *filename,
@@ -3004,7 +3017,7 @@ static imgtoolerr_t dragonbas_writefile(imgtool::partition &partition, const cha
 	return basic_writefile(&dragonbas_tokens, partition, filename, fork, sourcef, opts);
 }
 
-void filter_dragonbas_getinfo(uint32_t state, union filterinfo *info)
+void filter_dragonbas_getinfo(uint32_t state, imgtool::filterinfo *info)
 {
 	switch(state)
 	{
@@ -3023,7 +3036,7 @@ void filter_dragonbas_getinfo(uint32_t state, union filterinfo *info)
 
 static const basictoken_tableent vzbas_tokenents[] =
 {
-	{ 0x00, 0x80,   vzbas,  ARRAY_LENGTH(vzbas) }
+	{ 0x00, 0x80,   vzbas,  std::size(vzbas) }
 };
 
 
@@ -3032,9 +3045,11 @@ static const basictokens vzbas_tokens =
 {
 	0x7ae9,
 	0,
+	0,
+	{0x00},
 	false,
 	vzbas_tokenents,
-	ARRAY_LENGTH(vzbas_tokenents)
+	std::size(vzbas_tokenents)
 };
 
 static imgtoolerr_t vzbas_readfile(imgtool::partition &partition, const char *filename,
@@ -3049,7 +3064,7 @@ static imgtoolerr_t vzbas_writefile(imgtool::partition &partition, const char *f
 	return basic_writefile(&vzbas_tokens, partition, filename, fork, sourcef, opts);
 }
 
-void filter_vzbas_getinfo(uint32_t state, union filterinfo *info)
+void filter_vzbas_getinfo(uint32_t state, imgtool::filterinfo *info)
 {
 	switch(state)
 	{
@@ -3068,17 +3083,19 @@ void filter_vzbas_getinfo(uint32_t state, union filterinfo *info)
 
 static const basictoken_tableent bml3bas_tokenents[] =
 {
-	{ 0x00, 0x80,   bml3bas_statements, ARRAY_LENGTH(bml3bas_statements) },
-	{ 0xff, 0x80,   bml3bas_functions,  ARRAY_LENGTH(bml3bas_functions) }
+	{ 0x00, 0x80,   bml3bas_statements, std::size(bml3bas_statements) },
+	{ 0xff, 0x80,   bml3bas_functions,  std::size(bml3bas_functions) }
 };
 
 static const basictokens bml3bas_tokens =
 {
 	0x2600,
+	1,
 	3,
+	{0xFF, 0x00, 0x00},
 	true,
 	bml3bas_tokenents,
-	ARRAY_LENGTH(bml3bas_tokenents)
+	std::size(bml3bas_tokenents)
 };
 
 static imgtoolerr_t bml3bas_readfile(imgtool::partition &partition, const char *filename,
@@ -3093,7 +3110,7 @@ static imgtoolerr_t bml3bas_writefile(imgtool::partition &partition, const char 
 	return basic_writefile(&bml3bas_tokens, partition, filename, fork, sourcef, opts);
 }
 
-void filter_bml3bas_getinfo(uint32_t state, union filterinfo *info)
+void filter_bml3bas_getinfo(uint32_t state, imgtool::filterinfo *info)
 {
 	switch(state)
 	{

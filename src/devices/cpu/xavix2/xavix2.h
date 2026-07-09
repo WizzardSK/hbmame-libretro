@@ -27,11 +27,10 @@ protected:
 
 	static const u8 bpo[8];
 
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual uint32_t execute_min_cycles() const noexcept override;
 	virtual uint32_t execute_max_cycles() const noexcept override;
-	virtual uint32_t execute_input_lines() const noexcept override;
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
 	virtual space_config_vector memory_space_config() const override;
@@ -39,8 +38,8 @@ protected:
 	virtual void state_string_export(const device_state_entry &entry, std::string &str) const override;
 
 	const address_space_config m_program_config;
-	address_space *m_program;
-	memory_access_cache<2, 0, ENDIANNESS_LITTLE> *m_program_cache;
+	memory_access<32, 2, 0, ENDIANNESS_LITTLE>::cache m_program_cache;
+	memory_access<32, 2, 0, ENDIANNESS_LITTLE>::specific m_program;
 
 	int m_icount, m_ei_count;
 	u32 m_pc;

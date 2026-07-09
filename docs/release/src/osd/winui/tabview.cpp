@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -266,5 +266,4 @@ BOOL SetupTabView(HWND hwndTabView, const struct TabViewOptions *pOptions)
 	printf("SetupTabView: Finished\n");fflush(stdout);
 	return true;
 }
-
 

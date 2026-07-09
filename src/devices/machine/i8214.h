@@ -30,17 +30,19 @@ class i8214_device : public device_t
 {
 public:
 	// construction/destruction
-	i8214_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	i8214_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
+
+	void set_int_dis_hack(bool hack) { m_int_dis_hack = hack; }
 
 	auto int_wr_callback() { return m_write_int.bind(); }
 	auto enlg_wr_callback() { return m_write_enlg.bind(); }
 
-	DECLARE_WRITE_LINE_MEMBER( sgs_w );
-	DECLARE_WRITE_LINE_MEMBER( etlg_w );
-	DECLARE_WRITE_LINE_MEMBER( inte_w );
+	void sgs_w(int state);
+	void etlg_w(int state);
+	void inte_w(int state);
 
 	uint8_t a_r();
-	DECLARE_READ8_MEMBER(vector_r);
+	uint8_t vector_r();
 	void b_w(uint8_t data);
 	void b_sgs_w(uint8_t data);
 	void r_w(int line, int state);
@@ -48,7 +50,7 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 private:
 	void trigger_interrupt(int level);
@@ -57,6 +59,8 @@ private:
 
 	devcb_write_line   m_write_int;
 	devcb_write_line   m_write_enlg;
+
+	bool m_int_dis_hack;
 
 	int m_inte;                 // interrupt enable
 	int m_int_dis;              // interrupt (latch) disable flip-flop

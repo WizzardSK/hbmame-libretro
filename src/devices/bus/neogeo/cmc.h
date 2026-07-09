@@ -26,10 +26,10 @@ protected:
 	neogeo_cmc_cart_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint16_t clock);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	required_device<cmc_prot_device> m_prot;
 };
@@ -214,13 +214,13 @@ public:
 	virtual void decrypt_all(DECRYPT_ALL_PARAMS) override;
 	virtual int get_fixed_bank_type() override { return 1; }
 
-	virtual DECLARE_READ16_MEMBER(ram_r) override { return m_ram[offset]; }
-	virtual DECLARE_WRITE16_MEMBER(ram_w) override { COMBINE_DATA(&m_ram[offset]); }
+	virtual uint16_t ram_r(offs_t offset) override { return m_ram[offset]; }
+	virtual void ram_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0) override { COMBINE_DATA(&m_ram[offset]); }
 
 protected:
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	std::unique_ptr<uint16_t[]> m_ram;

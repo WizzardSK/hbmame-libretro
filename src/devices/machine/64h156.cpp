@@ -72,7 +72,6 @@ c64h156_device::c64h156_device(const machine_config &mconfig, const char *tag, d
 	m_atni(0),
 	m_atna(0)
 {
-	memset(&cur_live, 0x00, sizeof(cur_live));
 	cur_live.tm = attotime::never;
 	cur_live.state = IDLE;
 	cur_live.next_state = -1;
@@ -86,13 +85,8 @@ c64h156_device::c64h156_device(const machine_config &mconfig, const char *tag, d
 
 void c64h156_device::device_start()
 {
-	// resolve callbacks
-	m_write_atn.resolve_safe();
-	m_write_sync.resolve_safe();
-	m_write_byte.resolve_safe();
-
 	// allocate timer
-	t_gen = timer_alloc(0);
+	t_gen = timer_alloc(FUNC(c64h156_device::update_tick), this);
 
 	// register for state saving
 	save_item(NAME(m_mtr));
@@ -130,10 +124,10 @@ void c64h156_device::device_reset()
 
 
 //-------------------------------------------------
-//  device_timer - handler timer events
+//  update_tick - pump the device life cycle
 //-------------------------------------------------
 
-void c64h156_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(c64h156_device::update_tick)
 {
 	live_sync();
 	live_run();
@@ -182,7 +176,7 @@ void c64h156_device::start_writing(const attotime &tm)
 
 void c64h156_device::stop_writing(const attotime &tm)
 {
-	commit(tm);
+	commit(tm, true);
 	cur_live.write_start_time = attotime::never;
 }
 
@@ -197,7 +191,7 @@ bool c64h156_device::write_next_bit(bool bit, const attotime &limit)
 	if(etime > limit)
 		return true;
 
-	if(bit && cur_live.write_position < ARRAY_LENGTH(cur_live.write_buffer))
+	if(bit && cur_live.write_position < std::size(cur_live.write_buffer))
 		cur_live.write_buffer[cur_live.write_position++] = cur_live.tm - m_period;
 
 	LOG("%s write bit %u (%u)\n", cur_live.tm.as_string(), cur_live.bit_counter, bit);
@@ -205,9 +199,12 @@ bool c64h156_device::write_next_bit(bool bit, const attotime &limit)
 	return false;
 }
 
-void c64h156_device::commit(const attotime &tm)
+void c64h156_device::commit(const attotime &tm, bool force)
 {
 	if(cur_live.write_start_time.is_never() || tm == cur_live.write_start_time || !cur_live.write_position)
+		return;
+
+	if(!force && cur_live.write_position < std::size(cur_live.write_buffer))
 		return;
 
 	LOG("%s committing %u transitions since %s\n", tm.as_string(), cur_live.write_position, cur_live.write_start_time.as_string());
@@ -423,7 +420,7 @@ int c64h156_device::get_next_bit(attotime &tm, const attotime &limit)
 //  yb_r -
 //-------------------------------------------------
 
-READ8_MEMBER( c64h156_device::yb_r )
+uint8_t c64h156_device::yb_r()
 {
 	if (checkpoint_live.accl) {
 		return checkpoint_live.accl_yb;
@@ -437,7 +434,7 @@ READ8_MEMBER( c64h156_device::yb_r )
 //  yb_w -
 //-------------------------------------------------
 
-WRITE8_MEMBER( c64h156_device::yb_w )
+void c64h156_device::yb_w(uint8_t data)
 {
 	if (m_yb != data)
 	{
@@ -455,7 +452,7 @@ WRITE8_MEMBER( c64h156_device::yb_w )
 //  test_w - test write
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c64h156_device::test_w )
+void c64h156_device::test_w(int state)
 {
 }
 
@@ -464,7 +461,7 @@ WRITE_LINE_MEMBER( c64h156_device::test_w )
 //  accl_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c64h156_device::accl_w )
+void c64h156_device::accl_w(int state)
 {
 	if (m_accl != state)
 	{
@@ -481,7 +478,7 @@ WRITE_LINE_MEMBER( c64h156_device::accl_w )
 //  ted_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c64h156_device::ted_w )
+void c64h156_device::ted_w(int state)
 {
 	if (m_ted != state)
 	{
@@ -502,7 +499,7 @@ WRITE_LINE_MEMBER( c64h156_device::ted_w )
 //  mtr_w - motor write
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c64h156_device::mtr_w )
+void c64h156_device::mtr_w(int state)
 {
 	if (m_mtr != state)
 	{
@@ -529,7 +526,7 @@ WRITE_LINE_MEMBER( c64h156_device::mtr_w )
 //  oe_w - output enable write
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c64h156_device::oe_w )
+void c64h156_device::oe_w(int state)
 {
 	if (m_oe != state)
 	{
@@ -551,7 +548,7 @@ WRITE_LINE_MEMBER( c64h156_device::oe_w )
 //  soe_w - SO enable write
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c64h156_device::soe_w )
+void c64h156_device::soe_w(int state)
 {
 	if (m_soe != state)
 	{
@@ -568,7 +565,7 @@ WRITE_LINE_MEMBER( c64h156_device::soe_w )
 //  atni_w - serial attention input write
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c64h156_device::atni_w )
+void c64h156_device::atni_w(int state)
 {
 	LOG("ATNI %u\n", state);
 
@@ -582,7 +579,7 @@ WRITE_LINE_MEMBER( c64h156_device::atni_w )
 //  atna_w - serial attention acknowledge write
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c64h156_device::atna_w )
+void c64h156_device::atna_w(int state)
 {
 	LOG("ATNA %u\n", state);
 

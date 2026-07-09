@@ -24,7 +24,7 @@ class wd1000_device : public device_t
 {
 public:
 	// construction/destruction
-	wd1000_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	wd1000_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	auto intrq_wr_callback() { return m_intrq_cb.bind(); }
 	auto drq_wr_callback() { return m_drq_cb.bind(); }
@@ -33,18 +33,21 @@ public:
 	void data_w(uint8_t val);
 	void set_sector_base(uint32_t base);
 
-	DECLARE_READ8_MEMBER(read);
-	DECLARE_WRITE8_MEMBER(write);
+	uint8_t read(offs_t offset);
+	void write(offs_t offset, uint8_t data);
 
-	DECLARE_READ_LINE_MEMBER(intrq_r);
-	DECLARE_READ_LINE_MEMBER(drq_r);
+	// declared but not defined?
+	int intrq_r();
+	int drq_r();
 
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+
+	TIMER_CALLBACK_MEMBER(update_seek);
+	TIMER_CALLBACK_MEMBER(delayed_drq);
 
 private:
 	enum
@@ -76,12 +79,6 @@ private:
 		CMD_SEEK = 7
 	};
 
-	enum
-	{
-		TIMER_SEEK,
-		TIMER_DRQ,
-	};
-
 	void set_error(int error);
 	void set_intrq(int state);
 	void set_drq();
@@ -89,6 +86,7 @@ private:
 	attotime get_stepping_rate();
 	void start_command();
 	void end_command();
+	bool validate_id_field();
 	int get_lbasector();
 
 	int head() { return (m_sdh >> 0) & 0x07; }

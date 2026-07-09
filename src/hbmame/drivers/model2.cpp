@@ -1,6 +1,6 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
-#include "../mame/drivers/model2.cpp"
+#include "../mame/sega/model2.cpp"
 
 ROM_START( srallyp )
 	ROM_REGION( 0x200000, "maincpu", 0 )
@@ -48,6 +48,5 @@ ROM_START( srallyp )
 	MODEL2A_VID_BOARD
 ROM_END
 
-
-
 GAME( 2000?, srallyp,  srallyc, srallyc, srallyc, model2a_state, empty_init, ROT0, "Kyle Hodgetts", "Sega Rally Pro Drivin'", 0 )
+

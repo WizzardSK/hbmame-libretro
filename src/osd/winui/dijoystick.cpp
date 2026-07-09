@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 // MASTER
 //****************************************************************************
 
@@ -225,7 +225,7 @@ static int DIJoystick_is_joy_pressed(int joycode)
 		button--;
 
 		if (button >= This.joysticks[joy_num].num_buttons
-		||	GET_JOYCODE_DIR(joycode) != JOYCODE_DIR_BTN)
+		|| GET_JOYCODE_DIR(joycode) != JOYCODE_DIR_BTN)
 			return 0;
 
 		return dijs.rgbButtons[button] != 0;
@@ -256,9 +256,9 @@ static int DIJoystick_is_joy_pressed(int joycode)
 
 		/* angle is now in degrees counterclockwise from x axis*/
 		if (axis == 1)
-			axis_value = 128 + (int)(127 * cos(2 * M_PI * angle / 360.0)); /* x */
+			axis_value = 128 + (int)(127 * cos(2 * std::numbers::pi * angle / 360.0)); /* x */
 		else
-			axis_value = 128 + (int)(127 * sin(2 * M_PI * angle / 360.0)); /* y */
+			axis_value = 128 + (int)(127 * sin(2 * std::numbers::pi * angle / 360.0)); /* y */
 
 		if (dir == 1)
 			return axis_value <= (128 - 128 * dz / 100);

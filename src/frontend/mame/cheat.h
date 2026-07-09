@@ -14,7 +14,6 @@
 #pragma once
 
 #include "debug/express.h"
-#include "debug/debugcpu.h"
 #include "ui/text.h"
 #include "xmlfile.h"
 
@@ -103,7 +102,7 @@ public:
 	bool set_next_state();
 
 	// actions
-	void save(emu_file &cheatfile) const;
+	void save(util::core_file &cheatfile) const;
 
 private:
 	// a single item in a parameter item list
@@ -161,7 +160,7 @@ public:
 
 	// actions
 	void execute(cheat_manager &manager, uint64_t &argindex);
-	void save(emu_file &cheatfile) const;
+	void save(util::core_file &cheatfile) const;
 
 private:
 	// an entry within the script
@@ -178,7 +177,7 @@ private:
 
 		// actions
 		void execute(cheat_manager &manager, uint64_t &argindex);
-		void save(emu_file &cheatfile) const;
+		void save(util::core_file &cheatfile) const;
 
 	private:
 		// an argument for output
@@ -197,7 +196,7 @@ private:
 			int values(uint64_t &argindex, uint64_t *result);
 
 			// actions
-			void save(emu_file &cheatfile) const;
+			void save(util::core_file &cheatfile) const;
 
 		private:
 			// internal state
@@ -268,7 +267,7 @@ public:
 	bool select_default_state();
 	bool select_previous_state();
 	bool select_next_state();
-	void save(emu_file &cheatfile) const;
+	void save(util::core_file &cheatfile) const;
 
 	// UI helpers
 	void menu_text(std::string &description, std::string &state, uint32_t &flags);
@@ -315,20 +314,20 @@ public:
 	std::vector<std::unique_ptr<cheat_entry>> const &entries() const { return m_cheatlist; }
 
 	// setters
-	void set_enable(bool enable);
+	void set_enable(bool enable, bool show);
 
 	// actions
 	void reload();
 	bool save_all(std::string const &filename);
-	void render_text(mame_ui_manager &mui, render_container &container);
+	void render_text(mame_ui_manager &mui, render_target &target);
 
 	// output helpers
 	std::string &get_output_string(int row, ui::text_layout::text_justify justify);
 
 	// global helpers
 	static std::string quote_expression(parsed_expression const &expression);
-	static uint64_t execute_frombcd(symbol_table &table, int params, uint64_t const *param);
-	static uint64_t execute_tobcd(symbol_table &table, int params, uint64_t const *param);
+	static uint64_t execute_frombcd(int params, uint64_t const *param);
+	static uint64_t execute_tobcd(int params, uint64_t const *param);
 
 private:
 	// internal helpers
@@ -345,7 +344,6 @@ private:
 	int8_t                                      m_lastline;     // last line used for output
 	bool                                        m_disabled;     // true if the cheat engine is disabled
 	symbol_table                                m_symtable;     // global symbol table
-	std::unique_ptr<debugger_cpu>               m_cpu;          // debugger interface for cpus/memory
 
 	// constants
 	static constexpr int CHEAT_VERSION = 1;

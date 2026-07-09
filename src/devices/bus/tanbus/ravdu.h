@@ -33,20 +33,20 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	virtual uint8_t read(offs_t offset, int inhrom, int inhram, int be) override;
 	virtual void write(offs_t offset, uint8_t data, int inhrom, int inhram, int be) override;
 	virtual void set_inhibit_lines(offs_t offset, int &inhram, int &inhrom) override;
 
 private:
-	DECLARE_READ8_MEMBER(videoram_r);
+	uint8_t videoram_r(offs_t offset);
 	MC6845_UPDATE_ROW(crtc_update_row);
-	DECLARE_WRITE_LINE_MEMBER(vsync_changed);
+	void vsync_changed(int state);
 
 	required_device<screen_device> m_screen;
 	required_device<mc6845_device> m_crtc;

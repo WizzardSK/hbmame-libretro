@@ -12,9 +12,9 @@
 
 #pragma once
 
-#include "bus/ti99/ti99defs.h"
+#define TI99_GROMPORT_TAG    "gromport"
 
-namespace bus { namespace ti99 { namespace gromport {
+namespace bus::ti99::gromport {
 
 struct pcb_type
 {
@@ -25,29 +25,26 @@ struct pcb_type
 class ti99_cartridge_device;
 class cartridge_connector_device;
 
-class gromport_device : public device_t, public device_slot_interface
+class gromport_device : public device_t, public device_single_card_slot_interface<cartridge_connector_device>
 {
 public:
 	template <typename U>
-	gromport_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, U &&opts, const char *dflt)
-		: gromport_device(mconfig, tag, owner, clock)
+	gromport_device(const machine_config &mconfig, const char *tag, device_t *owner, U &&opts, const char *dflt)
+		: gromport_device(mconfig, tag, owner)
 	{
-		option_reset();
-		opts(*this);
-		set_default_option(dflt);
-		set_fixed(false);
+		set_options(std::forward<U>(opts), dflt, false);
 	}
 
-	gromport_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	gromport_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
-	DECLARE_READ8Z_MEMBER(readz);
+	void readz(offs_t offset, uint8_t *value);
 	void write(offs_t offset, uint8_t data);
-	DECLARE_READ8Z_MEMBER(crureadz);
+	void crureadz(offs_t offset, uint8_t *value);
 	void cruwrite(offs_t offset, uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER(ready_line);
-	DECLARE_WRITE_LINE_MEMBER(romgq_line);
+	void ready_line(int state);
+	void romgq_line(int state);
 	void set_gromlines(line_state mline, line_state moline, line_state gsq);
-	DECLARE_WRITE_LINE_MEMBER(gclock_in);
+	void gclock_in(int state);
 
 	void    cartridge_inserted();
 	bool    is_grom_idle();
@@ -59,10 +56,10 @@ public:
 	gromport_device& extend() { m_mask = 0x3fff; return *this; }
 
 protected:
-	void device_start() override;
-	void device_reset() override;
-	void device_config_complete() override;
-	ioport_constructor device_input_ports() const override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_config_complete() override;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 private:
 	cartridge_connector_device*    m_connector;
@@ -75,34 +72,37 @@ private:
 
 class cartridge_connector_device : public device_t
 {
-public:
-	virtual DECLARE_READ8Z_MEMBER(readz) = 0;
-	virtual void write(offs_t offset, uint8_t data) = 0;
-	virtual DECLARE_SETADDRESS_DBIN_MEMBER( setaddress_dbin ) { }
+	friend class gromport_device;
 
-	virtual DECLARE_READ8Z_MEMBER(crureadz) = 0;
+public:
+	virtual void readz(offs_t offset, uint8_t *value) = 0;
+	virtual void write(offs_t offset, uint8_t data) = 0;
+	virtual void setaddress_dbin(offs_t offset, int state) { }
+
+	virtual void crureadz(offs_t offset, uint8_t *value) = 0;
 	virtual void cruwrite(offs_t offset, uint8_t data) = 0;
 
-	virtual DECLARE_WRITE_LINE_MEMBER(romgq_line) = 0;
+	virtual void romgq_line(int state) = 0;
 	virtual void set_gromlines(line_state mline, line_state moline, line_state gsq) =0;
 
-	virtual DECLARE_WRITE_LINE_MEMBER(gclock_in) = 0;
+	virtual void gclock_in(int state) = 0;
 
-	DECLARE_WRITE_LINE_MEMBER(ready_line);
+	void ready_line(int state);
 
-	virtual void insert(int index, bus::ti99::gromport::ti99_cartridge_device* cart) { m_gromport->cartridge_inserted(); }
-	virtual void remove(int index) { }
+	virtual void insert() { m_gromport->cartridge_inserted(); }
+	virtual void remove() { }
 	virtual bool is_grom_idle() = 0;
 
 protected:
 	cartridge_connector_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
-	virtual void device_config_complete() override;
 
 	gromport_device*    m_gromport;
 	bool     m_grom_selected;
+
+	void set_port(gromport_device* gromport) { m_gromport = gromport; }
 };
 
-} } } // end namespace bus::ti99::gromport
+} // end namespace bus::ti99::gromport
 
 DECLARE_DEVICE_TYPE_NS(TI99_GROMPORT, bus::ti99::gromport, gromport_device)
 

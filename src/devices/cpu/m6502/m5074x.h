@@ -1,19 +1,11 @@
 // license:BSD-3-Clause
-// copyright-holders:Olivier Galibert
+// copyright-holders:R. Belmont, Olivier Galibert
 #ifndef MAME_CPU_M6502_M5074X_H
 #define MAME_CPU_M6502_M5074X_H
 
 #pragma once
 
 #include "m740.h"
-
-//**************************************************************************
-//  CONSTANTS
-//**************************************************************************
-
-// internal ROM region
-#define M5074X_INTERNAL_ROM_REGION "internal"
-#define M5074X_INTERNAL_ROM(_tag) (_tag ":" M5074X_INTERNAL_ROM_REGION)
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -25,13 +17,7 @@ class m5074x_device :  public m740_device
 {
 	friend class m50740_device;
 	friend class m50741_device;
-
-	enum
-	{
-		M5074X_INT1_LINE = INPUT_LINE_IRQ0,
-
-		M5074X_SET_OVERFLOW = M740_SET_OVERFLOW
-	};
+	friend class m50753_device;
 
 	enum
 	{
@@ -39,43 +25,59 @@ class m5074x_device :  public m740_device
 		TIMER_2,
 		TIMER_X,
 
+		TIMER_ADC,
+
 		NUM_TIMERS
 	};
 
 public:
+	enum
+	{
+		M5074X_INT1_LINE = INPUT_LINE_IRQ0
+	};
+
 	const address_space_config m_program_config;
 
-	template <std::size_t Bit> auto read_p() { return m_read_p[Bit].bind(); }
-	template <std::size_t Bit> auto write_p() { return m_write_p[Bit].bind(); }
+	template <std::size_t Port> auto read_p() { return m_read_p[Port].bind(); }
+	template <std::size_t Port> auto write_p() { return m_write_p[Port].bind(); }
+	template <std::size_t Port> void set_pullups(u8 mask) { m_pullups[Port] = mask; }
 
-	DECLARE_READ8_MEMBER(ports_r);
-	DECLARE_WRITE8_MEMBER(ports_w);
-	DECLARE_READ8_MEMBER(tmrirq_r);
-	DECLARE_WRITE8_MEMBER(tmrirq_w);
+	uint8_t ports_r(offs_t offset);
+	void ports_w(offs_t offset, uint8_t data);
+	uint8_t tmrirq_r(offs_t offset);
+	void tmrirq_w(offs_t offset, uint8_t data);
 
 	bool are_port_bits_output(uint8_t port, uint8_t mask) { return ((m_ddrs[port] & mask) == mask) ? true : false; }
 
 protected:
 	// construction/destruction
-	m5074x_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_constructor internal_map);
+	m5074x_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int addrbits, address_map_constructor internal_map);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
-	virtual void execute_set_input(int inputnum, int state) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual space_config_vector memory_space_config() const override;
 
-	void send_port(address_space &space, uint8_t offset, uint8_t data);
+	// device_execute_interface overrides (TODO: /8 in M50740A/41/52/57/58 SLW mode)
+	virtual uint64_t execute_clocks_to_cycles(uint64_t clocks) const noexcept override { return (clocks + 4 - 1) / 4; }
+	virtual uint64_t execute_cycles_to_clocks(uint64_t cycles) const noexcept override { return (cycles * 4); }
+	virtual void execute_set_input(int inputnum, int state) override;
+
+	TIMER_CALLBACK_MEMBER(timer1_tick);
+	TIMER_CALLBACK_MEMBER(timer2_tick);
+	TIMER_CALLBACK_MEMBER(timerx_tick);
+	virtual TIMER_CALLBACK_MEMBER(adc_complete) { }
+
+	void send_port(uint8_t offset, uint8_t data);
 	uint8_t read_port(uint8_t offset);
 
 	void recalc_irqs();
 	void recalc_timer(int timer);
 
-	devcb_read8::array<4>  m_read_p;
-	devcb_write8::array<4> m_write_p;
+	devcb_read8::array<5>  m_read_p;
+	devcb_write8::array<5> m_write_p;
 
-	uint8_t m_ports[6], m_ddrs[6];
+	uint8_t m_ports[5], m_ddrs[5], m_pullups[5];
 	uint8_t m_intctrl, m_tmrctrl;
 	uint8_t m_tmr12pre, m_tmr1, m_tmr2, m_tmrxpre, m_tmrx;
 	uint8_t m_tmr1latch, m_tmr2latch, m_tmrxlatch;
@@ -90,9 +92,11 @@ class m50740_device : public m5074x_device
 public:
 	m50740_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	void m50740_map(address_map &map);
 protected:
 	m50740_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+
+private:
+	void m50740_map(address_map &map) ATTR_COLD;
 };
 
 class m50741_device : public m5074x_device
@@ -100,12 +104,60 @@ class m50741_device : public m5074x_device
 public:
 	m50741_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	void m50741_map(address_map &map);
 protected:
 	m50741_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+
+private:
+	void m50741_map(address_map &map) ATTR_COLD;
+};
+
+class m50753_device : public m5074x_device
+{
+public:
+	m50753_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+
+	enum
+	{
+		M50753_INT1_LINE = INPUT_LINE_IRQ0,
+		M50753_INT2_LINE = INPUT_LINE_IRQ1
+	};
+
+	template <std::size_t Port> auto ad_in() { return m_ad_in[Port].bind(); }
+
+	auto read_in_p() { return m_in_p.bind(); }
+
+protected:
+	m50753_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+
+	// device-level overrides
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+
+	virtual void execute_set_input(int inputnum, int state) override;
+
+	virtual TIMER_CALLBACK_MEMBER(adc_complete) override;
+
+private:
+	void m50753_map(address_map &map) ATTR_COLD;
+
+	uint8_t ad_r();
+	uint8_t in_r();
+	void ad_start_w(uint8_t data);
+	uint8_t ad_control_r();
+	void ad_control_w(uint8_t data);
+	void ad_trigger_w(uint8_t data);
+	uint8_t pwm_control_r();
+	void pwm_control_w(uint8_t data);
+
+	devcb_read8::array<8> m_ad_in;
+	devcb_read8 m_in_p;
+
+	uint8_t m_ad_control;
+	bool m_pwm_enabled;
 };
 
 DECLARE_DEVICE_TYPE(M50740, m50740_device)
 DECLARE_DEVICE_TYPE(M50741, m50741_device)
+DECLARE_DEVICE_TYPE(M50753, m50753_device)
 
 #endif // MAME_CPU_M6502_M5074X_H

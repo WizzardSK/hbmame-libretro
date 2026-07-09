@@ -8,6 +8,7 @@
 
 #include "emu.h"
 #include "superpet.h"
+
 #include "bus/rs232/rs232.h"
 #include "cpu/m6809/m6809.h"
 
@@ -77,7 +78,7 @@ void superpet_device::device_add_mconfig(machine_config &config)
 
 	MOS6702(config, m_dongle, 16_MHz_XTAL / 16);
 
-	MOS6551(config, m_acia, 0);
+	MOS6551(config, m_acia);
 	m_acia->set_xtal(1.8432_MHz_XTAL);
 	m_acia->irq_handler().set(FUNC(superpet_device::acia_irq_w));
 	m_acia->txd_handler().set(RS232_TAG, FUNC(rs232_port_device::write_txd));
@@ -135,14 +136,14 @@ inline void superpet_device::update_cpu()
 	if (cpu)
 	{
 		// 6502 active
-		m_maincpu->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 		m_maincpu->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 	}
 	else
 	{
 		// 6809 active
-		m_maincpu->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
 		m_maincpu->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
 	}
 }
 
@@ -173,7 +174,7 @@ superpet_device::superpet_device(const machine_config &mconfig, const char *tag,
 	m_acia(*this, MOS6551_TAG),
 	m_dongle(*this, MOS6702_TAG),
 	m_rom(*this, M6809_TAG),
-	m_ram(*this, "ram"),
+	m_ram(*this, "ram", 0x10000, ENDIANNESS_LITTLE),
 	m_io_sw1(*this, "SW1"),
 	m_io_sw2(*this, "SW2"),
 	m_system(0),
@@ -191,9 +192,6 @@ superpet_device::superpet_device(const machine_config &mconfig, const char *tag,
 
 void superpet_device::device_start()
 {
-	// allocate memory
-	m_ram.allocate(0x10000);
-
 	// state saving
 	save_item(NAME(m_system));
 	save_item(NAME(m_bank));
@@ -315,7 +313,7 @@ void superpet_device::pet_bd_w(offs_t offset, uint8_t data, int &sel)
 	case 0xefe2:
 	case 0xefe3:
 		m_dongle->write(offset & 0x03, data);
-		printf("6702 %u %02x\n", offset & 0x03, data);
+		logerror("6702 %u %02x\n", offset & 0x03, data);
 		break;
 
 	case 0xeff0:
@@ -346,7 +344,7 @@ void superpet_device::pet_bd_w(offs_t offset, uint8_t data, int &sel)
 
 			m_system = data;
 			update_cpu();
-			printf("SYSTEM %02x\n", data);
+			logerror("SYSTEM %02x\n", data);
 		}
 		break;
 
@@ -368,7 +366,7 @@ void superpet_device::pet_bd_w(offs_t offset, uint8_t data, int &sel)
 		*/
 
 		m_bank = data;
-		printf("BANK %02x\n", data);
+		logerror("BANK %02x\n", data);
 		break;
 	}
 }
@@ -400,7 +398,7 @@ void superpet_device::pet_irq_w(int state)
 //  read -
 //-------------------------------------------------
 
-READ8_MEMBER( superpet_device::read )
+uint8_t superpet_device::read(offs_t offset)
 {
 	return m_slot->dma_bd_r(offset);
 }
@@ -410,7 +408,7 @@ READ8_MEMBER( superpet_device::read )
 //  write -
 //-------------------------------------------------
 
-WRITE8_MEMBER( superpet_device::write )
+void superpet_device::write(offs_t offset, uint8_t data)
 {
 	m_slot->dma_bd_w(offset, data);
 }
@@ -420,7 +418,7 @@ WRITE8_MEMBER( superpet_device::write )
 //  acia_irq_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( superpet_device::acia_irq_w )
+void superpet_device::acia_irq_w(int state)
 {
 	m_acia_irq = state;
 

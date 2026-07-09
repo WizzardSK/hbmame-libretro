@@ -187,51 +187,54 @@
 #include "emu.h"
 #include "remote488.h"
 
+#include "imagedev/bitbngr.h"
+
 // Debugging
-#include "logmacro.h"
-#define LOG_PARSER_MASK (LOG_GENERAL << 1)
+#define LOG_PARSER_MASK (1U << 1)
 #define LOG_PARSER(...) LOGMASKED(LOG_PARSER_MASK, __VA_ARGS__)
-#undef VERBOSE
-#define VERBOSE LOG_GENERAL
+
+#define VERBOSE (LOG_GENERAL)
+
+#include "logmacro.h"
+
+namespace {
 
 // Bit manipulation
-namespace {
-	template<typename T> constexpr T BIT_MASK(unsigned n)
-	{
-		return (T)1U << n;
-	}
+template<typename T> constexpr T BIT_MASK(unsigned n)
+{
+	return (T)1U << n;
+}
 
-	template<typename T> void BIT_CLR(T& w , unsigned n)
-	{
-		w &= ~BIT_MASK<T>(n);
-	}
+template<typename T> void BIT_CLR(T& w , unsigned n)
+{
+	w &= ~BIT_MASK<T>(n);
+}
 
-	template<typename T> void BIT_SET(T& w , unsigned n)
-	{
-		w |= BIT_MASK<T>(n);
-	}
+template<typename T> void BIT_SET(T& w , unsigned n)
+{
+	w |= BIT_MASK<T>(n);
+}
 
-	template<typename T> void COPY_BIT(bool bit , T& w , unsigned n)
-	{
-		if (bit) {
-			BIT_SET(w , n);
-		} else {
-			BIT_CLR(w , n);
-		}
+template<typename T> void COPY_BIT(bool bit , T& w , unsigned n)
+{
+	if (bit) {
+		BIT_SET(w , n);
+	} else {
+		BIT_CLR(w , n);
 	}
 }
 
 // Message types
-constexpr char MSG_SIGNAL_CLEAR  = 'R'; // I/O: Clear signal(s)
-constexpr char MSG_SIGNAL_SET    = 'S'; // I/O: Set signal(s)
-constexpr char MSG_DATA_BYTE     = 'D'; // I/O: Cmd/data byte (no EOI)
-constexpr char MSG_END_BYTE      = 'E'; // I/O: Data byte (with EOI)
-constexpr char MSG_PP_DATA       = 'P'; // I:   Parallel poll data
-constexpr char MSG_PP_REQUEST    = 'Q'; // O:   Request PP data
-constexpr char MSG_ECHO_REQ      = 'J'; // O:   Heartbeat msg: echo request
-constexpr char MSG_ECHO_REPLY    = 'K'; // I:   Heartbeat msg: echo reply
-constexpr char MSG_CHECKPOINT    = 'X'; // I/O: Checkpoint in byte stream
-constexpr char MSG_CP_REACHED    = 'Y'; // I/O: Checkpoint reached
+constexpr char MSG_SIGNAL_CLEAR       = 'R'; // I/O: Clear signal(s)
+constexpr char MSG_SIGNAL_SET         = 'S'; // I/O: Set signal(s)
+constexpr char MSG_DATA_BYTE          = 'D'; // I/O: Cmd/data byte (no EOI)
+constexpr char MSG_END_BYTE           = 'E'; // I/O: Data byte (with EOI)
+constexpr char MSG_PP_DATA            = 'P'; // I:   Parallel poll data
+constexpr char MSG_PP_REQUEST         = 'Q'; // O:   Request PP data
+constexpr char MSG_ECHO_REQ           = 'J'; // O:   Heartbeat msg: echo request
+constexpr char MSG_ECHO_REPLY         = 'K'; // I:   Heartbeat msg: echo reply
+constexpr char MSG_CHECKPOINT         = 'X'; // I/O: Checkpoint in byte stream
+constexpr char MSG_CHECKPOINT_REACHED = 'Y'; // I/O: Checkpoint reached
 
 // Timings
 constexpr unsigned POLL_PERIOD_US   = 20;   // Poll period (µs)
@@ -239,11 +242,117 @@ constexpr unsigned HEARTBEAT_MS     = 500;  // Heartbeat ping period (ms)
 constexpr unsigned MAX_MISSED_HB    = 3;    // Missed heartbeats to declare the connection dead
 constexpr unsigned AH_TO_MS         = 10;   // Timeout in AH to report a byte string terminated (ms)
 
-// device type definition
-DEFINE_DEVICE_TYPE(REMOTE488, remote488_device, "remote488", "IEEE-488 Remotizer")
+class remote488_device : public device_t,
+						 public device_ieee488_interface
+{
+public:
+	// construction/destruction
+	remote488_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+
+	// device_ieee488_interface implementation
+	virtual void ieee488_eoi(int state) override;
+	virtual void ieee488_dav(int state) override;
+	virtual void ieee488_nrfd(int state) override;
+	virtual void ieee488_ndac(int state) override;
+	virtual void ieee488_ifc(int state) override;
+	virtual void ieee488_srq(int state) override;
+	virtual void ieee488_atn(int state) override;
+	virtual void ieee488_ren(int state) override;
+
+protected:
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+
+private:
+	// Position of signals in "S/R" msgs
+	enum signal_bit {
+		SIGNAL_ATN_BIT, // Bit 0
+		SIGNAL_IFC_BIT, // Bit 1
+		SIGNAL_REN_BIT, // Bit 2
+		SIGNAL_SRQ_BIT, // Bit 3
+		SIGNAL_COUNT
+	};
+
+	// Source handshake states
+	enum {
+		REM_SH_SIDS,
+		REM_SH_SDYS,
+		REM_SH_STRS
+	};
+
+	// Acceptor handshake states
+	enum {
+		REM_AH_AIDS,
+		REM_AH_ACRS,
+		REM_AH_ACDS,
+		REM_AH_AWNS
+	};
+
+	// Stream rx states
+	enum {
+		REM_RX_WAIT_CH,
+		REM_RX_WAIT_COLON,
+		REM_RX_WAIT_1ST_HEX,
+		REM_RX_WAIT_2ND_HEX,
+		REM_RX_WAIT_SEP,
+		REM_RX_WAIT_WS
+	};
+
+	required_device<bitbanger_device> m_stream;
+	uint8_t m_in_signals;
+	uint8_t m_out_signals;
+	bool m_no_propagation;
+	int m_sh_state;
+	int m_ah_state;
+	int m_rx_state;
+	char m_rx_ch;
+	uint8_t m_rx_data;
+	bool m_flush_bytes;
+	bool m_ibf;
+	uint8_t m_ib;
+	bool m_ib_eoi;
+	emu_timer *m_poll_timer;
+	emu_timer *m_hb_timer;
+	emu_timer *m_ah_timer;
+	unsigned m_connect_cnt;
+	bool m_connected;
+	uint8_t m_pp_data;
+	bool m_pp_requested;
+	uint8_t m_pp_dio;
+	uint8_t m_sh_dio;
+	bool m_waiting_checkpoint;
+
+
+	TIMER_CALLBACK_MEMBER(process_input_msgs);
+	TIMER_CALLBACK_MEMBER(heartbeat_tick);
+	TIMER_CALLBACK_MEMBER(checkpoint_timeout_tick);
+
+	void bus_reset();
+	void set_connection(bool state);
+	void recvd_data_byte(uint8_t data , bool eoi);
+	void flush_data();
+	void update_signals_from_rem(uint8_t to_set , uint8_t to_clear);
+	void update_signal(signal_bit bit , int state);
+	void update_state(uint8_t new_signals);
+	void send_update(char type , uint8_t data);
+	static bool a2hex(char c , uint8_t& out);
+	static bool is_msg_type(char c);
+	static bool is_terminator(char c);
+	static bool is_space(char c);
+	char recv_update(uint8_t& data);
+	bool is_local_atn_active() const;
+	void ah_checkpoint();
+	void update_ah_fsm();
+	void update_sh_fsm();
+	bool is_local_pp_active() const;
+	void update_pp();
+	void update_pp_dio();
+	void update_dio();
+};
 
 remote488_device::remote488_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	device_t(mconfig , REMOTE488 , tag , owner , clock),
+	device_t(mconfig , GPIB_REMOTE488 , tag , owner , clock),
 	device_ieee488_interface(mconfig , *this),
 	m_stream(*this , "stream")
 {
@@ -251,7 +360,7 @@ remote488_device::remote488_device(const machine_config &mconfig, const char *ta
 
 void remote488_device::device_add_mconfig(machine_config &config)
 {
-	BITBANGER(config, m_stream, 0);
+	BITBANGER(config, m_stream);
 }
 
 void remote488_device::ieee488_eoi(int state)
@@ -304,9 +413,9 @@ void remote488_device::ieee488_ren(int state)
 
 void remote488_device::device_start()
 {
-	m_poll_timer = timer_alloc(TMR_ID_POLL);
-	m_hb_timer = timer_alloc(TMR_ID_HEARTBEAT);
-	m_ah_timer = timer_alloc(TMR_ID_AH);
+	m_poll_timer = timer_alloc(FUNC(remote488_device::process_input_msgs), this);
+	m_hb_timer = timer_alloc(FUNC(remote488_device::heartbeat_tick), this);
+	m_ah_timer = timer_alloc(FUNC(remote488_device::checkpoint_timeout_tick), this);
 }
 
 void remote488_device::device_reset()
@@ -327,7 +436,7 @@ void remote488_device::device_reset()
 
 	m_ibf = false;
 	m_flush_bytes = false;
-	m_waiting_cp = false;
+	m_waiting_checkpoint = false;
 	bus_reset();
 }
 
@@ -344,7 +453,7 @@ void remote488_device::bus_reset()
 	update_pp();
 }
 
-void remote488_device::process_input_msgs()
+TIMER_CALLBACK_MEMBER(remote488_device::process_input_msgs)
 {
 	uint8_t data;
 	char msg_ch;
@@ -383,13 +492,13 @@ void remote488_device::process_input_msgs()
 			break;
 
 		case MSG_CHECKPOINT:
-			send_update(MSG_CP_REACHED , m_flush_bytes);
+			send_update(MSG_CHECKPOINT_REACHED , m_flush_bytes);
 			m_flush_bytes = false;
 			break;
 
-		case MSG_CP_REACHED:
-			if (m_waiting_cp) {
-				m_waiting_cp = false;
+		case MSG_CHECKPOINT_REACHED:
+			if (m_waiting_checkpoint) {
+				m_waiting_checkpoint = false;
 				update_ah_fsm();
 			}
 			break;
@@ -403,29 +512,19 @@ void remote488_device::process_input_msgs()
 	}
 }
 
-void remote488_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(remote488_device::heartbeat_tick)
 {
-	switch (id) {
-	case TMR_ID_POLL:
-		process_input_msgs();
-		break;
+	if (m_connected && m_connect_cnt && --m_connect_cnt == 0) {
+		set_connection(false);
+	}
+	send_update(MSG_ECHO_REQ , 0);
+}
 
-	case TMR_ID_HEARTBEAT:
-		if (m_connected && m_connect_cnt && --m_connect_cnt == 0) {
-			set_connection(false);
-		}
-		send_update(MSG_ECHO_REQ , 0);
-		break;
-
-	case TMR_ID_AH:
-		if (!m_waiting_cp) {
-			LOG("CP T/O\n");
-			ah_checkpoint();
-		}
-		break;
-
-	default:
-		break;
+TIMER_CALLBACK_MEMBER(remote488_device::checkpoint_timeout_tick)
+{
+	if (!m_waiting_checkpoint) {
+		LOG("Checkpoint T/O\n");
+		ah_checkpoint();
 	}
 }
 
@@ -487,32 +586,24 @@ void remote488_device::update_signals_from_rem(uint8_t to_set , uint8_t to_clear
 	m_in_signals |= to_set;
 	m_in_signals &= ~to_clear;
 	diff ^= m_in_signals;
-	m_out_signals = m_in_signals;
 
 	//LOG("REM SIG %02x %02x\n" , m_in_signals , diff);
 	m_no_propagation = true;
-	uint8_t tmp = m_out_signals;
 
 	if (BIT(diff , SIGNAL_ATN_BIT)) {
 		m_bus->atn_w(this , BIT(m_in_signals , SIGNAL_ATN_BIT));
-		COPY_BIT(m_bus->atn_r() , tmp , SIGNAL_ATN_BIT);
 	}
 	if (BIT(diff , SIGNAL_IFC_BIT)) {
 		m_bus->ifc_w(this , BIT(m_in_signals , SIGNAL_IFC_BIT));
-		COPY_BIT(m_bus->ifc_r() , tmp , SIGNAL_IFC_BIT);
 	}
 	if (BIT(diff , SIGNAL_REN_BIT)) {
 		m_bus->ren_w(this , BIT(m_in_signals , SIGNAL_REN_BIT));
-		COPY_BIT(m_bus->ren_r() , tmp , SIGNAL_REN_BIT);
 	}
 	if (BIT(diff , SIGNAL_SRQ_BIT)) {
 		m_bus->srq_w(this , BIT(m_in_signals , SIGNAL_SRQ_BIT));
-		COPY_BIT(m_bus->srq_r() , tmp , SIGNAL_SRQ_BIT);
 	}
 
 	m_no_propagation = false;
-
-	update_state(tmp);
 }
 
 void remote488_device::update_signal(signal_bit bit , int state)
@@ -578,7 +669,7 @@ bool remote488_device::is_msg_type(char c)
 		c == MSG_PP_DATA ||
 		c == MSG_ECHO_REPLY ||
 		c == MSG_CHECKPOINT ||
-		c == MSG_CP_REACHED;
+		c == MSG_CHECKPOINT_REACHED;
 }
 
 bool remote488_device::is_terminator(char c)
@@ -676,7 +767,7 @@ bool remote488_device::is_local_atn_active() const
 
 void remote488_device::ah_checkpoint()
 {
-	m_waiting_cp = true;
+	m_waiting_checkpoint = true;
 	m_ah_timer->reset();
 	send_update(MSG_CHECKPOINT , 0);
 }
@@ -706,8 +797,8 @@ void remote488_device::update_ah_fsm()
 			case REM_AH_ACDS:
 				if (m_bus->dav_r()) {
 					m_ah_state = REM_AH_ACRS;
-				} else if (!m_waiting_cp) {
-					uint8_t dio = ~m_bus->read_dio();
+				} else if (!m_waiting_checkpoint) {
+					uint8_t dio = ~m_bus->dio_r();
 
 					if (!m_bus->eoi_r()) {
 						send_update(MSG_END_BYTE , dio);
@@ -825,3 +916,8 @@ void remote488_device::update_dio()
 {
 	m_bus->dio_w(this , m_pp_dio & m_sh_dio);
 }
+
+} // anonymous namespace
+
+// device type definition
+DEFINE_DEVICE_TYPE_PRIVATE(GPIB_REMOTE488, device_ieee488_interface, remote488_device, "gpib_remote488", "IEEE-488 Remotizer")

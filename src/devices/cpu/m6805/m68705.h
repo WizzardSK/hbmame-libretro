@@ -15,6 +15,7 @@ DECLARE_DEVICE_TYPE(M6805R3, m6805r3_device)
 //DECLARE_DEVICE_TYPE(M6805S3, m6805s3_device) // A/D, SPI, multiple timers
 DECLARE_DEVICE_TYPE(M6805U2, m6805u2_device)
 DECLARE_DEVICE_TYPE(M6805U3, m6805u3_device)
+DECLARE_DEVICE_TYPE(HD6805S1, hd6805s1_device)
 DECLARE_DEVICE_TYPE(HD6805U1, hd6805u1_device)
 
 DECLARE_DEVICE_TYPE(M68705P3, m68705p3_device)
@@ -24,6 +25,8 @@ DECLARE_DEVICE_TYPE(M68705R3, m68705r3_device)
 //DECLARE_DEVICE_TYPE(M68705S3, m68705s3_device) // A/D, SPI, multiple timers
 DECLARE_DEVICE_TYPE(M68705U3, m68705u3_device)
 //DECLARE_DEVICE_TYPE(M68705U5, m68705u5_device) // Secured EPROM
+
+DECLARE_DEVICE_TYPE(M146805E2, m146805e2_device)
 
 class m6805_timer
 {
@@ -47,7 +50,7 @@ public:
 		, m_options(0)
 		, m_divisor(7)
 		, m_source(CLOCK)
-		, m_timer(false)
+		, m_timer(true)
 	{
 	}
 
@@ -127,10 +130,10 @@ public:
 	auto porta_w() { return m_port_cb_w[0].bind(); }
 	auto portb_w() { return m_port_cb_w[1].bind(); }
 	auto portc_w() { return m_port_cb_w[2].bind(); }
+	template <std::size_t N> auto portan_r() { return m_portan_cb_r[N].bind(); }
 
-	WRITE_LINE_MEMBER(timer_w) { m_timer.timer_w(state); }
+	void timer_w(int state) { m_timer.timer_w(state); }
 
-protected:
 	// state index constants
 	enum
 	{
@@ -161,32 +164,34 @@ protected:
 		M68705_MOR
 	};
 
+protected:
 	static unsigned const PORT_COUNT = 4;
 
 	m6805_hmos_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type, u32 addr_width, unsigned ram_size);
+	m6805_hmos_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type, configuration_params const &params, unsigned ram_size);
 
 	void map(address_map &map) { internal_map(map); }
-	virtual void internal_map(address_map &map);
+	virtual void internal_map(address_map &map) ATTR_COLD;
 
 	template <std::size_t N> void set_port_open_drain(bool value);
 	template <std::size_t N> void set_port_mask(u8 mask);
-	template <std::size_t N> DECLARE_WRITE8_MEMBER(port_input_w) { m_port_input[N] = data & ~m_port_mask[N]; }
-	template <std::size_t N> DECLARE_READ8_MEMBER(port_r);
-	template <std::size_t N> DECLARE_WRITE8_MEMBER(port_latch_w);
-	template <std::size_t N> DECLARE_WRITE8_MEMBER(port_ddr_w);
+	template <std::size_t N> void port_input_w(uint8_t data) { m_port_input[N] = data & ~m_port_mask[N]; }
+	template <std::size_t N> u8 port_r();
+	template <std::size_t N> void port_latch_w(u8 data);
+	template <std::size_t N> void port_ddr_w(u8 data);
 	template <std::size_t N> void port_cb_w();
 
-	DECLARE_READ8_MEMBER(misc_r) { return m_mr; }
-	DECLARE_WRITE8_MEMBER(misc_w) { m_mr = data; }
+	u8 misc_r() { return m_mr; }
+	void misc_w(u8 data) { m_mr = data; }
 
 	// A/D converter
-	DECLARE_READ8_MEMBER(acr_r);
-	DECLARE_WRITE8_MEMBER(acr_w);
-	DECLARE_READ8_MEMBER(arr_r);
-	DECLARE_WRITE8_MEMBER(arr_w);
+	u8 acr_r();
+	void acr_w(u8 data);
+	u8 arr_r();
+	void arr_w(u8 data);
 
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual void execute_set_input(int inputnum, int state) override;
 
 	virtual void interrupt() override;
@@ -210,6 +215,10 @@ private:
 	devcb_read8::array<PORT_COUNT> m_port_cb_r;
 	devcb_write8::array<PORT_COUNT> m_port_cb_w;
 
+	// analog input ports
+	devcb_read8::array<4> m_portan_cb_r;
+	u8 m_acr_mux;
+
 	// miscellaneous register
 	enum mr_mask : u8
 	{
@@ -229,7 +238,7 @@ protected:
 	{
 	}
 
-	virtual void internal_map(address_map &map) override;
+	virtual void internal_map(address_map &map) override ATTR_COLD;
 };
 
 class m68705_device : public m6805_hmos_device, public device_nvram_interface
@@ -245,22 +254,22 @@ public:
 	};
 
 protected:
-	virtual void internal_map(address_map &map) override;
+	virtual void internal_map(address_map &map) override ATTR_COLD;
 
 	m68705_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type, u32 addr_width, unsigned ram_size);
 
-	template <offs_t B> DECLARE_READ8_MEMBER(eprom_r);
-	template <offs_t B> DECLARE_WRITE8_MEMBER(eprom_w);
+	template <offs_t B> u8 eprom_r(offs_t offset);
+	template <offs_t B> void eprom_w(offs_t offset, u8 data);
 
-	DECLARE_READ8_MEMBER(pcr_r);
-	DECLARE_WRITE8_MEMBER(pcr_w);
+	u8 pcr_r();
+	void pcr_w(u8 data);
 
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual void execute_set_input(int inputnum, int state) override;
 	virtual void nvram_default() override;
-	virtual void nvram_read(emu_file &file) override;
-	virtual void nvram_write(emu_file &file) override;
+	virtual bool nvram_read(util::read_stream &file) override;
+	virtual bool nvram_write(util::write_stream &file) override;
 
 	u8 *const get_user_rom() const { return &m_user_rom[0]; }
 	virtual u8 get_mask_options() const = 0;
@@ -282,16 +291,16 @@ private:
 class m68705p_device : public m68705_device
 {
 public:
-	DECLARE_WRITE8_MEMBER(pa_w) { port_input_w<0>(space, offset, data, mem_mask); }
-	DECLARE_WRITE8_MEMBER(pb_w) { port_input_w<1>(space, offset, data, mem_mask); }
-	DECLARE_WRITE8_MEMBER(pc_w) { port_input_w<2>(space, offset, data, mem_mask); }
+	void pa_w(u8 data) { port_input_w<0>(data); }
+	void pb_w(u8 data) { port_input_w<1>(data); }
+	void pc_w(u8 data) { port_input_w<2>(data); }
 
 protected:
-	virtual void internal_map(address_map &map) override;
+	virtual void internal_map(address_map &map) override ATTR_COLD;
 
 	m68705p_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type);
 
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 };
@@ -299,32 +308,29 @@ protected:
 class m68705u_device : public m68705_device
 {
 public:
-	DECLARE_WRITE8_MEMBER(pa_w) { port_input_w<0>(space, offset, data, mem_mask); }
-	DECLARE_WRITE8_MEMBER(pb_w) { port_input_w<1>(space, offset, data, mem_mask); }
-	DECLARE_WRITE8_MEMBER(pc_w) { port_input_w<2>(space, offset, data, mem_mask); }
-	DECLARE_WRITE8_MEMBER(pd_w) { port_input_w<3>(space, offset, data, mem_mask); } // TODO: PD6 is also /INT2
+	void pa_w(u8 data) { port_input_w<0>(data); }
+	void pb_w(u8 data) { port_input_w<1>(data); }
+	void pc_w(u8 data) { port_input_w<2>(data); }
+	void pd_w(u8 data) { port_input_w<3>(data); } // TODO: PD6 is also /INT2
 
 protected:
-	virtual void internal_map(address_map &map) override;
+	virtual void internal_map(address_map &map) override ATTR_COLD;
 
 	m68705u_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type);
 
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 };
 
 class m68705r_device : public m68705u_device
 {
-public:
-	// TODO: voltage inputs for ADC (shared with digital port D pins)
-
 protected:
-	virtual void internal_map(address_map &map) override;
+	virtual void internal_map(address_map &map) override ATTR_COLD;
 
 	m68705r_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type);
 
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 };
@@ -334,12 +340,20 @@ class m6805p2_device : public m6805_mrom_device
 {
 public:
 	m6805p2_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
+
+	// mask options
+	void set_timer_divisor(unsigned divisor) { m_timer.set_divisor(divisor); }
+	void set_timer_external_source(bool external) { m_timer.set_source(external ? m6805_timer::TIMER : m6805_timer::CLOCK_TIMER); }
 };
 
 class m6805p6_device : public m6805_mrom_device
 {
 public:
 	m6805p6_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
+
+	// mask options
+	void set_timer_divisor(unsigned divisor) { m_timer.set_divisor(divisor); }
+	void set_timer_external_source(bool external) { m_timer.set_source(external ? m6805_timer::TIMER : m6805_timer::CLOCK_TIMER); }
 };
 
 class m6805r2_device : public m6805_mrom_device
@@ -347,8 +361,12 @@ class m6805r2_device : public m6805_mrom_device
 public:
 	m6805r2_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 
+	// mask options
+	void set_timer_divisor(unsigned divisor) { m_timer.set_divisor(divisor); }
+	void set_timer_external_source(bool external) { m_timer.set_source(external ? m6805_timer::TIMER : m6805_timer::CLOCK_TIMER); }
+
 protected:
-	virtual void internal_map(address_map &map) override;
+	virtual void internal_map(address_map &map) override ATTR_COLD;
 };
 
 class m6805r3_device : public m6805_mrom_device
@@ -357,13 +375,17 @@ public:
 	m6805r3_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 
 protected:
-	virtual void internal_map(address_map &map) override;
+	virtual void internal_map(address_map &map) override ATTR_COLD;
 };
 
 class m6805u2_device : public m6805_mrom_device
 {
 public:
 	m6805u2_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
+
+	// mask options
+	void set_timer_divisor(unsigned divisor) { m_timer.set_divisor(divisor); }
+	void set_timer_external_source(bool external) { m_timer.set_source(external ? m6805_timer::TIMER : m6805_timer::CLOCK_TIMER); }
 };
 
 class m6805u3_device : public m6805_mrom_device
@@ -372,6 +394,12 @@ public:
 	m6805u3_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 
 protected:
+};
+
+class hd6805s1_device : public m6805_mrom_device
+{
+public:
+	hd6805s1_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 };
 
 class hd6805u1_device : public m6805_mrom_device
@@ -386,7 +414,7 @@ public:
 	m68705p3_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 
 protected:
-	virtual tiny_rom_entry const *device_rom_region() const override;
+	virtual tiny_rom_entry const *device_rom_region() const override ATTR_COLD;
 
 	virtual u8 get_mask_options() const override;
 };
@@ -397,7 +425,7 @@ public:
 	m68705p5_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 
 protected:
-	virtual tiny_rom_entry const *device_rom_region() const override;
+	virtual tiny_rom_entry const *device_rom_region() const override ATTR_COLD;
 
 	virtual u8 get_mask_options() const override;
 };
@@ -408,7 +436,7 @@ public:
 	m68705r3_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 
 protected:
-	virtual tiny_rom_entry const *device_rom_region() const override;
+	virtual tiny_rom_entry const *device_rom_region() const override ATTR_COLD;
 
 	virtual u8 get_mask_options() const override;
 };
@@ -418,10 +446,27 @@ class m68705u3_device : public m68705u_device
 public:
 	m68705u3_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 
+	static auto parent_rom_device_type() { return &M68705R3; }
+
 protected:
-	virtual tiny_rom_entry const *device_rom_region() const override;
+	virtual tiny_rom_entry const *device_rom_region() const override ATTR_COLD;
 
 	virtual u8 get_mask_options() const override;
+};
+
+class m146805_device : public m6805_hmos_device
+{
+protected:
+	m146805_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type, u32 addr_width, unsigned ram_size);
+
+	virtual uint64_t execute_clocks_to_cycles(uint64_t clocks) const noexcept override { return (clocks + 4) / 5; }
+	virtual uint64_t execute_cycles_to_clocks(uint64_t cycles) const noexcept override { return cycles * 5; }
+};
+
+class m146805e2_device : public m146805_device
+{
+public:
+	m146805e2_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
 };
 
 #define M6805_INT_TIMER             (M6805_IRQ_LINE + 1)

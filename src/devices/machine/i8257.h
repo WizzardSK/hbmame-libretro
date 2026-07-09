@@ -38,18 +38,18 @@ class i8257_device : public device_t, public device_execute_interface
 {
 public:
 	// construction/destruction
-	i8257_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	i8257_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
-	DECLARE_READ8_MEMBER( read );
-	DECLARE_WRITE8_MEMBER( write );
+	uint8_t read(offs_t offset);
+	void write(offs_t offset, uint8_t data);
 
-	DECLARE_WRITE_LINE_MEMBER( hlda_w );
-	DECLARE_WRITE_LINE_MEMBER( ready_w );
+	void hlda_w(int state);
+	void ready_w(int state);
 
-	DECLARE_WRITE_LINE_MEMBER( dreq0_w );
-	DECLARE_WRITE_LINE_MEMBER( dreq1_w );
-	DECLARE_WRITE_LINE_MEMBER( dreq2_w );
-	DECLARE_WRITE_LINE_MEMBER( dreq3_w );
+	void dreq0_w(int state);
+	void dreq1_w(int state);
+	void dreq2_w(int state);
+	void dreq3_w(int state);
 
 	auto out_hrq_cb() { return m_out_hrq_cb.bind(); }
 	auto out_tc_cb() { return m_out_tc_cb.bind(); }
@@ -58,14 +58,15 @@ public:
 	template <unsigned Ch> auto in_ior_cb() { return m_in_ior_cb[Ch].bind(); }
 	template <unsigned Ch> auto out_iow_cb() { return m_out_iow_cb[Ch].bind(); }
 	template <unsigned Ch> auto out_dack_cb() { return m_out_dack_cb[Ch].bind(); }
+	template <unsigned Ch> auto verify_cb() { return m_verify_cb[Ch].bind(); }
 
 	// This should be set for systems that map the DMAC registers into the memory space rather than as I/O ports (e.g. radio86)
 	void set_reverse_rw_mode(bool flag) { m_reverse_rw = flag; }
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual void execute_run() override;
 
 	int m_icount;
@@ -105,6 +106,7 @@ private:
 	// channel accessors
 	devcb_read8::array<4> m_in_ior_cb;
 	devcb_write8::array<4> m_out_iow_cb;
+	devcb_read8::array<4> m_verify_cb; // verify sets no rw lines so just pass the address for the driver to handle
 	devcb_write_line::array<4> m_out_dack_cb;
 
 	struct

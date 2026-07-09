@@ -18,7 +18,10 @@
 
 #include "video/v9938.h"
 
-namespace bus { namespace ti99 { namespace colorbus {
+#define TIGEN_V9938_TAG   "vdp"
+#define COLORBUS_TAG     "colorbus"
+
+namespace bus::ti99::colorbus {
 
 class v9938_colorbus_device;
 
@@ -42,16 +45,13 @@ class v9938_colorbus_device : public device_t, public device_single_card_slot_in
 {
 public:
 	template <typename U>
-	v9938_colorbus_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, U &&opts, const char *dflt)
-		: v9938_colorbus_device(mconfig, tag, owner, clock)
+	v9938_colorbus_device(const machine_config &mconfig, const char *tag, device_t *owner, U &&opts, const char *dflt)
+		: v9938_colorbus_device(mconfig, tag, owner)
 	{
-		option_reset();
-		opts(*this);
-		set_default_option(dflt);
-		set_fixed(false);
+		set_options(std::forward<U>(opts), dflt, false);
 	}
 
-	v9938_colorbus_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	v9938_colorbus_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	// For the extra button (V9938 only handles 2)
 	auto extra_button_cb() { return m_extra_button.bind(); }
@@ -62,14 +62,14 @@ public:
 	void buttons(int bstate);
 
 protected:
-	void device_start() override;
+	void device_start() override ATTR_COLD;
 
 private:
 	required_device<v9938_device> m_v9938;
 	devcb_write_line   m_extra_button;
 };
 
-} } } // end namespace bus::ti99::colorbus
+} // end namespace bus::ti99::colorbus
 
 DECLARE_DEVICE_TYPE_NS(V9938_COLORBUS, bus::ti99::colorbus, v9938_colorbus_device)
 

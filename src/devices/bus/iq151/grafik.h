@@ -24,11 +24,11 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	// iq151cart_interface overrides
 	virtual void io_read(offs_t offset, uint8_t &data) override;
@@ -37,9 +37,9 @@ protected:
 
 private:
 	// ppi8255 callback
-	DECLARE_WRITE8_MEMBER(x_write);
-	DECLARE_WRITE8_MEMBER(y_write);
-	DECLARE_WRITE8_MEMBER(control_w);
+	void x_write(uint8_t data);
+	void y_write(uint8_t data);
+	void control_w(uint8_t data);
 
 	required_device<i8255_device> m_ppi8255;
 

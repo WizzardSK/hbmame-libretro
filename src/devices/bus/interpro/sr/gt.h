@@ -17,7 +17,7 @@ class gt_device_base : public device_t
 protected:
 	gt_device_base(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, const bool double_buffered, const bool masked_reads);
 
-	virtual void map(address_map &map);
+	virtual void map(address_map &map) ATTR_COLD;
 
 public:
 	static constexpr u32 GT_MASK_BITS   = 0x80808080; // mask RAM presents on high bit in each pixel/byte
@@ -56,44 +56,44 @@ public:
 		GFX_MONSENSE_60HZ           = 0x0e000000,
 	};
 
-	DECLARE_READ32_MEMBER(control_r) { return m_control | (m_screen[0]->vblank() ? GFX_VERT_BLNK : 0); }
-	DECLARE_WRITE32_MEMBER(control_w);
+	u32 control_r() { return m_control | (m_screen[0]->vblank() ? GFX_VERT_BLNK : 0); }
+	void control_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 
-	DECLARE_WRITE8_MEMBER(contrast_dac_w);
+	void contrast_dac_w(u8 data);
 
-	DECLARE_WRITE32_MEMBER(blit_src_address_w) { COMBINE_DATA(&m_blit_src_address); }
-	DECLARE_WRITE32_MEMBER(blit_dst_address_w) { COMBINE_DATA(&m_blit_dst_address); }
-	DECLARE_WRITE16_MEMBER(blit_width_w);
+	void blit_src_address_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_blit_src_address); }
+	void blit_dst_address_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_blit_dst_address); }
+	void blit_width_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 
-	DECLARE_READ8_MEMBER(plane_enable_r) { return m_plane_enable; }
-	DECLARE_WRITE8_MEMBER(plane_enable_w);
-	DECLARE_READ8_MEMBER(plane_data_r) { return m_plane_data; }
-	DECLARE_WRITE8_MEMBER(plane_data_w);
+	u8 plane_enable_r() { return m_plane_enable; }
+	void plane_enable_w(u8 data);
+	u8 plane_data_r() { return m_plane_data; }
+	void plane_data_w(u8 data);
 
-	DECLARE_READ16_MEMBER(bsga_width_r) { return m_bsga_width; }
-	DECLARE_WRITE16_MEMBER(bsga_width_w) { COMBINE_DATA(&m_bsga_width); }
-	DECLARE_READ16_MEMBER(bsga_tmp_r) { return m_bsga_tmp; }
-	DECLARE_WRITE16_MEMBER(bsga_tmp_w) { COMBINE_DATA(&m_bsga_tmp); }
+	u16 bsga_width_r() { return m_bsga_width; }
+	void bsga_width_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_width); }
+	u16 bsga_tmp_r() { return m_bsga_tmp; }
+	void bsga_tmp_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_tmp); }
 
-	DECLARE_READ16_MEMBER(bsga_xmin_r) { return m_bsga_xmin; }
-	DECLARE_WRITE16_MEMBER(bsga_xmin_w) { COMBINE_DATA(&m_bsga_xmin); }
-	DECLARE_READ16_MEMBER(bsga_ymin_r) { return m_bsga_ymin; }
-	DECLARE_WRITE16_MEMBER(bsga_ymin_w) { COMBINE_DATA(&m_bsga_ymin); }
+	u16 bsga_xmin_r() { return m_bsga_xmin; }
+	void bsga_xmin_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_xmin); }
+	u16 bsga_ymin_r() { return m_bsga_ymin; }
+	void bsga_ymin_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_ymin); }
 
-	DECLARE_READ16_MEMBER(bsga_acc0_r) { return (m_bsga_width - m_bsga_xin1); }
-	DECLARE_READ16_MEMBER(bsga_acc1_r) { return -(m_bsga_width - m_bsga_xin1); }
+	u16 bsga_acc0_r() { return (m_bsga_width - m_bsga_xin1); }
+	u16 bsga_acc1_r() { return -(m_bsga_width - m_bsga_xin1); }
 
-	DECLARE_READ16_MEMBER(bsga_xmax_r) { return m_bsga_xmax; }
-	DECLARE_WRITE16_MEMBER(bsga_xmax_w) { COMBINE_DATA(&m_bsga_xmax); }
-	DECLARE_READ16_MEMBER(bsga_ymax_r) { return m_bsga_ymax; }
-	DECLARE_WRITE16_MEMBER(bsga_ymax_w) { COMBINE_DATA(&m_bsga_ymax); bsga_clip_status(m_bsga_xin1, m_bsga_yin1); }
+	u16 bsga_xmax_r() { return m_bsga_xmax; }
+	void bsga_xmax_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_xmax); }
+	u16 bsga_ymax_r() { return m_bsga_ymax; }
+	void bsga_ymax_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_ymax); bsga_clip_status(m_bsga_xin1, m_bsga_yin1); }
 
-	DECLARE_READ16_MEMBER(bsga_src0_r) { return m_bsga_xin1; }
-	DECLARE_READ16_MEMBER(bsga_src1_r) { return m_bsga_xin1; }
+	u16 bsga_src0_r() { return m_bsga_xin1; }
+	u16 bsga_src1_r() { return m_bsga_xin1; }
 
-	DECLARE_WRITE16_MEMBER(bsga_xin1_w) { COMBINE_DATA(&m_bsga_xin1); m_bsga_xin = m_bsga_xin1; m_bsga_tmp = m_bsga_xin1; }
-	DECLARE_WRITE16_MEMBER(bsga_yin1_w) { COMBINE_DATA(&m_bsga_yin1); m_bsga_yin = m_bsga_yin1; }
-	DECLARE_WRITE32_MEMBER(bsga_xin1yin1_w);
+	void bsga_xin1_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_xin1); m_bsga_xin = m_bsga_xin1; m_bsga_tmp = m_bsga_xin1; }
+	void bsga_yin1_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_yin1); m_bsga_yin = m_bsga_yin1; }
+	void bsga_xin1yin1_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 
 	enum bsga_status_mask : u16
 	{
@@ -115,36 +115,36 @@ public:
 		STATUS_CLIP1_MASK  = 0x01e0,
 		STATUS_CLIP_MASK   = 0x1fe0
 	};
-	DECLARE_READ16_MEMBER(bsga_status_r);
+	u16 bsga_status_r();
 
-	DECLARE_WRITE32_MEMBER(bsga_xin2yin2_w);
+	void bsga_xin2yin2_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 
-	DECLARE_WRITE16_MEMBER(bsga_xin2_w) { COMBINE_DATA(&m_bsga_xin2); m_bsga_xin = m_bsga_xin2; }
-	DECLARE_WRITE16_MEMBER(bsga_yin2_w);
+	void bsga_xin2_w(offs_t offset, u16 data, u16 mem_mask = ~0) { COMBINE_DATA(&m_bsga_xin2); m_bsga_xin = m_bsga_xin2; }
+	void bsga_yin2_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 
 	// FIXME: perhaps tmp is a counter of xin/yin and can be used to return correct value?
-	DECLARE_READ16_MEMBER(bsga_xin_r) { return m_bsga_xin; }
-	DECLARE_READ16_MEMBER(bsga_yin_r) { return m_bsga_yin; }
+	u16 bsga_xin_r() { return m_bsga_xin; }
+	u16 bsga_yin_r() { return m_bsga_yin; }
 
-	DECLARE_WRITE32_MEMBER(ri_initial_distance_w) { COMBINE_DATA(&m_ri_initial_distance); }
-	DECLARE_WRITE32_MEMBER(ri_distance_both_w) { COMBINE_DATA(&m_ri_distance_both); }
-	DECLARE_WRITE32_MEMBER(ri_distance_major_w) { COMBINE_DATA(&m_ri_distance_major); }
-	DECLARE_WRITE32_MEMBER(ri_initial_address_w) { COMBINE_DATA(&m_ri_initial_address); }
-	DECLARE_WRITE32_MEMBER(ri_address_both_w) { COMBINE_DATA(&m_ri_address_both); }
-	DECLARE_WRITE32_MEMBER(ri_address_major_w) { COMBINE_DATA(&m_ri_address_major); }
-	DECLARE_WRITE32_MEMBER(ri_initial_error_w) { COMBINE_DATA(&m_ri_initial_error); }
-	DECLARE_WRITE32_MEMBER(ri_error_both_w) { COMBINE_DATA(&m_ri_error_both); }
-	DECLARE_WRITE32_MEMBER(ri_error_major_w) { COMBINE_DATA(&m_ri_error_major); }
+	void ri_initial_distance_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_initial_distance); }
+	void ri_distance_both_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_distance_both); }
+	void ri_distance_major_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_distance_major); }
+	void ri_initial_address_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_initial_address); }
+	void ri_address_both_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_address_both); }
+	void ri_address_major_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_address_major); }
+	void ri_initial_error_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_initial_error); }
+	void ri_error_both_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_error_both); }
+	void ri_error_major_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_error_major); }
 
-	DECLARE_WRITE32_MEMBER(ri_stop_count_w) { COMBINE_DATA(&m_ri_stop_count); }
-	DECLARE_WRITE32_MEMBER(ri_control_w) { COMBINE_DATA(&m_ri_control); }
-	DECLARE_WRITE32_MEMBER(ri_xfer_w);
+	void ri_stop_count_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_stop_count); }
+	void ri_control_w(offs_t offset, u32 data, u32 mem_mask = ~0) { COMBINE_DATA(&m_ri_control); }
+	void ri_xfer_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 
-	DECLARE_WRITE32_MEMBER(bsga_float_w);
+	void bsga_float_w(offs_t offset, u32 data);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 	virtual void device_validity_check(validity_checker &valid) const override;
 
 	u32 buffer_r(const offs_t offset);
@@ -250,7 +250,7 @@ class gt_device : public gt_device_base, public device_cbus_card_interface
 protected:
 	gt_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, const bool double_buffered);
 
-	virtual void map(address_map &map) override;
+	virtual void map(address_map &map) override ATTR_COLD;
 };
 
 class gtdb_device : public gt_device_base, public device_srx_card_interface
@@ -258,12 +258,12 @@ class gtdb_device : public gt_device_base, public device_srx_card_interface
 protected:
 	gtdb_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
-	virtual void map(address_map &map) override;
-	virtual void map_dynamic(address_map &map);
+	virtual void map(address_map &map) override ATTR_COLD;
+	virtual void map_dynamic(address_map &map) ATTR_COLD;
 
-	DECLARE_WRITE_LINE_MEMBER(serial_irq);
-	DECLARE_WRITE32_MEMBER(mouse_status_w);
-	DECLARE_WRITE32_MEMBER(srx_mapping_w);
+	void serial_irq(int state);
+	void mouse_status_w(offs_t offset, u32 data, u32 mem_mask = ~0);
+	void srx_mapping_w(u32 data);
 
 	enum int_status_mask
 	{
@@ -273,10 +273,10 @@ protected:
 		MOUSE_Y   = 0x40,
 		SERIAL    = 0x80,
 	};
-	DECLARE_READ32_MEMBER(mouse_int_r) { return m_mouse_int; }
-	DECLARE_WRITE32_MEMBER(mouse_int_w) { mem_mask &= ~0x7; COMBINE_DATA(&m_mouse_int); }
-	DECLARE_READ32_MEMBER(mouse_x_r);
-	DECLARE_READ32_MEMBER(mouse_y_r);
+	u32 mouse_int_r() { return m_mouse_int; }
+	void mouse_int_w(offs_t offset, u32 data, u32 mem_mask = ~0) { mem_mask &= ~0x7; COMBINE_DATA(&m_mouse_int); }
+	u32 mouse_x_r();
+	u32 mouse_y_r();
 
 	enum vfifo_control_mask
 	{
@@ -284,10 +284,10 @@ protected:
 		FIFO_LW_INTR = 0x40,
 		FIFO_HW_INTR = 0x80,
 	};
-	DECLARE_READ32_MEMBER(fifo_control_r) { return m_fifo_control; }
+	u32 fifo_control_r() { return m_fifo_control; }
 
-	//virtual void device_start() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	//virtual void device_start() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	virtual u32 vram_r(offs_t offset, const bool linear = false) const override;
 	virtual void vram_w(offs_t offset, const u32 data, u32 mem_mask, const bool linear = false) const override;
@@ -309,8 +309,8 @@ public:
 	mpcb963_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 class mpcba79_device : public gt_device
@@ -319,8 +319,8 @@ public:
 	mpcba79_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 
@@ -330,8 +330,8 @@ public:
 	msmt070_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 class msmt071_device : public gt_device
@@ -340,8 +340,8 @@ public:
 	msmt071_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 class msmt081_device : public gt_device
@@ -350,8 +350,8 @@ public:
 	msmt081_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 class mpcbb68_device : public gtdb_device
@@ -360,8 +360,8 @@ public:
 	mpcbb68_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 class mpcbb92_device : public gtdb_device
@@ -370,8 +370,8 @@ public:
 	mpcbb92_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 // device type definition

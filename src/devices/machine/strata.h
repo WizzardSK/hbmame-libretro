@@ -9,7 +9,7 @@
 class strataflash_device : public device_t, public device_nvram_interface
 {
 public:
-	strataflash_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	strataflash_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	// 8-bit access
 	uint8_t read8(offs_t offset);
@@ -21,11 +21,11 @@ public:
 
 protected:
 	// device-level overrides
-	void device_start() override;
+	void device_start() override ATTR_COLD;
 
 	void nvram_default() override;
-	void nvram_read(emu_file &file) override;
-	void nvram_write(emu_file &file) override;
+	bool nvram_read(util::read_stream &file) override;
+	bool nvram_write(util::write_stream &file) override;
 
 private:
 

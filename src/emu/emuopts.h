@@ -14,6 +14,11 @@
 #pragma once
 
 #include "options.h"
+#include "coretmpl.h"
+
+#include <string>
+#include <string_view>
+
 
 #define OPTION_PRIORITY_CMDLINE     OPTION_PRIORITY_HIGH + 1
 // core options
@@ -25,7 +30,7 @@
 #define OPTION_WRITECONFIG          "writeconfig"
 
 // core search path options
-#define OPTION_HOMEPATH             "homepath"
+#define OPTION_PLUGINDATAPATH       "homepath"
 #define OPTION_MEDIAPATH            "rompath"
 #define OPTION_HASHPATH             "hashpath"
 #define OPTION_SAMPLEPATH           "samplepath"
@@ -47,6 +52,7 @@
 #define OPTION_SNAPSHOT_DIRECTORY   "snapshot_directory"
 #define OPTION_DIFF_DIRECTORY       "diff_directory"
 #define OPTION_COMMENT_DIRECTORY    "comment_directory"
+#define OPTION_SHARE_DIRECTORY      "share_directory"
 
 // core state/playback options
 #define OPTION_STATE                "state"
@@ -55,7 +61,6 @@
 #define OPTION_REWIND_CAPACITY      "rewind_capacity"
 #define OPTION_PLAYBACK             "playback"
 #define OPTION_RECORD               "record"
-#define OPTION_RECORD_TIMECODE      "record_timecode"
 #define OPTION_EXIT_AFTER_PLAYBACK  "exit_after_playback"
 #define OPTION_MNGWRITE             "mngwrite"
 #define OPTION_AVIWRITE             "aviwrite"
@@ -100,6 +105,7 @@
 #define OPTION_ARTWORK_CROP         "artwork_crop"
 #define OPTION_FALLBACK_ARTWORK     "fallback_artwork"
 #define OPTION_OVERRIDE_ARTWORK     "override_artwork"
+#define OPTION_ARTWORK_FONT         "artwork_font"
 
 // core screen options
 #define OPTION_BRIGHTNESS           "brightness"
@@ -111,6 +117,7 @@
 // core vector options
 #define OPTION_BEAM_WIDTH_MIN       "beam_width_min"
 #define OPTION_BEAM_WIDTH_MAX       "beam_width_max"
+#define OPTION_BEAM_DOT_SIZE        "beam_dot_size"
 #define OPTION_BEAM_INTENSITY_WEIGHT   "beam_intensity_weight"
 #define OPTION_FLICKER              "flicker"
 
@@ -129,10 +136,10 @@
 #define OPTION_MULTIMOUSE           "multimouse"
 #define OPTION_STEADYKEY            "steadykey"
 #define OPTION_UI_ACTIVE            "ui_active"
-#define OPTION_OFFSCREEN_RELOAD     "offscreen_reload"
 #define OPTION_JOYSTICK_MAP         "joystick_map"
 #define OPTION_JOYSTICK_DEADZONE    "joystick_deadzone"
 #define OPTION_JOYSTICK_SATURATION  "joystick_saturation"
+#define OPTION_JOYSTICK_THRESHOLD   "joystick_threshold"
 #define OPTION_NATURAL_KEYBOARD     "natural"
 #define OPTION_JOYSTICK_CONTRADICTORY   "joystick_contradictory"
 #define OPTION_COIN_IMPULSE         "coin_impulse"
@@ -154,9 +161,11 @@
 #define OPTION_OSLOG                "oslog"
 #define OPTION_UPDATEINPAUSE        "update_in_pause"
 #define OPTION_DEBUGSCRIPT          "debugscript"
+#define OPTION_DEBUGLOG             "debuglog"
 
 // core misc options
 #define OPTION_DRC                  "drc"
+#define OPTION_DRC_RWX              "drc_rwx"
 #define OPTION_DRC_USE_C            "drc_use_c"
 #define OPTION_DRC_LOG_UML          "drc_log_uml"
 #define OPTION_DRC_LOG_NATIVE       "drc_log_native"
@@ -217,13 +226,14 @@ public:
 	core_options::entry::shared_ptr option_entry() const { return m_entry.lock(); }
 
 	// seters
-	void specify(const std::string &text, bool peg_priority = true);
+	void specify(std::string_view text, bool peg_priority = true);
 	void specify(std::string &&text, bool peg_priority = true);
+	void specify(const char *text, bool peg_priority = true) { specify(std::string_view(text), peg_priority); }
 	void set_bios(std::string &&text);
 	void set_default_card_software(std::string &&s);
 
 	// instantiates an option entry (don't call outside of emuopts.cpp)
-	core_options::entry::shared_ptr setup_option_entry(const char *name);
+	core_options::entry::shared_ptr setup_option_entry(std::string &&name);
 
 private:
 	void possibly_changed(const std::string &old_value);
@@ -251,8 +261,9 @@ public:
 	core_options::entry::shared_ptr option_entry() const { return m_entry.lock(); }
 
 	// mutators
-	void specify(const std::string &value, bool peg_priority = true);
+	void specify(std::string_view value, bool peg_priority = true);
 	void specify(std::string &&value, bool peg_priority = true);
+	void specify(const char *value, bool peg_priority = true) { specify(std::string_view(value), peg_priority); }
 
 	// instantiates an option entry (don't call outside of emuopts.cpp)
 	core_options::entry::shared_ptr setup_option_entry(std::vector<std::string> &&names);
@@ -288,7 +299,8 @@ public:
 	~emu_options();
 
 	// mutation
-	void set_system_name(const std::string &new_system_name);
+	void set_system_name(const char *new_system_name) { set_system_name(std::string(new_system_name)); }
+	void set_system_name(std::string_view new_system_name) { set_system_name(std::string(new_system_name)); }
 	void set_system_name(std::string &&new_system_name);
 	void set_software(std::string &&new_software);
 
@@ -303,7 +315,7 @@ public:
 	bool write_config() const { return bool_value(OPTION_WRITECONFIG); }
 
 	// core search path options
-	const char *home_path() const { return value(OPTION_HOMEPATH); }
+	const char *plugin_data_path() const { return value(OPTION_PLUGINDATAPATH); }
 	const char *media_path() const { return value(OPTION_MEDIAPATH); }
 	const char *hash_path() const { return value(OPTION_HASHPATH); }
 	const char *sample_path() const { return value(OPTION_SAMPLEPATH); }
@@ -325,6 +337,7 @@ public:
 	const char *snapshot_directory() const { return value(OPTION_SNAPSHOT_DIRECTORY); }
 	const char *diff_directory() const { return value(OPTION_DIFF_DIRECTORY); }
 	const char *comment_directory() const { return value(OPTION_COMMENT_DIRECTORY); }
+	const char *share_directory() const { return value(OPTION_SHARE_DIRECTORY); }
 
 	// core state/playback options
 	const char *state() const { return value(OPTION_STATE); }
@@ -333,7 +346,6 @@ public:
 	int rewind_capacity() const { return int_value(OPTION_REWIND_CAPACITY); }
 	const char *playback() const { return value(OPTION_PLAYBACK); }
 	const char *record() const { return value(OPTION_RECORD); }
-	bool record_timecode() const { return bool_value(OPTION_RECORD_TIMECODE); }
 	bool exit_after_playback() const { return bool_value(OPTION_EXIT_AFTER_PLAYBACK); }
 	const char *mng_write() const { return value(OPTION_MNGWRITE); }
 	const char *avi_write() const { return value(OPTION_AVIWRITE); }
@@ -378,6 +390,7 @@ public:
 	bool artwork_crop() const { return bool_value(OPTION_ARTWORK_CROP); }
 	const char *fallback_artwork() const { return value(OPTION_FALLBACK_ARTWORK); }
 	const char *override_artwork() const { return value(OPTION_OVERRIDE_ARTWORK); }
+	const char *artwork_font() const { return value(OPTION_ARTWORK_FONT); }
 
 	// core screen options
 	float brightness() const { return float_value(OPTION_BRIGHTNESS); }
@@ -389,6 +402,7 @@ public:
 	// core vector options
 	float beam_width_min() const { return float_value(OPTION_BEAM_WIDTH_MIN); }
 	float beam_width_max() const { return float_value(OPTION_BEAM_WIDTH_MAX); }
+	float beam_dot_size() const { return float_value(OPTION_BEAM_DOT_SIZE); }
 	float beam_intensity_weight() const { return float_value(OPTION_BEAM_INTENSITY_WEIGHT); }
 	float flicker() const { return float_value(OPTION_FLICKER); }
 
@@ -416,9 +430,9 @@ public:
 	const char *joystick_map() const { return value(OPTION_JOYSTICK_MAP); }
 	float joystick_deadzone() const { return float_value(OPTION_JOYSTICK_DEADZONE); }
 	float joystick_saturation() const { return float_value(OPTION_JOYSTICK_SATURATION); }
+	float joystick_threshold() const { return float_value(OPTION_JOYSTICK_THRESHOLD); }
 	bool steadykey() const { return bool_value(OPTION_STEADYKEY); }
 	bool ui_active() const { return bool_value(OPTION_UI_ACTIVE); }
-	bool offscreen_reload() const { return bool_value(OPTION_OFFSCREEN_RELOAD); }
 	bool natural_keyboard() const { return bool_value(OPTION_NATURAL_KEYBOARD); }
 	bool joystick_contradictory() const { return m_joystick_contradictory; }
 	int coin_impulse() const { return m_coin_impulse; }
@@ -430,9 +444,11 @@ public:
 	bool oslog() const { return bool_value(OPTION_OSLOG); }
 	const char *debug_script() const { return value(OPTION_DEBUGSCRIPT); }
 	bool update_in_pause() const { return bool_value(OPTION_UPDATEINPAUSE); }
+	bool debuglog() const { return bool_value(OPTION_DEBUGLOG); }
 
 	// core misc options
 	bool drc() const { return bool_value(OPTION_DRC); }
+	bool drc_rwx() const { return bool_value(OPTION_DRC_RWX); }
 	bool drc_use_c() const { return bool_value(OPTION_DRC_USE_C); }
 	bool drc_log_uml() const { return bool_value(OPTION_DRC_LOG_UML); }
 	bool drc_log_native() const { return bool_value(OPTION_DRC_LOG_NATIVE); }
@@ -450,7 +466,6 @@ public:
 	const char *comm_remotehost() const { return value(OPTION_COMM_REMOTE_HOST); }
 	const char *comm_remoteport() const { return value(OPTION_COMM_REMOTE_PORT); }
 	bool comm_framesync() const { return bool_value(OPTION_COMM_FRAME_SYNC); }
-
 
 	bool confirm_quit() const { return bool_value(OPTION_CONFIRM_QUIT); }
 	bool ui_mouse() const { return bool_value(OPTION_UI_MOUSE); }
@@ -473,16 +488,15 @@ public:
 	short http_port() const { return int_value(OPTION_HTTP_PORT); }
 	const char *http_root() const { return value(OPTION_HTTP_ROOT); }
 
-	// slots and devices - the values for these are stored outside of the core_options
-	// structure
-	const ::slot_option &slot_option(const std::string &device_name) const;
-	::slot_option &slot_option(const std::string &device_name);
-	const ::slot_option *find_slot_option(const std::string &device_name) const;
-	::slot_option *find_slot_option(const std::string &device_name);
-	bool has_slot_option(const std::string &device_name) const { return find_slot_option(device_name) ? true : false; }
-	const ::image_option &image_option(const std::string &device_name) const;
-	::image_option &image_option(const std::string &device_name);
-	bool has_image_option(const std::string &device_name) const { return m_image_options.find(device_name) != m_image_options.end(); }
+	// slots and devices - the values for these are stored outside of the core_options structure
+	const ::slot_option &slot_option(std::string_view device_name) const;
+	::slot_option &slot_option(std::string_view device_name);
+	const ::slot_option *find_slot_option(std::string_view device_name) const;
+	::slot_option *find_slot_option(std::string_view device_name);
+	bool has_slot_option(std::string_view device_name) const { return bool(find_slot_option(device_name)); }
+	const ::image_option &image_option(std::string_view device_name) const;
+	::image_option &image_option(std::string_view device_name);
+	bool has_image_option(std::string_view device_name) const { return m_image_options.find(device_name) != m_image_options.end(); }
 
 protected:
 	virtual void command_argument_processed() override;
@@ -490,8 +504,9 @@ protected:
 private:
 	struct software_options
 	{
-		std::unordered_map<std::string, std::string>    slot;
-		std::unordered_map<std::string, std::string>    image;
+		util::transparent_string_unordered_map<std::string, std::string>    slot;
+		util::transparent_string_unordered_map<std::string, std::string>    slot_defaults;
+		util::transparent_string_unordered_map<std::string, std::string>    image;
 	};
 
 	// slot/image/softlist calculus
@@ -510,9 +525,9 @@ private:
 	const game_driver *                                 m_system;
 
 	// slots and devices
-	std::unordered_map<std::string, ::slot_option>      m_slot_options;
-	std::unordered_map<std::string, ::image_option>     m_image_options_canonical;
-	std::unordered_map<std::string, ::image_option *>   m_image_options;
+	util::transparent_string_unordered_map<std::string, ::slot_option>      m_slot_options;
+	util::transparent_string_unordered_map<std::string, ::image_option>     m_image_options_canonical;
+	util::transparent_string_unordered_map<std::string, ::image_option *>   m_image_options;
 
 	// cached options, for scenarios where parsing core_options is too slow
 	int                                                 m_coin_impulse;

@@ -39,12 +39,6 @@
 #include "diserial.h"
 
 //**************************************************************************
-//  DEVICE CONFIGURATION MACROS
-//**************************************************************************
-
-#define Z80SCC_USE_LOCAL_BRG 0
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -59,14 +53,9 @@ class z80scc_channel : public device_t,
 	friend class z80scc_device;
 
 public:
-	z80scc_channel(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	z80scc_channel(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
-	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
-
-	// device_serial_interface overrides
+	// device_serial_interface implementation
 	virtual void tra_callback() override;
 	virtual void tra_complete() override;
 	virtual void rcv_callback() override;
@@ -122,12 +111,14 @@ public:
 	void m_rx_fifo_rp_step();
 	uint8_t m_rx_fifo_rp_data();
 
-	DECLARE_WRITE_LINE_MEMBER( write_rx );
-	DECLARE_WRITE_LINE_MEMBER( cts_w );
-	DECLARE_WRITE_LINE_MEMBER( dcd_w );
-	DECLARE_WRITE_LINE_MEMBER( rxc_w );
-	DECLARE_WRITE_LINE_MEMBER( txc_w );
-	DECLARE_WRITE_LINE_MEMBER( sync_w );
+	void write_rx(int state);
+	void cts_w(int state);
+	void dcd_w(int state);
+	void rxc_w(int state);
+	void txc_w(int state);
+	void sync_w(int state);
+
+	TIMER_CALLBACK_MEMBER(brg_tick);
 
 	int m_rxc;
 	int m_txc;
@@ -237,22 +228,13 @@ protected:
 		REG_WR15_EXT_ST_INT_CTRL= 15
 	};
 
-	enum
-	{
-		TIMER_ID_BAUD,
-		TIMER_ID_XTAL,
-		TIMER_ID_RTXC,
-		TIMER_ID_TRXC
-	};
+	// device-level overrides
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
-#if Z80SCC_USE_LOCAL_BRG
-	emu_timer *baudtimer;
-	uint16_t m_brg_counter;
-#else
-	unsigned int m_brg_rate;
-#endif
-	unsigned int m_delayed_tx_brg_change;
 	unsigned int get_brg_rate();
+	unsigned int get_rtxc_rate();
+	void update_baudtimer();
 
 	void scc_register_write(uint8_t reg, uint8_t data);
 	uint8_t scc_register_read(uint8_t reg);
@@ -266,7 +248,13 @@ protected:
 	int get_rx_word_length();
 	int get_tx_word_length();
 	void safe_transmit_register_reset();
-	void check_waitrequest();
+	void check_dma_request();
+	void check_receive_interrupt();
+
+	emu_timer *m_baudtimer;
+	uint16_t m_brg_counter;
+	unsigned int m_brg_rate;
+	unsigned int m_delayed_tx_brg_change;
 
 	// receiver state
 	uint8_t m_rx_data_fifo[8];    // receive data FIFO
@@ -311,6 +299,7 @@ protected:
 	// SCC specifics
 	int m_ph;       // Point high command to access regs 08-0f
 	uint8_t m_zc;
+
 private:
 	// helpers
 	void out_txd_cb(int state);
@@ -369,8 +358,8 @@ public:
 	uint8_t cb_r(offs_t offset)            { return m_chanB->control_read(); }
 	void cb_w(offs_t offset, uint8_t data) { m_chanB->control_write(data); }
 
-	DECLARE_READ8_MEMBER( zbus_r );
-	DECLARE_WRITE8_MEMBER( zbus_w );
+	uint8_t zbus_r(offs_t offset);
+	void zbus_w(offs_t offset, uint8_t data);
 
 	// interrupt acknowledge
 	int m1_r();
@@ -378,32 +367,31 @@ public:
 	// Single registers instances accessed from both channels
 	uint8_t m_wr9;  // REG_WR9_MASTER_INT_CTRL
 
-	DECLARE_WRITE_LINE_MEMBER( rxa_w ) { m_chanA->write_rx(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxb_w ) { m_chanB->write_rx(state); }
-	DECLARE_WRITE_LINE_MEMBER( ctsa_w ) { m_chanA->cts_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( ctsb_w ) { m_chanB->cts_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( dcda_w ) { m_chanA->dcd_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( dcdb_w ) { m_chanB->dcd_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxca_w ) { m_chanA->rxc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxcb_w ) { m_chanB->rxc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( txca_w ) { m_chanA->txc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( txcb_w ) { m_chanB->txc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxtxcb_w ) { m_chanB->rxc_w(state); m_chanB->txc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( synca_w ) { m_chanA->sync_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( syncb_w ) { m_chanB->sync_w(state); }
+	void rxa_w(int state) { m_chanA->write_rx(state); }
+	void rxb_w(int state) { m_chanB->write_rx(state); }
+	void ctsa_w(int state) { m_chanA->cts_w(state); }
+	void ctsb_w(int state) { m_chanB->cts_w(state); }
+	void dcda_w(int state) { m_chanA->dcd_w(state); }
+	void dcdb_w(int state) { m_chanB->dcd_w(state); }
+	void rxca_w(int state) { m_chanA->rxc_w(state); }
+	void rxcb_w(int state) { m_chanB->rxc_w(state); }
+	void txca_w(int state) { m_chanA->txc_w(state); }
+	void txcb_w(int state) { m_chanB->txc_w(state); }
+	void rxtxcb_w(int state) { m_chanB->rxc_w(state); m_chanB->txc_w(state); }
+	void synca_w(int state) { m_chanA->sync_w(state); }
+	void syncb_w(int state) { m_chanB->sync_w(state); }
 	int update_extint(int i);
 	int get_extint_priority(int type);
 
 protected:
 	z80scc_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint32_t variant);
 
-	// device-level overrides
-	virtual void device_resolve_objects() override;
-	virtual void device_start() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
 	virtual void device_reset_after_children() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
-	// device_z80daisy_interface overrides
+	// device_z80daisy_interface implementation
 	virtual int z80daisy_irq_state() override;
 	virtual int z80daisy_irq_ack() override;
 	virtual void z80daisy_irq_reti() override;
@@ -475,49 +463,49 @@ protected:
 class scc8030_device : public z80scc_device
 {
 public:
-	scc8030_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	scc8030_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 class scc80c30_device : public z80scc_device
 {
 public:
-	scc80c30_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	scc80c30_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 class scc80230_device : public z80scc_device
 {
 public:
-	scc80230_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	scc80230_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 class scc8530_device : public z80scc_device
 {
 public:
-	scc8530_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	scc8530_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 class scc85c30_device : public z80scc_device
 {
 public:
-	scc85c30_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	scc85c30_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 class scc85230_device : public z80scc_device
 {
 public:
-	scc85230_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	scc85230_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 class scc85233_device : public z80scc_device
 {
 public:
-	scc85233_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	scc85233_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 class scc8523l_device : public z80scc_device
 {
 public:
-	scc8523l_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	scc8523l_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 // device type definition
@@ -525,7 +513,7 @@ DECLARE_DEVICE_TYPE(Z80SCC_CHANNEL, z80scc_channel)
 DECLARE_DEVICE_TYPE(SCC8030,        scc8030_device)
 DECLARE_DEVICE_TYPE(SCC80C30,       scc80c30_device)
 DECLARE_DEVICE_TYPE(SCC80230,       scc80230_device)
-DECLARE_DEVICE_TYPE(SCC8530N,       scc8530_device) // remove trailing N when 8530scc.c is fully replaced and removed
+DECLARE_DEVICE_TYPE(SCC8530,        scc8530_device)
 DECLARE_DEVICE_TYPE(SCC85C30,       scc85c30_device)
 DECLARE_DEVICE_TYPE(SCC85230,       scc85230_device)
 DECLARE_DEVICE_TYPE(SCC85233,       scc85233_device)

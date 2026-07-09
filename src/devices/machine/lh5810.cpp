@@ -50,9 +50,9 @@ DEFINE_DEVICE_TYPE(LH5810, lh5810_device, "lh5810", "LH5810 I/O Port")
 
 lh5810_device::lh5810_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, LH5810, tag, owner, clock)
-	, m_porta_r_cb(*this)
+	, m_porta_r_cb(*this, 0)
 	, m_porta_w_cb(*this)
-	, m_portb_r_cb(*this)
+	, m_portb_r_cb(*this, 0)
 	, m_portb_w_cb(*this)
 	, m_portc_w_cb(*this)
 	, m_out_int_cb(*this)
@@ -67,14 +67,6 @@ lh5810_device::lh5810_device(const machine_config &mconfig, const char *tag, dev
 
 void lh5810_device::device_start()
 {
-	// resolve callbacks
-	m_porta_r_cb.resolve_safe(0);
-	m_porta_w_cb.resolve_safe();
-	m_portb_r_cb.resolve_safe(0);
-	m_portb_w_cb.resolve_safe();
-	m_portc_w_cb.resolve_safe();
-	m_out_int_cb.resolve_safe();
-
 	// register for state saving
 	save_item(NAME(m_irq));
 	save_item(NAME(m_reg));
@@ -96,7 +88,7 @@ void lh5810_device::device_reset()
 //  data_r - data read
 //-------------------------------------------------
 
-READ8_MEMBER( lh5810_device::data_r )
+uint8_t lh5810_device::data_r(offs_t offset)
 {
 	switch (offset)
 	{
@@ -139,7 +131,7 @@ READ8_MEMBER( lh5810_device::data_r )
 //  data_w - data write
 //-------------------------------------------------
 
-WRITE8_MEMBER( lh5810_device::data_w )
+void lh5810_device::data_w(offs_t offset, uint8_t data)
 {
 	switch (offset)
 	{

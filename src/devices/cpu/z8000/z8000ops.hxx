@@ -24,6 +24,7 @@ void z8002_device::CHANGE_FCW(uint16_t fcw)
 		tmp = RW(15);
 		RW(15) = m_nspoff;
 		m_nspoff = tmp;
+		m_ns_out((fcw & F_S_N) ? CLEAR_LINE : ASSERT_LINE);
 	}
 
 	fcw &= ~F_SEG;  /* never set segmented mode bit on Z8002 */
@@ -47,6 +48,7 @@ void z8001_device::CHANGE_FCW(uint16_t fcw)
 		tmp = RW(15);
 		RW(15) = m_nspoff;
 		m_nspoff = tmp;
+		m_ns_out((fcw & F_S_N) ? CLEAR_LINE : ASSERT_LINE);
 	}
 	/* User mode R14 is used in user mode and non-segmented system mode.
 	   System mode R14 is only used in segmented system mode.
@@ -137,70 +139,72 @@ void z8002_device::set_pc(uint32_t addr)
 
 uint8_t z8002_device::RDIR_B(uint8_t reg)
 {
-	return RDMEM_B(reg == SP ? *m_stack : *m_data, addr_from_reg(reg));
+	return RDMEM_B(reg == SP ? m_stack : m_data, addr_from_reg(reg));
 }
 
 uint16_t z8002_device::RDIR_W(uint8_t reg)
 {
-	return RDMEM_W(reg == SP ? *m_stack : *m_data, addr_from_reg(reg));
+	return RDMEM_W(reg == SP ? m_stack : m_data, addr_from_reg(reg));
 }
 
 uint32_t z8002_device::RDIR_L(uint8_t reg)
 {
-	return RDMEM_L(reg == SP ? *m_stack : *m_data, addr_from_reg(reg));
+	return RDMEM_L(reg == SP ? m_stack : m_data, addr_from_reg(reg));
 }
 
 void z8002_device::WRIR_B(uint8_t reg, uint8_t value)
 {
-	WRMEM_B(reg == SP ? *m_stack : *m_data, addr_from_reg(reg), value);
+	WRMEM_B(reg == SP ? m_stack : m_data, addr_from_reg(reg), value);
 }
 
 void z8002_device::WRIR_W(uint8_t reg, uint16_t value)
 {
-	WRMEM_W(reg == SP ? *m_stack : *m_data, addr_from_reg(reg), value);
+	WRMEM_W(reg == SP ? m_stack : m_data, addr_from_reg(reg), value);
 }
 
 void z8002_device::WRIR_L(uint8_t reg, uint32_t value)
 {
-	WRMEM_L(reg == SP ? *m_stack : *m_data, addr_from_reg(reg), value);
+	WRMEM_L(reg == SP ? m_stack : m_data, addr_from_reg(reg), value);
 }
 
 uint8_t z8002_device::RDBX_B(uint8_t reg, uint16_t idx)
 {
-	return RDMEM_B(reg == SP ? *m_stack : *m_data, addr_add(addr_from_reg(reg), idx));
+	return RDMEM_B(reg == SP ? m_stack : m_data, addr_add(addr_from_reg(reg), idx));
 }
 
 uint16_t z8002_device::RDBX_W(uint8_t reg, uint16_t idx)
 {
-	return RDMEM_W(reg == SP ? *m_stack : *m_data, addr_add(addr_from_reg(reg), idx));
+	return RDMEM_W(reg == SP ? m_stack : m_data, addr_add(addr_from_reg(reg), idx));
 }
 
 uint32_t z8002_device::RDBX_L(uint8_t reg, uint16_t idx)
 {
-	return RDMEM_L(reg == SP ? *m_stack : *m_data, addr_add(addr_from_reg(reg), idx));
+	return RDMEM_L(reg == SP ? m_stack : m_data, addr_add(addr_from_reg(reg), idx));
 }
 
 void z8002_device::WRBX_B(uint8_t reg, uint16_t idx, uint8_t value)
 {
-	WRMEM_B(reg == SP ? *m_stack : *m_data, addr_add(addr_from_reg(reg), idx), value);
+	WRMEM_B(reg == SP ? m_stack : m_data, addr_add(addr_from_reg(reg), idx), value);
 }
 
 void z8002_device::WRBX_W(uint8_t reg, uint16_t idx, uint16_t value)
 {
-	WRMEM_W(reg == SP ? *m_stack : *m_data, addr_add(addr_from_reg(reg), idx), value);
+	WRMEM_W(reg == SP ? m_stack : m_data, addr_add(addr_from_reg(reg), idx), value);
 }
 
 void z8002_device::WRBX_L(uint8_t reg, uint16_t idx, uint32_t value)
 {
-	WRMEM_L(reg == SP ? *m_stack : *m_data, addr_add(addr_from_reg(reg), idx), value);
+	WRMEM_L(reg == SP ? m_stack : m_data, addr_add(addr_from_reg(reg), idx), value);
 }
+
+#define ADD_ALIGNED16(x, value) (x) += (value) - ((x) & 1)
 
 void z8002_device::PUSHW(uint8_t dst, uint16_t value)
 {
 	if (get_segmented_mode())
-		RW(dst | 1) -= 2;
+		ADD_ALIGNED16(RW(dst | 1), -2);
 	else
-		RW(dst) -= 2;
+		ADD_ALIGNED16(RW(dst), -2);
 	WRIR_W(dst, value);
 }
 
@@ -208,18 +212,18 @@ uint16_t z8002_device::POPW(uint8_t src)
 {
 	uint16_t result = RDIR_W(src);
 	if (get_segmented_mode())
-		RW(src | 1) += 2;
+		ADD_ALIGNED16(RW(src | 1), 2);
 	else
-		RW(src) += 2;
+		ADD_ALIGNED16(RW(src), 2);
 	return result;
 }
 
 void z8002_device::PUSHL(uint8_t dst, uint32_t value)
 {
 	if (get_segmented_mode())
-		RW(dst | 1) -= 4;
+		ADD_ALIGNED16(RW(dst | 1), -4);
 	else
-		RW(dst) -= 4;
+		ADD_ALIGNED16(RW(dst), -4);
 	WRIR_L(dst, value);
 }
 
@@ -227,9 +231,9 @@ uint32_t z8002_device::POPL(uint8_t src)
 {
 	uint32_t result = RDIR_L(src);
 	if (get_segmented_mode())
-		RW(src | 1) += 4;
+		ADD_ALIGNED16(RW(src | 1), 4);
 	else
-		RW(src) += 4;
+		ADD_ALIGNED16(RW(src), 4);
 	return result;
 }
 
@@ -266,10 +270,10 @@ uint32_t z8002_device::POPL(uint8_t src)
 #define CHK_SUBL_V if (((~value & dest & ~result) | (value & ~dest & result)) & S32) SET_V
 
 /* check for privileged instruction and trap if executed */
-#define CHECK_PRIVILEGED_INSTR() if (!(m_fcw & F_S_N)) { m_irq_req = Z8000_TRAP; return; }
+#define CHECK_PRIVILEGED_INSTR() if (!(m_fcw & F_S_N)) { m_irq_req |= Z8000_TRAP; return; }
 
 /* if no EPU is present (it isn't), raise an extended intstuction trap */
-#define CHECK_EXT_INSTR()  if (!(m_fcw & F_EPU)) { m_irq_req = Z8000_EPU; return; }
+#define CHECK_EXT_INSTR()  if (!(m_fcw & F_EPU)) { m_irq_req |= Z8000_EPU; return; }
 
 
 /******************************************
@@ -771,11 +775,11 @@ uint64_t z8002_device::DIVL(uint64_t dest, uint32_t value)
 		remainder = dest % value;
 		if (qsign) result = -result;
 		if (rsign) remainder = -remainder;
-		if ((int64_t)result < -0x80000000 || (int64_t)result > 0x7fffffff)
+		if ((int64_t)result < -0x80000000LL || (int64_t)result > 0x7fffffff)
 		{
 			int64_t temp = (int64_t)result >> 1;
 			SET_V;
-			if (temp >= -0x80000000 && temp <= 0x7fffffff)
+			if (temp >= -0x80000000LL && temp <= 0x7fffffff)
 			{
 				result = (temp < 0) ? -1 : 0;
 				CHK_XXXL_ZS;
@@ -1535,7 +1539,7 @@ void z8002_device::Z0B_ssN0_dddd()
 void z8002_device::Z0C_ddN0_0000()
 {
 	GET_DST(OP0,NIB3);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_B(space, addr, COMB(RDMEM_B(space, addr)));
 }
@@ -1558,7 +1562,7 @@ void z8002_device::Z0C_ddN0_0001_imm8()
 void z8002_device::Z0C_ddN0_0010()
 {
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_B(space, addr, NEGB(RDMEM_B(space, addr)));
 }
@@ -1591,7 +1595,7 @@ void z8002_device::Z0C_ddN0_0101_imm8()
 void z8002_device::Z0C_ddN0_0110()
 {
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	if (RDMEM_B(space, addr) & S08) SET_S; else CLR_S;
 	WRMEM_B(space, addr, 0xff);
@@ -1614,7 +1618,7 @@ void z8002_device::Z0C_ddN0_1000()
 void z8002_device::Z0D_ddN0_0000()
 {
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_W(space, addr, COMW(RDMEM_W(space, addr)));
 }
@@ -1637,7 +1641,7 @@ void z8002_device::Z0D_ddN0_0001_imm16()
 void z8002_device::Z0D_ddN0_0010()
 {
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_W(space, addr, NEGW(RDMEM_W(space, addr)));
 }
@@ -1670,7 +1674,7 @@ void z8002_device::Z0D_ddN0_0101_imm16()
 void z8002_device::Z0D_ddN0_0110()
 {
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	if (RDMEM_W(space, addr) & S16) SET_S; else CLR_S;
 	WRMEM_W(space, addr, 0xffff);
@@ -1966,7 +1970,7 @@ void z8002_device::Z1C_ddN0_1001_0000_ssss_0000_nmin1()
 	GET_DST(OP0,NIB2);
 	GET_CNT(OP1,NIB3);
 	GET_SRC(OP1,NIB1);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	while (cnt-- >= 0) {
 		WRMEM_W(space, addr, RW(src));
@@ -1984,7 +1988,7 @@ void z8002_device::Z1C_ssN0_0001_0000_dddd_0000_nmin1()
 	GET_SRC(OP0,NIB2);
 	GET_CNT(OP1,NIB3);
 	GET_DST(OP1,NIB1);
-	address_space &space = src == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = src == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(src);
 	while (cnt-- >= 0) {
 		RW(dst) = RDMEM_W(space, addr);
@@ -2098,7 +2102,7 @@ void z8002_device::Z22_ddN0_imm4()
 {
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_B(space, addr, RDMEM_B(space, addr) & ~bit);
 }
@@ -2122,7 +2126,7 @@ void z8002_device::Z23_ddN0_imm4()
 {
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_W(space, addr, RDMEM_W(space, addr) & ~bit);
 }
@@ -2146,7 +2150,7 @@ void z8002_device::Z24_ddN0_imm4()
 {
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_B(space, addr, RDMEM_B(space, addr) | bit);
 }
@@ -2170,7 +2174,7 @@ void z8002_device::Z25_ddN0_imm4()
 {
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_W(space, addr, RDMEM_W(space, addr) | bit);
 }
@@ -2227,7 +2231,7 @@ void z8002_device::Z28_ddN0_imm4m1()
 {
 	GET_I4M1(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_B(space, addr, INCB(RDMEM_B(space, addr), i4p1));
 }
@@ -2240,7 +2244,7 @@ void z8002_device::Z29_ddN0_imm4m1()
 {
 	GET_I4M1(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_W(space, addr, INCW(RDMEM_W(space, addr), i4p1));
 }
@@ -2253,7 +2257,7 @@ void z8002_device::Z2A_ddN0_imm4m1()
 {
 	GET_I4M1(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_B(space, addr, DECB(RDMEM_B(space, addr), i4p1));
 }
@@ -2266,7 +2270,7 @@ void z8002_device::Z2B_ddN0_imm4m1()
 {
 	GET_I4M1(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	address_space &space = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = dst == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(dst);
 	WRMEM_W(space, addr, DECW(RDMEM_W(space, addr), i4p1));
 }
@@ -2279,7 +2283,7 @@ void z8002_device::Z2C_ssN0_dddd()
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	address_space &space = src == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = src == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(src);
 	uint8_t tmp = RDMEM_B(space, addr);
 	WRMEM_B(space, addr, RB(dst));
@@ -2294,7 +2298,7 @@ void z8002_device::Z2D_ssN0_dddd()
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	address_space &space = src == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = src == SP ? m_stack : m_data;
 	uint32_t addr = addr_from_reg(src);
 	uint16_t tmp = RDMEM_W(space, addr);
 	WRMEM_W(space, addr, RW(dst));
@@ -2331,7 +2335,7 @@ void z8002_device::Z30_0000_dddd_dsp16()
 {
 	GET_DST(OP0,NIB3);
 	GET_DSP16;
-	RB(dst) = RDMEM_B(*m_program, dsp16);
+	RB(dst) = RDMEM_B(m_program, dsp16);
 }
 
 /******************************************
@@ -2354,7 +2358,7 @@ void z8002_device::Z31_0000_dddd_dsp16()
 {
 	GET_DST(OP0,NIB3);
 	GET_DSP16;
-	RW(dst) = RDMEM_W(*m_program, dsp16);
+	RW(dst) = RDMEM_W(m_program, dsp16);
 }
 
 /******************************************
@@ -2377,7 +2381,7 @@ void z8002_device::Z32_0000_ssss_dsp16()
 {
 	GET_SRC(OP0,NIB3);
 	GET_DSP16;
-	WRMEM_B(*m_program, dsp16, RB(src));
+	WRMEM_B(m_program, dsp16, RB(src));
 }
 
 /******************************************
@@ -2400,7 +2404,7 @@ void z8002_device::Z33_0000_ssss_dsp16()
 {
 	GET_SRC(OP0,NIB3);
 	GET_DSP16;
-	WRMEM_W(*m_program, dsp16, RW(src));
+	WRMEM_W(m_program, dsp16, RW(src));
 }
 
 /******************************************
@@ -2452,7 +2456,7 @@ void z8002_device::Z35_0000_dddd_dsp16()
 {
 	GET_DST(OP0,NIB3);
 	GET_DSP16;
-	RL(dst) = RDMEM_L(*m_program, dsp16);
+	RL(dst) = RDMEM_L(m_program, dsp16);
 }
 
 /******************************************
@@ -2474,7 +2478,7 @@ void z8002_device::Z35_ssN0_dddd_imm16()
 void z8002_device::Z36_0000_0000()
 {
 	/* execute break point trap m_irq_req */
-	m_irq_req = Z8000_TRAP;
+	m_irq_req |= Z8000_TRAP;
 }
 
 /******************************************
@@ -2499,7 +2503,7 @@ void z8002_device::Z37_0000_ssss_dsp16()
 {
 	GET_SRC(OP0,NIB3);
 	GET_DSP16;
-	WRMEM_L(*m_program,  dsp16, RL(src));
+	WRMEM_L(m_program,  dsp16, RL(src));
 }
 
 /******************************************
@@ -2537,7 +2541,7 @@ void z8002_device::Z39_ssN0_0000()
 	CHECK_PRIVILEGED_INSTR();
 	GET_SRC(OP0,NIB2);
 	uint16_t fcw;
-	address_space &space = src == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &space = src == SP ? m_stack : m_data;
 	if (get_segmented_mode()) {
 		uint32_t addr = addr_from_reg(src);
 		fcw = RDMEM_W(space, addr + 2);
@@ -2552,7 +2556,8 @@ void z8002_device::Z39_ssN0_0000()
 }
 
 /******************************************
- inib(r) @rd,@rs,ra
+ inib    @rd,@rs,ra
+ inirb   @rd,@rs,ra
  flags:  ---V--
  ******************************************/
 void z8002_device::Z3A_ssss_0000_0000_aaaa_dddd_x000()
@@ -2569,7 +2574,7 @@ void z8002_device::Z3A_ssss_0000_0000_aaaa_dddd_x000()
 
 /******************************************
  sinib   @rd,@rs,ra
- sinibr  @rd,@rs,ra
+ sinirb  @rd,@rs,ra
  flags:  ------
  ******************************************/
 void z8002_device::Z3A_ssss_0001_0000_aaaa_dddd_x000()
@@ -2581,13 +2586,12 @@ void z8002_device::Z3A_ssss_0001_0000_aaaa_dddd_x000()
 	GET_CCC(OP1,NIB3);
 	WRIR_B(dst, RDPORT_B( 1, RW(src)));
 	RW(dst)++;
-	RW(src)++;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
 /******************************************
  outib   @rd,@rs,ra
- outibr  @rd,@rs,ra
+ otirb   @rd,@rs,ra
  flags:  ---V--
  ******************************************/
 void z8002_device::Z3A_ssss_0010_0000_aaaa_dddd_x000()
@@ -2604,7 +2608,7 @@ void z8002_device::Z3A_ssss_0010_0000_aaaa_dddd_x000()
 
 /******************************************
  soutib  @rd,@rs,ra
- soutibr @rd,@rs,ra
+ sotirb  @rd,@rs,ra
  flags:  ------
  ******************************************/
 void z8002_device::Z3A_ssss_0011_0000_aaaa_dddd_x000()
@@ -2614,8 +2618,7 @@ void z8002_device::Z3A_ssss_0011_0000_aaaa_dddd_x000()
 	GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRPORT_B( 1, RW(dst), RDIR_W(src));
-	RW(dst)++;
+	WRPORT_B( 1, RW(dst), RDIR_B(src));
 	RW(src)++;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
@@ -2682,13 +2685,12 @@ void z8002_device::Z3A_ssss_1000_0000_aaaa_dddd_x000()
 	GET_CCC(OP1,NIB3);
 	WRIR_B(dst, RDPORT_B( 0, RW(src)));
 	RW(dst)--;
-	RW(src)--;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
 /******************************************
  sindb   @rd,@rs,rba
- sindbr  @rd,@rs,rba
+ sindrb  @rd,@rs,rba
  flags:  ------
  ******************************************/
 void z8002_device::Z3A_ssss_1001_0000_aaaa_dddd_x000()
@@ -2700,13 +2702,12 @@ void z8002_device::Z3A_ssss_1001_0000_aaaa_dddd_x000()
 	GET_CCC(OP1,NIB3);
 	WRIR_B(dst, RDPORT_B( 1, RW(src)));
 	RW(dst)--;
-	RW(src)--;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
 /******************************************
  outdb   @rd,@rs,rba
- outdbr  @rd,@rs,rba
+ otdrb   @rd,@rs,rba
  flags:  ---V--
  ******************************************/
 void z8002_device::Z3A_ssss_1010_0000_aaaa_dddd_x000()
@@ -2717,14 +2718,13 @@ void z8002_device::Z3A_ssss_1010_0000_aaaa_dddd_x000()
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
 	WRPORT_B( 0, RW(dst), RDIR_B(src));
-	RW(dst)--;
 	RW(src)--;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
 /******************************************
  soutdb  @rd,@rs,rba
- soutdbr @rd,@rs,rba
+ sotdbr  @rd,@rs,rba
  flags:  ------
  ******************************************/
 void z8002_device::Z3A_ssss_1011_0000_aaaa_dddd_x000()
@@ -2735,7 +2735,6 @@ void z8002_device::Z3A_ssss_1011_0000_aaaa_dddd_x000()
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
 	WRPORT_B( 1, RW(dst), RDIR_B(src));
-	RW(dst)--;
 	RW(src)--;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
@@ -2754,7 +2753,6 @@ void z8002_device::Z3B_ssss_0000_0000_aaaa_dddd_x000()
 	GET_CCC(OP1,NIB3);
 	WRIR_W(dst, RDPORT_W( 0, RW(src)));
 	RW(dst) += 2;
-	RW(src) += 2;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
@@ -2772,13 +2770,12 @@ void z8002_device::Z3B_ssss_0001_0000_aaaa_dddd_x000()
 	GET_CCC(OP1,NIB3);
 	WRIR_W(dst, RDPORT_W( 1, RW(src)));
 	RW(dst) += 2;
-	RW(src) += 2;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
 /******************************************
  outi    @rd,@rs,ra
- outir   @rd,@rs,ra
+ otir    @rd,@rs,ra
  flags:  ---V--
  ******************************************/
 void z8002_device::Z3B_ssss_0010_0000_aaaa_dddd_x000()
@@ -2789,14 +2786,13 @@ void z8002_device::Z3B_ssss_0010_0000_aaaa_dddd_x000()
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
 	WRPORT_W( 0, RW(dst), RDIR_W(src));
-	RW(dst) += 2;
 	RW(src) += 2;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
 /******************************************
  souti   @rd,@rs,ra
- soutir  @rd,@rs,ra
+ sotir   @rd,@rs,ra
  flags:  ------
  ******************************************/
 void z8002_device::Z3B_ssss_0011_0000_aaaa_dddd_x000()
@@ -2807,7 +2803,6 @@ void z8002_device::Z3B_ssss_0011_0000_aaaa_dddd_x000()
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
 	WRPORT_W( 1, RW(dst), RDIR_W(src));
-	RW(dst) += 2;
 	RW(src) += 2;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
@@ -2874,7 +2869,6 @@ void z8002_device::Z3B_ssss_1000_0000_aaaa_dddd_x000()
 	GET_CCC(OP1,NIB3);
 	WRIR_W(dst, RDPORT_W( 0, RW(src)));
 	RW(dst) -= 2;
-	RW(src) -= 2;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
@@ -2892,13 +2886,12 @@ void z8002_device::Z3B_ssss_1001_0000_aaaa_dddd_x000()
 	GET_CCC(OP1,NIB3);
 	WRIR_W(dst, RDPORT_W( 1, RW(src)));
 	RW(dst) -= 2;
-	RW(src) -= 2;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
 /******************************************
  outd    @rd,@rs,ra
- outdr   @rd,@rs,ra
+ otdr    @rd,@rs,ra
  flags:  ---V--
  ******************************************/
 void z8002_device::Z3B_ssss_1010_0000_aaaa_dddd_x000()
@@ -2909,14 +2902,13 @@ void z8002_device::Z3B_ssss_1010_0000_aaaa_dddd_x000()
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
 	WRPORT_W( 0, RW(dst), RDIR_W(src));
-	RW(dst) -= 2;
 	RW(src) -= 2;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
 
 /******************************************
  soutd   @rd,@rs,ra
- soutdr  @rd,@rs,ra
+ sotdr   @rd,@rs,ra
  flags:  ------
  ******************************************/
 void z8002_device::Z3B_ssss_1011_0000_aaaa_dddd_x000()
@@ -2927,7 +2919,6 @@ void z8002_device::Z3B_ssss_1011_0000_aaaa_dddd_x000()
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
 	WRPORT_W( 1, RW(dst), RDIR_W(src));
-	RW(dst) -= 2;
 	RW(src) -= 2;
 	if (--RW(cnt)) { CLR_V; if (cc == 0) m_pc -= 4; } else SET_V;
 }
@@ -2988,7 +2979,7 @@ void z8002_device::Z40_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RB(dst) = ADDB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = ADDB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3001,7 +2992,7 @@ void z8002_device::Z40_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RB(dst) = ADDB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = ADDB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3012,7 +3003,7 @@ void z8002_device::Z41_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RW(dst) = ADDW(RW(dst), RDMEM_W(*m_data, addr)); /* EHC */
+	RW(dst) = ADDW(RW(dst), RDMEM_W(m_data, addr)); /* EHC */
 }
 
 /******************************************
@@ -3025,7 +3016,7 @@ void z8002_device::Z41_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RW(dst) = ADDW(RW(dst), RDMEM_W(*m_data, addr));    /* ASG */
+	RW(dst) = ADDW(RW(dst), RDMEM_W(m_data, addr));    /* ASG */
 }
 
 /******************************************
@@ -3036,7 +3027,7 @@ void z8002_device::Z42_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RB(dst) = SUBB(RB(dst), RDMEM_B(*m_data, addr)); /* EHC */
+	RB(dst) = SUBB(RB(dst), RDMEM_B(m_data, addr)); /* EHC */
 }
 
 /******************************************
@@ -3049,7 +3040,7 @@ void z8002_device::Z42_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RB(dst) = SUBB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = SUBB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3060,7 +3051,7 @@ void z8002_device::Z43_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RW(dst) = SUBW(RW(dst), RDMEM_W(*m_data, addr));
+	RW(dst) = SUBW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3073,7 +3064,7 @@ void z8002_device::Z43_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RW(dst) = SUBW(RW(dst), RDMEM_W(*m_data, addr));
+	RW(dst) = SUBW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3084,7 +3075,7 @@ void z8002_device::Z44_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RB(dst) = ORB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = ORB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3097,7 +3088,7 @@ void z8002_device::Z44_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RB(dst) = ORB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = ORB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3108,7 +3099,7 @@ void z8002_device::Z45_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RW(dst) = ORW(RW(dst), RDMEM_W(*m_data, addr));
+	RW(dst) = ORW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3121,7 +3112,7 @@ void z8002_device::Z45_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RW(dst) = ORW(RW(dst), RDMEM_W(*m_data, addr));
+	RW(dst) = ORW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3132,7 +3123,7 @@ void z8002_device::Z46_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RB(dst) = ANDB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = ANDB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3145,7 +3136,7 @@ void z8002_device::Z46_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RB(dst) = ANDB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = ANDB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3156,7 +3147,7 @@ void z8002_device::Z47_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RW(dst) = ANDW(RW(dst), RDMEM_W(*m_data, addr));
+	RW(dst) = ANDW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3169,7 +3160,7 @@ void z8002_device::Z47_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RW(dst) = ANDW(RW(dst), RDMEM_W(*m_data, addr));
+	RW(dst) = ANDW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3180,7 +3171,7 @@ void z8002_device::Z48_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RB(dst) = XORB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = XORB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3193,7 +3184,7 @@ void z8002_device::Z48_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RB(dst) = XORB(RB(dst), RDMEM_B(*m_data, addr));
+	RB(dst) = XORB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3204,7 +3195,7 @@ void z8002_device::Z49_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RW(dst) = XORW(RW(dst), RDMEM_W(*m_data, addr));
+	RW(dst) = XORW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3217,7 +3208,7 @@ void z8002_device::Z49_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RW(dst) = XORW(RW(dst), RDMEM_W(*m_data, addr));
+	RW(dst) = XORW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3228,7 +3219,7 @@ void z8002_device::Z4A_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	CPB(RB(dst), RDMEM_B(*m_data, addr));
+	CPB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3241,7 +3232,7 @@ void z8002_device::Z4A_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	CPB(RB(dst), RDMEM_B(*m_data, addr));
+	CPB(RB(dst), RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3252,7 +3243,7 @@ void z8002_device::Z4B_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	CPW(RW(dst), RDMEM_W(*m_data, addr));
+	CPW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3265,7 +3256,7 @@ void z8002_device::Z4B_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	CPW(RW(dst), RDMEM_W(*m_data, addr));
+	CPW(RW(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3275,7 +3266,7 @@ void z8002_device::Z4B_ssN0_dddd_addr()
 void z8002_device::Z4C_0000_0000_addr()
 {
 	GET_ADDR(OP1);
-	WRMEM_B(*m_data,  addr, COMB(RDMEM_W(*m_data, addr)));
+	WRMEM_B(m_data,  addr, COMB(RDMEM_W(m_data, addr)));
 }
 
 /******************************************
@@ -3286,7 +3277,7 @@ void z8002_device::Z4C_0000_0001_addr_imm8()
 {
 	GET_ADDR(OP1);
 	GET_IMM8(OP2);
-	CPB(RDMEM_B(*m_data, addr), imm8);
+	CPB(RDMEM_B(m_data, addr), imm8);
 }
 
 /******************************************
@@ -3296,7 +3287,7 @@ void z8002_device::Z4C_0000_0001_addr_imm8()
 void z8002_device::Z4C_0000_0010_addr()
 {
 	GET_ADDR(OP1);
-	WRMEM_B(*m_data,  addr, NEGB(RDMEM_B(*m_data, addr)));
+	WRMEM_B(m_data,  addr, NEGB(RDMEM_B(m_data, addr)));
 }
 
 /******************************************
@@ -3306,7 +3297,7 @@ void z8002_device::Z4C_0000_0010_addr()
 void z8002_device::Z4C_0000_0100_addr()
 {
 	GET_ADDR(OP1);
-	TESTB(RDMEM_B(*m_data, addr));
+	TESTB(RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3317,7 +3308,7 @@ void z8002_device::Z4C_0000_0101_addr_imm8()
 {
 	GET_ADDR(OP1);
 	GET_IMM8(OP2);
-	WRMEM_B(*m_data,  addr, imm8);
+	WRMEM_B(m_data,  addr, imm8);
 }
 
 /******************************************
@@ -3327,8 +3318,8 @@ void z8002_device::Z4C_0000_0101_addr_imm8()
 void z8002_device::Z4C_0000_0110_addr()
 {
 	GET_ADDR(OP1);
-	if (RDMEM_B(*m_data, addr) & S08) SET_S; else CLR_S;
-	WRMEM_B(*m_data, addr, 0xff);
+	if (RDMEM_B(m_data, addr) & S08) SET_S; else CLR_S;
+	WRMEM_B(m_data, addr, 0xff);
 }
 
 /******************************************
@@ -3338,7 +3329,7 @@ void z8002_device::Z4C_0000_0110_addr()
 void z8002_device::Z4C_0000_1000_addr()
 {
 	GET_ADDR(OP1);
-	WRMEM_B(*m_data,  addr, 0);
+	WRMEM_B(m_data,  addr, 0);
 }
 
 /******************************************
@@ -3350,7 +3341,7 @@ void z8002_device::Z4C_ddN0_0000_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data,  addr, COMB(RDMEM_B(*m_data, addr)));
+	WRMEM_B(m_data,  addr, COMB(RDMEM_B(m_data, addr)));
 }
 
 /******************************************
@@ -3363,7 +3354,7 @@ void z8002_device::Z4C_ddN0_0001_addr_imm8()
 	GET_ADDR(OP1);
 	GET_IMM8(OP2);
 	addr = addr_add(addr, RW(dst));
-	CPB(RDMEM_B(*m_data, addr), imm8);
+	CPB(RDMEM_B(m_data, addr), imm8);
 }
 
 /******************************************
@@ -3375,7 +3366,7 @@ void z8002_device::Z4C_ddN0_0010_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, NEGB(RDMEM_B(*m_data, addr)));
+	WRMEM_B(m_data, addr, NEGB(RDMEM_B(m_data, addr)));
 }
 
 /******************************************
@@ -3387,7 +3378,7 @@ void z8002_device::Z4C_ddN0_0100_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	TESTB(RDMEM_B(*m_data, addr));
+	TESTB(RDMEM_B(m_data, addr));
 }
 
 /******************************************
@@ -3400,7 +3391,7 @@ void z8002_device::Z4C_ddN0_0101_addr_imm8()
 	GET_ADDR(OP1);
 	GET_IMM8(OP2);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, imm8);
+	WRMEM_B(m_data, addr, imm8);
 }
 
 /******************************************
@@ -3412,8 +3403,8 @@ void z8002_device::Z4C_ddN0_0110_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	if (RDMEM_B(*m_data, addr) & S08) SET_S; else CLR_S;
-	WRMEM_B(*m_data, addr, 0xff);
+	if (RDMEM_B(m_data, addr) & S08) SET_S; else CLR_S;
+	WRMEM_B(m_data, addr, 0xff);
 }
 
 /******************************************
@@ -3425,7 +3416,7 @@ void z8002_device::Z4C_ddN0_1000_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, 0);
+	WRMEM_B(m_data, addr, 0);
 }
 
 /******************************************
@@ -3435,7 +3426,7 @@ void z8002_device::Z4C_ddN0_1000_addr()
 void z8002_device::Z4D_0000_0000_addr()
 {
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data,  addr, COMW(RDMEM_W(*m_data, addr)));
+	WRMEM_W(m_data,  addr, COMW(RDMEM_W(m_data, addr)));
 }
 
 /******************************************
@@ -3446,7 +3437,7 @@ void z8002_device::Z4D_0000_0001_addr_imm16()
 {
 	GET_ADDR(OP1);
 	GET_IMM16(OP2);
-	CPW(RDMEM_W(*m_data, addr), imm16);
+	CPW(RDMEM_W(m_data, addr), imm16);
 }
 
 /******************************************
@@ -3456,7 +3447,7 @@ void z8002_device::Z4D_0000_0001_addr_imm16()
 void z8002_device::Z4D_0000_0010_addr()
 {
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data,  addr, NEGW(RDMEM_W(*m_data, addr)));
+	WRMEM_W(m_data,  addr, NEGW(RDMEM_W(m_data, addr)));
 }
 
 /******************************************
@@ -3466,7 +3457,7 @@ void z8002_device::Z4D_0000_0010_addr()
 void z8002_device::Z4D_0000_0100_addr()
 {
 	GET_ADDR(OP1);
-	TESTW(RDMEM_W(*m_data, addr));
+	TESTW(RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3477,7 +3468,7 @@ void z8002_device::Z4D_0000_0101_addr_imm16()
 {
 	GET_ADDR(OP1);
 	GET_IMM16(OP2);
-	WRMEM_W(*m_data,  addr, imm16);
+	WRMEM_W(m_data,  addr, imm16);
 }
 
 /******************************************
@@ -3487,8 +3478,8 @@ void z8002_device::Z4D_0000_0101_addr_imm16()
 void z8002_device::Z4D_0000_0110_addr()
 {
 	GET_ADDR(OP1);
-	if (RDMEM_W(*m_data, addr) & S16) SET_S; else CLR_S;
-	WRMEM_W(*m_data, addr, 0xffff);
+	if (RDMEM_W(m_data, addr) & S16) SET_S; else CLR_S;
+	WRMEM_W(m_data, addr, 0xffff);
 }
 
 /******************************************
@@ -3498,7 +3489,7 @@ void z8002_device::Z4D_0000_0110_addr()
 void z8002_device::Z4D_0000_1000_addr()
 {
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data,  addr, 0);
+	WRMEM_W(m_data,  addr, 0);
 }
 
 /******************************************
@@ -3510,7 +3501,7 @@ void z8002_device::Z4D_ddN0_0000_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, COMW(RDMEM_W(*m_data, addr)));
+	WRMEM_W(m_data, addr, COMW(RDMEM_W(m_data, addr)));
 }
 
 /******************************************
@@ -3523,7 +3514,7 @@ void z8002_device::Z4D_ddN0_0001_addr_imm16()
 	GET_ADDR(OP1);
 	GET_IMM16(OP2);
 	addr = addr_add(addr, RW(dst));
-	CPW(RDMEM_W(*m_data, addr), imm16);
+	CPW(RDMEM_W(m_data, addr), imm16);
 }
 
 /******************************************
@@ -3535,7 +3526,7 @@ void z8002_device::Z4D_ddN0_0010_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, NEGW(RDMEM_W(*m_data, addr)));
+	WRMEM_W(m_data, addr, NEGW(RDMEM_W(m_data, addr)));
 }
 
 /******************************************
@@ -3547,7 +3538,7 @@ void z8002_device::Z4D_ddN0_0100_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	TESTW(RDMEM_W(*m_data, addr));
+	TESTW(RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3560,7 +3551,7 @@ void z8002_device::Z4D_ddN0_0101_addr_imm16()
 	GET_ADDR(OP1);
 	GET_IMM16(OP2);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, imm16);
+	WRMEM_W(m_data, addr, imm16);
 }
 
 /******************************************
@@ -3572,8 +3563,8 @@ void z8002_device::Z4D_ddN0_0110_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	if (RDMEM_W(*m_data, addr) & S16) SET_S; else CLR_S;
-	WRMEM_W(*m_data, addr, 0xffff);
+	if (RDMEM_W(m_data, addr) & S16) SET_S; else CLR_S;
+	WRMEM_W(m_data, addr, 0xffff);
 }
 
 /******************************************
@@ -3585,7 +3576,7 @@ void z8002_device::Z4D_ddN0_1000_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, 0);
+	WRMEM_W(m_data, addr, 0);
 }
 
 /******************************************
@@ -3598,7 +3589,7 @@ void z8002_device::Z4E_ddN0_ssN0_addr()
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, RB(src));
+	WRMEM_B(m_data, addr, RB(src));
 }
 
 /******************************************
@@ -3609,7 +3600,7 @@ void z8002_device::Z50_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	CPL(RL(dst), RDMEM_L(*m_data, addr));
+	CPL(RL(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3622,7 +3613,7 @@ void z8002_device::Z50_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	CPL(RL(dst), RDMEM_L(*m_data, addr));
+	CPL(RL(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3633,7 +3624,7 @@ void z8002_device::Z51_ddN0_0000_addr()
 {
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
-	PUSHL(dst, RDMEM_L(*m_data, addr));
+	PUSHL(dst, RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3646,7 +3637,7 @@ void z8002_device::Z51_ddN0_ssN0_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	PUSHL(dst, RDMEM_L(*m_data, addr));
+	PUSHL(dst, RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3657,7 +3648,7 @@ void z8002_device::Z52_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RL(dst) = SUBL(RL(dst), RDMEM_L(*m_data, addr));
+	RL(dst) = SUBL(RL(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3670,7 +3661,7 @@ void z8002_device::Z52_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RL(dst) = SUBL(RL(dst), RDMEM_L(*m_data, addr));
+	RL(dst) = SUBL(RL(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3681,7 +3672,7 @@ void z8002_device::Z53_ddN0_0000_addr()
 {
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
-	PUSHW(dst, RDMEM_W(*m_data, addr));
+	PUSHW(dst, RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3694,7 +3685,7 @@ void z8002_device::Z53_ddN0_ssN0_addr()
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	PUSHW(dst, RDMEM_W(*m_data, addr));
+	PUSHW(dst, RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3705,7 +3696,7 @@ void z8002_device::Z54_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RL(dst) = RDMEM_L(*m_data, addr);
+	RL(dst) = RDMEM_L(m_data, addr);
 }
 
 /******************************************
@@ -3718,7 +3709,7 @@ void z8002_device::Z54_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RL(dst) = RDMEM_L(*m_data, addr);
+	RL(dst) = RDMEM_L(m_data, addr);
 }
 
 /******************************************
@@ -3729,7 +3720,7 @@ void z8002_device::Z55_ssN0_0000_addr()
 {
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
-	WRMEM_L(*m_data, addr, POPL(src));
+	WRMEM_L(m_data, addr, POPL(src));
 }
 
 /******************************************
@@ -3742,7 +3733,7 @@ void z8002_device::Z55_ssN0_ddN0_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_L(*m_data, addr, POPL(src));
+	WRMEM_L(m_data, addr, POPL(src));
 }
 
 /******************************************
@@ -3753,7 +3744,7 @@ void z8002_device::Z56_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RL(dst) = ADDL(RL(dst), RDMEM_L(*m_data, addr));
+	RL(dst) = ADDL(RL(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3766,7 +3757,7 @@ void z8002_device::Z56_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RL(dst) = ADDL(RL(dst), RDMEM_L(*m_data, addr));
+	RL(dst) = ADDL(RL(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3777,7 +3768,7 @@ void z8002_device::Z57_ssN0_0000_addr()
 {
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data, addr, POPW(src));
+	WRMEM_W(m_data, addr, POPW(src));
 }
 
 /******************************************
@@ -3790,7 +3781,7 @@ void z8002_device::Z57_ssN0_ddN0_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, POPW(src));
+	WRMEM_W(m_data, addr, POPW(src));
 }
 
 /******************************************
@@ -3801,7 +3792,7 @@ void z8002_device::Z58_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RQ(dst) = MULTL(RQ(dst), RDMEM_L(*m_data, addr));
+	RQ(dst) = MULTL(RQ(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3814,7 +3805,7 @@ void z8002_device::Z58_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RQ(dst) = MULTL(RQ(dst), RDMEM_L(*m_data, addr));
+	RQ(dst) = MULTL(RQ(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3825,7 +3816,7 @@ void z8002_device::Z59_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RL(dst) = MULTW(RL(dst), RDMEM_W(*m_data, addr));
+	RL(dst) = MULTW(RL(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3838,7 +3829,7 @@ void z8002_device::Z59_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RL(dst) = MULTW(RL(dst), RDMEM_W(*m_data, addr));
+	RL(dst) = MULTW(RL(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3849,7 +3840,7 @@ void z8002_device::Z5A_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RQ(dst) = DIVL(RQ(dst), RDMEM_L(*m_data, addr));
+	RQ(dst) = DIVL(RQ(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3862,7 +3853,7 @@ void z8002_device::Z5A_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RQ(dst) = DIVL(RQ(dst), RDMEM_L(*m_data, addr));
+	RQ(dst) = DIVL(RQ(dst), RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3873,7 +3864,7 @@ void z8002_device::Z5B_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RL(dst) = DIVW(RL(dst), RDMEM_W(*m_data, addr));
+	RL(dst) = DIVW(RL(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3886,7 +3877,7 @@ void z8002_device::Z5B_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RL(dst) = DIVW(RL(dst), RDMEM_W(*m_data, addr));
+	RL(dst) = DIVW(RL(dst), RDMEM_W(m_data, addr));
 }
 
 /******************************************
@@ -3899,7 +3890,7 @@ void z8002_device::Z5C_0000_0001_0000_dddd_0000_nmin1_addr()
 	GET_CNT(OP1,NIB3);
 	GET_ADDR(OP2);
 	while (cnt-- >= 0) {
-		RW(dst) = RDMEM_W(*m_data, addr);
+		RW(dst) = RDMEM_W(m_data, addr);
 		dst = (dst+1) & 15;
 		addr = addr_add (addr, 2);
 	}
@@ -3912,7 +3903,7 @@ void z8002_device::Z5C_0000_0001_0000_dddd_0000_nmin1_addr()
 void z8002_device::Z5C_0000_1000_addr()
 {
 	GET_ADDR(OP1);
-	TESTL(RDMEM_L(*m_data, addr));
+	TESTL(RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3925,7 +3916,7 @@ void z8002_device::Z5C_0000_1001_0000_ssss_0000_nmin1_addr()
 	GET_CNT(OP1,NIB3);
 	GET_ADDR(OP2);
 	while (cnt-- >= 0) {
-		WRMEM_W(*m_data, addr, RW(src));
+		WRMEM_W(m_data, addr, RW(src));
 		src = (src+1) & 15;
 		addr = addr_add (addr, 2);
 	}
@@ -3940,7 +3931,7 @@ void z8002_device::Z5C_ddN0_1000_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	TESTL(RDMEM_L(*m_data, addr));
+	TESTL(RDMEM_L(m_data, addr));
 }
 
 /******************************************
@@ -3955,7 +3946,7 @@ void z8002_device::Z5C_ddN0_1001_0000_ssN0_0000_nmin1_addr()
 	GET_ADDR(OP2);
 	addr = addr_add(addr, RW(dst));
 	while (cnt-- >= 0) {
-		WRMEM_W(*m_data, addr, RW(src));
+		WRMEM_W(m_data, addr, RW(src));
 		src = (src+1) & 15;
 		addr = addr_add(addr, 2);
 	}
@@ -3973,7 +3964,7 @@ void z8002_device::Z5C_ssN0_0001_0000_dddd_0000_nmin1_addr()
 	GET_ADDR(OP2);
 	addr = addr_add(addr, RW(src));
 	while (cnt-- >= 0) {
-		RW(dst) = RDMEM_W(*m_data, addr);
+		RW(dst) = RDMEM_W(m_data, addr);
 		dst = (dst+1) & 15;
 		addr = addr_add(addr, 2);
 	}
@@ -3987,7 +3978,7 @@ void z8002_device::Z5D_0000_ssss_addr()
 {
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_L(*m_data, addr, RL(src));
+	WRMEM_L(m_data, addr, RL(src));
 }
 
 /******************************************
@@ -4000,7 +3991,7 @@ void z8002_device::Z5D_ddN0_ssss_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_L(*m_data, addr, RL(src));
+	WRMEM_L(m_data, addr, RL(src));
 }
 
 /******************************************
@@ -4099,7 +4090,7 @@ void z8002_device::Z60_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RB(dst) = RDMEM_B(*m_data, addr);
+	RB(dst) = RDMEM_B(m_data, addr);
 }
 
 /******************************************
@@ -4112,7 +4103,7 @@ void z8002_device::Z60_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RB(dst) = RDMEM_B(*m_data, addr);
+	RB(dst) = RDMEM_B(m_data, addr);
 }
 
 /******************************************
@@ -4123,7 +4114,7 @@ void z8002_device::Z61_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	RW(dst) = RDMEM_W(*m_data, addr);
+	RW(dst) = RDMEM_W(m_data, addr);
 }
 
 /******************************************
@@ -4136,7 +4127,7 @@ void z8002_device::Z61_ssN0_dddd_addr()
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(src));
-	RW(dst) = RDMEM_W(*m_data, addr);
+	RW(dst) = RDMEM_W(m_data, addr);
 }
 
 /******************************************
@@ -4147,7 +4138,7 @@ void z8002_device::Z62_0000_imm4_addr()
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	WRMEM_B(*m_data, addr, RDMEM_B(*m_data, addr) & ~bit);
+	WRMEM_B(m_data, addr, RDMEM_B(m_data, addr) & ~bit);
 }
 
 /******************************************
@@ -4160,7 +4151,7 @@ void z8002_device::Z62_ddN0_imm4_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, RDMEM_B(*m_data, addr) & ~bit);
+	WRMEM_B(m_data, addr, RDMEM_B(m_data, addr) & ~bit);
 }
 
 /******************************************
@@ -4171,7 +4162,7 @@ void z8002_device::Z63_0000_imm4_addr()
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data, addr, RDMEM_W(*m_data, addr) & ~bit);
+	WRMEM_W(m_data, addr, RDMEM_W(m_data, addr) & ~bit);
 }
 
 /******************************************
@@ -4184,7 +4175,7 @@ void z8002_device::Z63_ddN0_imm4_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, RDMEM_W(*m_data, addr) & ~bit);
+	WRMEM_W(m_data, addr, RDMEM_W(m_data, addr) & ~bit);
 }
 
 /******************************************
@@ -4195,7 +4186,7 @@ void z8002_device::Z64_0000_imm4_addr()
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	WRMEM_B(*m_data, addr, RDMEM_B(*m_data, addr) | bit);
+	WRMEM_B(m_data, addr, RDMEM_B(m_data, addr) | bit);
 }
 
 /******************************************
@@ -4208,7 +4199,7 @@ void z8002_device::Z64_ddN0_imm4_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, RDMEM_B(*m_data, addr) | bit);
+	WRMEM_B(m_data, addr, RDMEM_B(m_data, addr) | bit);
 }
 
 /******************************************
@@ -4219,7 +4210,7 @@ void z8002_device::Z65_0000_imm4_addr()
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data, addr, RDMEM_W(*m_data, addr) | bit);
+	WRMEM_W(m_data, addr, RDMEM_W(m_data, addr) | bit);
 }
 
 /******************************************
@@ -4232,7 +4223,7 @@ void z8002_device::Z65_ddN0_imm4_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, RDMEM_W(*m_data, addr) | bit);
+	WRMEM_W(m_data, addr, RDMEM_W(m_data, addr) | bit);
 }
 
 /******************************************
@@ -4243,7 +4234,7 @@ void z8002_device::Z66_0000_imm4_addr()
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	if (RDMEM_B(*m_data, addr) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_B(m_data, addr) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -4256,7 +4247,7 @@ void z8002_device::Z66_ddN0_imm4_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	if (RDMEM_B(*m_data, addr) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_B(m_data, addr) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -4267,7 +4258,7 @@ void z8002_device::Z67_0000_imm4_addr()
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	if (RDMEM_W(*m_data, addr) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_W(m_data, addr) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -4280,7 +4271,7 @@ void z8002_device::Z67_ddN0_imm4_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	if (RDMEM_W(*m_data, addr) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_W(m_data, addr) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -4291,7 +4282,7 @@ void z8002_device::Z68_0000_imm4m1_addr()
 {
 	GET_I4M1(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_B(*m_data, addr, INCB(RDMEM_B(*m_data, addr), i4p1));
+	WRMEM_B(m_data, addr, INCB(RDMEM_B(m_data, addr), i4p1));
 }
 
 /******************************************
@@ -4304,7 +4295,7 @@ void z8002_device::Z68_ddN0_imm4m1_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, INCB(RDMEM_B(*m_data, addr), i4p1));
+	WRMEM_B(m_data, addr, INCB(RDMEM_B(m_data, addr), i4p1));
 }
 
 /******************************************
@@ -4315,7 +4306,7 @@ void z8002_device::Z69_0000_imm4m1_addr()
 {
 	GET_I4M1(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data, addr, INCW(RDMEM_W(*m_data, addr), i4p1));
+	WRMEM_W(m_data, addr, INCW(RDMEM_W(m_data, addr), i4p1));
 }
 
 /******************************************
@@ -4328,7 +4319,7 @@ void z8002_device::Z69_ddN0_imm4m1_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, INCW(RDMEM_W(*m_data, addr), i4p1));
+	WRMEM_W(m_data, addr, INCW(RDMEM_W(m_data, addr), i4p1));
 }
 
 /******************************************
@@ -4339,7 +4330,7 @@ void z8002_device::Z6A_0000_imm4m1_addr()
 {
 	GET_I4M1(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_B(*m_data, addr, DECB(RDMEM_B(*m_data, addr), i4p1));
+	WRMEM_B(m_data, addr, DECB(RDMEM_B(m_data, addr), i4p1));
 }
 
 /******************************************
@@ -4352,7 +4343,7 @@ void z8002_device::Z6A_ddN0_imm4m1_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, DECB(RDMEM_B(*m_data, addr), i4p1));
+	WRMEM_B(m_data, addr, DECB(RDMEM_B(m_data, addr), i4p1));
 }
 
 /******************************************
@@ -4363,7 +4354,7 @@ void z8002_device::Z6B_0000_imm4m1_addr()
 {
 	GET_I4M1(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data, addr, DECW(RDMEM_W(*m_data, addr), i4p1));
+	WRMEM_W(m_data, addr, DECW(RDMEM_W(m_data, addr), i4p1));
 }
 
 /******************************************
@@ -4376,7 +4367,7 @@ void z8002_device::Z6B_ddN0_imm4m1_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, DECW(RDMEM_W(*m_data, addr), i4p1));
+	WRMEM_W(m_data, addr, DECW(RDMEM_W(m_data, addr), i4p1));
 }
 
 /******************************************
@@ -4387,8 +4378,8 @@ void z8002_device::Z6C_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	uint8_t tmp = RDMEM_B(*m_data, addr);
-	WRMEM_B(*m_data, addr, RB(dst));
+	uint8_t tmp = RDMEM_B(m_data, addr);
+	WRMEM_B(m_data, addr, RB(dst));
 	RB(dst) = tmp;
 }
 
@@ -4403,8 +4394,8 @@ void z8002_device::Z6C_ssN0_dddd_addr()
 	GET_ADDR(OP1);
 	uint8_t tmp;
 	addr = addr_add(addr, RW(src));
-	tmp = RDMEM_B(*m_data, addr);
-	WRMEM_B(*m_data, addr, RB(dst));
+	tmp = RDMEM_B(m_data, addr);
+	WRMEM_B(m_data, addr, RB(dst));
 	RB(dst) = tmp;
 }
 
@@ -4416,8 +4407,8 @@ void z8002_device::Z6D_0000_dddd_addr()
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	uint16_t tmp = RDMEM_W(*m_data, addr);
-	WRMEM_W(*m_data, addr, RW(dst));
+	uint16_t tmp = RDMEM_W(m_data, addr);
+	WRMEM_W(m_data, addr, RW(dst));
 	RW(dst) = tmp;
 }
 
@@ -4432,8 +4423,8 @@ void z8002_device::Z6D_ssN0_dddd_addr()
 	GET_ADDR(OP1);
 	uint16_t tmp;
 	addr = addr_add(addr, RW(src));
-	tmp = RDMEM_W(*m_data, addr);
-	WRMEM_W(*m_data, addr, RW(dst));
+	tmp = RDMEM_W(m_data, addr);
+	WRMEM_W(m_data, addr, RW(dst));
 	RW(dst) = tmp;
 }
 
@@ -4445,7 +4436,7 @@ void z8002_device::Z6E_0000_ssss_addr()
 {
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_B(*m_data,  addr, RB(src));
+	WRMEM_B(m_data,  addr, RB(src));
 }
 
 /******************************************
@@ -4458,7 +4449,7 @@ void z8002_device::Z6E_ddN0_ssss_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_B(*m_data, addr, RB(src));
+	WRMEM_B(m_data, addr, RB(src));
 }
 
 /******************************************
@@ -4469,7 +4460,7 @@ void z8002_device::Z6F_0000_ssss_addr()
 {
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_W(*m_data,  addr, RW(src));
+	WRMEM_W(m_data,  addr, RW(src));
 }
 
 /******************************************
@@ -4482,7 +4473,7 @@ void z8002_device::Z6F_ddN0_ssss_addr()
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(addr, RW(dst));
-	WRMEM_W(*m_data, addr, RW(src));
+	WRMEM_W(m_data, addr, RW(src));
 }
 
 /******************************************
@@ -4634,12 +4625,12 @@ void z8002_device::Z79_0000_0000_addr()
 	GET_ADDR(OP1);
 	uint16_t fcw;
 	if (get_segmented_mode()) {
-		fcw = RDMEM_W(*m_data, addr + 2);
-		set_pc(segmented_addr(RDMEM_L(*m_data, addr + 4)));
+		fcw = RDMEM_W(m_data, addr + 2);
+		set_pc(segmented_addr(RDMEM_L(m_data, addr + 4)));
 	}
 	else {
-		fcw = RDMEM_W(*m_data, addr);
-		set_pc(RDMEM_W(*m_data, (uint16_t)(addr + 2)));
+		fcw = RDMEM_W(m_data, addr);
+		set_pc(RDMEM_W(m_data, (uint16_t)(addr + 2)));
 	}
 	CHANGE_FCW(fcw); /* check for user/system mode change */
 }
@@ -4656,12 +4647,12 @@ void z8002_device::Z79_ssN0_0000_addr()
 	uint16_t fcw;
 	addr = addr_add(addr, RW(src));
 	if (get_segmented_mode()) {
-		fcw = RDMEM_W(*m_data, addr + 2);
-		set_pc(segmented_addr(RDMEM_L(*m_data, addr + 4)));
+		fcw = RDMEM_W(m_data, addr + 2);
+		set_pc(segmented_addr(RDMEM_L(m_data, addr + 4)));
 	}
 	else {
-		fcw = RDMEM_W(*m_data, addr);
-		m_pc = RDMEM_W(*m_data, (uint16_t)(addr + 2));
+		fcw = RDMEM_W(m_data, addr);
+		m_pc = RDMEM_W(m_data, (uint16_t)(addr + 2));
 	}
 	if ((fcw ^ m_fcw) & F_SEG) printf("ldps 3 (0x%05x): changing from %ssegmented mode to %ssegmented mode\n", m_pc, (fcw & F_SEG) ? "non-" : "", (fcw & F_SEG) ? "" : "non-");
 	CHANGE_FCW(fcw); /* check for user/system mode change */
@@ -4674,7 +4665,7 @@ void z8002_device::Z79_ssN0_0000_addr()
 void z8002_device::Z7A_0000_0000()
 {
 	CHECK_PRIVILEGED_INSTR();
-	m_irq_req |= Z8000_HALT;
+	m_halt = true;
 	if (m_icount > 0) m_icount = 0;
 }
 
@@ -4797,10 +4788,10 @@ void z8002_device::Z7D_dddd_0ccc()
 			RW(dst) = m_refresh;
 			break;
 		case 4:
-			RW(dst) = m_psapseg;
+			RW(dst) = m_psapseg & 0x7f00;
 			break;
 		case 5:
-			RW(dst) = m_psapoff;
+			RW(dst) = m_psapoff & 0xff00;
 			break;
 		case 6:
 			RW(dst) = m_nspseg;
@@ -4826,7 +4817,7 @@ void z8002_device::Z7D_ssss_1ccc()
 		case 2:
 			{
 				uint16_t fcw;
-				fcw = RW(src);
+				fcw = RW(src) & 0xd8fc;
 				CHANGE_FCW(fcw); /* check for user/system mode change */
 			}
 			break;
@@ -4834,10 +4825,12 @@ void z8002_device::Z7D_ssss_1ccc()
 			m_refresh = RW(src);
 			break;
 		case 4:
-			m_psapseg = RW(src);
+			m_psapseg &= ~0x7f00;
+			m_psapseg |= RW(src) & 0x7f00;
 			break;
 		case 5:
-			m_psapoff = RW(src);
+			m_psapoff &= ~0xff00;
+			m_psapoff |= RW(src) & 0xff00;
 			break;
 		case 6:
 			m_nspseg = RW(src);
@@ -4872,8 +4865,8 @@ void z8002_device::Z7F_imm8()
 {
 	GET_IMM8(0);
 	/* execute system call via IRQ */
-	m_irq_req = Z8000_SYSCALL | imm8;
-
+	m_irq_req |= Z8000_SYSCALL;
+	(void)imm8;
 }
 
 /******************************************
@@ -5362,7 +5355,7 @@ void z8002_device::Z9D_imm8()
 void z8002_device::Z9E_0000_cccc()
 {
 	GET_CCC(OP0,NIB3);
-	if (get_segmented_mode())
+	if (get_segmented_mode()) {
 		switch (cc) {
 			case  0: if (CC0) set_pc(segmented_addr(POPL(SP))); break;
 			case  1: if (CC1) set_pc(segmented_addr(POPL(SP))); break;
@@ -5381,7 +5374,8 @@ void z8002_device::Z9E_0000_cccc()
 			case 14: if (CCE) set_pc(segmented_addr(POPL(SP))); break;
 			case 15: if (CCF) set_pc(segmented_addr(POPL(SP))); break;
 		}
-	else
+	}
+	else {
 		switch (cc) {
 			case  0: if (CC0) set_pc(POPW(SP)); break;
 			case  1: if (CC1) set_pc(POPW(SP)); break;
@@ -5400,6 +5394,7 @@ void z8002_device::Z9E_0000_cccc()
 			case 14: if (CCE) set_pc(POPW(SP)); break;
 			case 15: if (CCF) set_pc(POPW(SP)); break;
 		}
+	}
 }
 
 /******************************************
@@ -5660,7 +5655,7 @@ void z8002_device::ZB0_dddd_0000()
 void z8002_device::ZB1_dddd_0000()
 {
 	GET_DST(OP0,NIB2);
-	RW(dst) = (RW(dst) & 0xff) | ((RW(dst) & S08) ? 0xff00 : 0x0000);
+	RW(dst) = (int16_t)(int8_t)RW(dst);
 }
 
 /******************************************
@@ -5670,8 +5665,7 @@ void z8002_device::ZB1_dddd_0000()
 void z8002_device::ZB1_dddd_0111()
 {
 	GET_DST(OP0,NIB2);
-	RQ(dst) = concat_64((RQ(dst) & S32) ?
-		0xfffffffful : 0, extract_64lo(RQ(dst)));
+	RQ(dst) = (int64_t)(int32_t)RQ(dst);
 }
 
 /******************************************
@@ -5681,8 +5675,7 @@ void z8002_device::ZB1_dddd_0111()
 void z8002_device::ZB1_dddd_1010()
 {
 	GET_DST(OP0,NIB2);
-	RL(dst) = (RL(dst) & 0xffff) | ((RL(dst) & S16) ?
-		0xffff0000ul : 0x00000000ul);
+	RL(dst) = (int32_t)(int16_t)RL(dst);
 }
 
 /******************************************
@@ -6062,7 +6055,7 @@ void z8002_device::ZB8_ddN0_0000_0000_rrrr_ssN0_0000()
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	address_space &dstspace = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &dstspace = dst == SP ? m_stack : m_data;
 	uint32_t dstaddr = addr_from_reg(dst);
 	uint8_t xlt = RDBX_B(src, RDMEM_B(dstspace, dstaddr));
 	WRMEM_B(dstspace, dstaddr, xlt);
@@ -6080,7 +6073,7 @@ void z8002_device::ZB8_ddN0_0100_0000_rrrr_ssN0_0000()
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	address_space &dstspace = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &dstspace = dst == SP ? m_stack : m_data;
 	uint32_t dstaddr = addr_from_reg(dst);
 	uint8_t xlt = RDBX_B(src, RDMEM_B(dstspace, dstaddr));
 	WRMEM_B(dstspace, dstaddr, xlt);
@@ -6098,7 +6091,7 @@ void z8002_device::ZB8_ddN0_1000_0000_rrrr_ssN0_0000()
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	address_space &dstspace = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &dstspace = dst == SP ? m_stack : m_data;
 	uint32_t dstaddr = addr_from_reg(dst);
 	uint8_t xlt = RDBX_B(src, RDMEM_B(dstspace, dstaddr));
 	WRMEM_B(dstspace, dstaddr, xlt);
@@ -6116,7 +6109,7 @@ void z8002_device::ZB8_ddN0_1100_0000_rrrr_ssN0_0000()
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	address_space &dstspace = dst == SP ? *m_stack : *m_data;
+	memory_access<23, 1, 0, ENDIANNESS_BIG>::specific &dstspace = dst == SP ? m_stack : m_data;
 	uint32_t dstaddr = addr_from_reg(dst);
 	uint8_t xlt = RDBX_B(src, RDMEM_B(dstspace, dstaddr));
 	WRMEM_B(dstspace, dstaddr, xlt);

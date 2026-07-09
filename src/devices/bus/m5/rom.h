@@ -17,15 +17,14 @@ public:
 	// construction/destruction
 	m5_rom_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// device-level overrides
-	virtual void device_start() override {}
-	virtual void device_reset() override {}
-
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_rom) override;
+	virtual uint8_t read_rom(offs_t offset) override;
 
 protected:
 	m5_rom_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+
+	// device_t implementation
+	virtual void device_start() override {}
 };
 
 // ======================> m5_ram_device
@@ -37,19 +36,14 @@ public:
 	m5_ram_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_ram) override;
-	virtual DECLARE_WRITE8_MEMBER(write_ram) override;
-
-protected:
-	// device-level overrides
-	virtual void device_start() override { }
-	virtual void device_reset() override { }
+	virtual uint8_t read_ram(offs_t offset) override;
+	virtual void write_ram(offs_t offset, uint8_t data) override;
 };
 
 
-// device type definition
+
+// device type declaration
 DECLARE_DEVICE_TYPE(M5_ROM_STD, m5_rom_device)
 DECLARE_DEVICE_TYPE(M5_ROM_RAM, m5_ram_device)
-
 
 #endif // MAME_BUS_M5_ROM_H

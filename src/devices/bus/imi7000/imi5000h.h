@@ -36,36 +36,36 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual ioport_constructor device_input_ports() const override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 private:
-	DECLARE_WRITE_LINE_MEMBER( ctc_z0_w );
-	DECLARE_WRITE_LINE_MEMBER( ctc_z1_w );
-	DECLARE_WRITE_LINE_MEMBER( ctc_z2_w );
+	void ctc_z0_w(int state);
+	void ctc_z1_w(int state);
+	void ctc_z2_w(int state);
 
-	DECLARE_READ8_MEMBER( pio0_pa_r );
-	DECLARE_WRITE8_MEMBER( pio0_pa_w );
-	DECLARE_READ8_MEMBER( pio0_pb_r );
-	DECLARE_WRITE8_MEMBER( pio0_pb_w );
+	uint8_t pio0_pa_r();
+	void pio0_pa_w(uint8_t data);
+	uint8_t pio0_pb_r();
+	void pio0_pb_w(uint8_t data);
 
-	DECLARE_READ8_MEMBER( pio2_pa_r );
-	DECLARE_WRITE8_MEMBER( pio2_pa_w );
-	DECLARE_READ8_MEMBER( pio2_pb_r );
-	DECLARE_WRITE8_MEMBER( pio2_pb_w );
+	uint8_t pio2_pa_r();
+	void pio2_pa_w(uint8_t data);
+	uint8_t pio2_pb_r();
+	void pio2_pb_w(uint8_t data);
 
-	DECLARE_READ8_MEMBER( pio3_pa_r );
-	DECLARE_WRITE8_MEMBER( pio3_pa_w );
-	DECLARE_READ8_MEMBER( pio3_pb_r );
-	DECLARE_WRITE8_MEMBER( pio3_pb_w );
+	uint8_t pio3_pa_r();
+	void pio3_pa_w(uint8_t data);
+	uint8_t pio3_pb_r();
+	void pio3_pb_w(uint8_t data);
 
-	void imi5000h_io(address_map &map);
-	void imi5000h_mem(address_map &map);
+	void imi5000h_io(address_map &map) ATTR_COLD;
+	void imi5000h_mem(address_map &map) ATTR_COLD;
 
 	enum
 	{

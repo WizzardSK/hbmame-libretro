@@ -12,28 +12,28 @@
 class i82439tx_host_device : public pci_host_device {
 public:
 	template <typename T>
-	i82439tx_host_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&cpu_tag, int ram_size)
-		: i82439tx_host_device(mconfig, tag, owner, clock)
+	i82439tx_host_device(const machine_config &mconfig, const char *tag, device_t *owner, T &&cpu_tag, int ram_size)
+		: i82439tx_host_device(mconfig, tag, owner)
 	{
 		set_ids_host(0x80867100, 0x03, 0x00000000);
 		set_cpu_tag(std::forward<T>(cpu_tag));
 		set_ram_size(ram_size);
 	}
-	i82439tx_host_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	i82439tx_host_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	template <typename T> void set_cpu_tag(T &&tag) { cpu.set_tag(std::forward<T>(tag)); }
 	void set_ram_size(int ram_size);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	virtual void reset_all_mappings() override;
 
 	virtual void map_extra(uint64_t memory_window_start, uint64_t memory_window_end, uint64_t memory_offset, address_space *memory_space,
 						   uint64_t io_window_start, uint64_t io_window_end, uint64_t io_offset, address_space *io_space) override;
 
-	virtual void config_map(address_map &map) override;
+	virtual void config_map(address_map &map) override ATTR_COLD;
 
 private:
 	int ram_size;
@@ -44,31 +44,31 @@ private:
 	uint8_t pam[7], drb[8];
 	uint8_t drt, drat, smram, errcmd, errsts, errsyn;
 
-	DECLARE_READ8_MEMBER (pcon_r);
-	DECLARE_WRITE8_MEMBER(pcon_w);
-	DECLARE_READ8_MEMBER (cc_r);
-	DECLARE_WRITE8_MEMBER(cc_w);
-	DECLARE_READ8_MEMBER (dramec_r);
-	DECLARE_WRITE8_MEMBER(dramec_w);
-	DECLARE_READ8_MEMBER (dramc_r);
-	DECLARE_WRITE8_MEMBER(dramc_w);
-	DECLARE_READ8_MEMBER (dramt_r);
-	DECLARE_WRITE8_MEMBER(dramt_w);
-	DECLARE_READ8_MEMBER (pam_r);
-	DECLARE_WRITE8_MEMBER(pam_w);
-	DECLARE_READ8_MEMBER (drb_r);
-	DECLARE_WRITE8_MEMBER(drb_w);
-	DECLARE_READ8_MEMBER (drt_r);
-	DECLARE_WRITE8_MEMBER(drt_w);
-	DECLARE_READ8_MEMBER (drat_r);
-	DECLARE_WRITE8_MEMBER(drat_w);
-	DECLARE_READ8_MEMBER (smram_r);
-	DECLARE_WRITE8_MEMBER(smram_w);
-	DECLARE_READ8_MEMBER (errcmd_r);
-	DECLARE_WRITE8_MEMBER(errcmd_w);
-	DECLARE_READ8_MEMBER (errsts_r);
-	DECLARE_WRITE8_MEMBER(errsts_w);
-	DECLARE_READ8_MEMBER (errsyn_r);
+	uint8_t pcon_r();
+	void pcon_w(uint8_t data);
+	uint8_t cc_r();
+	void cc_w(uint8_t data);
+	uint8_t dramec_r();
+	void dramec_w(uint8_t data);
+	uint8_t dramc_r();
+	void dramc_w(uint8_t data);
+	uint8_t dramt_r();
+	void dramt_w(uint8_t data);
+	uint8_t pam_r(offs_t offset);
+	void pam_w(offs_t offset, uint8_t data);
+	uint8_t drb_r(offs_t offset);
+	void drb_w(offs_t offset, uint8_t data);
+	uint8_t drt_r();
+	void drt_w(uint8_t data);
+	uint8_t drat_r();
+	void drat_w(uint8_t data);
+	uint8_t smram_r();
+	void smram_w(uint8_t data);
+	uint8_t errcmd_r();
+	void errcmd_w(uint8_t data);
+	uint8_t errsts_r();
+	void errsts_w(uint8_t data);
+	uint8_t errsyn_r();
 };
 
 DECLARE_DEVICE_TYPE(I82439TX, i82439tx_host_device)

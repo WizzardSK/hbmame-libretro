@@ -5,7 +5,6 @@
 
 #pragma once
 
-
 enum
 {
 	V60_R0 = 1,
@@ -88,17 +87,18 @@ public:
 
 	void stall();
 
+	auto irq_cycle_callback() { return m_irq_cycle.bind(); }
+
 protected:
 	v60_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int databits, int addrbits, uint32_t pir);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual uint32_t execute_min_cycles() const noexcept override { return 1; }
 	virtual uint32_t execute_max_cycles() const noexcept override { return 1; }
-	virtual uint32_t execute_input_lines() const noexcept override { return 1; }
 	virtual bool execute_input_edge_triggered(int inputnum) const noexcept override { return inputnum == INPUT_LINE_NMI; }
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
@@ -149,6 +149,8 @@ private:
 	static const am_func s_Op5ATable[32];
 	static const am_func s_OpCodeTable[256];
 
+	devcb_read8 m_irq_cycle;
+
 	address_space_config m_program_config;
 	address_space_config m_io_config;
 
@@ -163,6 +165,9 @@ private:
 	uint8_t               m_irq_line;
 	uint8_t               m_nmi_line;
 	address_space *m_program;
+	memory_access<32, 1, 0, ENDIANNESS_LITTLE>::cache m_cache16;
+	memory_access<32, 2, 0, ENDIANNESS_LITTLE>::cache m_cache32;
+
 	std::function<u8  (offs_t)> m_pr8;
 	std::function<u16 (offs_t)> m_pr16;
 	std::function<u32 (offs_t)> m_pr32;
@@ -284,15 +289,17 @@ private:
 	uint32_t bam1DirectAddressDeferredIndexed();
 	uint32_t am1Immediate();
 	uint32_t am1ImmediateQuick();
-	uint32_t am1Error1();
-	uint32_t bam1Error1();
-	uint32_t am1Error2();
-	uint32_t bam1Error2();
-	uint32_t am1Error4();
-	uint32_t bam1Error4();
-	uint32_t am1Error5();
-	uint32_t bam1Error5();
-	uint32_t bam1Error6();
+	[[noreturn]] uint32_t am1Error1();
+	[[noreturn]] uint32_t bam1Error1();
+	[[noreturn]] uint32_t am1Error2();
+	[[noreturn]] uint32_t bam1Error2();
+	[[noreturn]] [[maybe_unused]] uint32_t am1Error3();
+	[[noreturn]] [[maybe_unused]] uint32_t bam1Error3();
+	[[noreturn]] uint32_t am1Error4();
+	[[noreturn]] uint32_t bam1Error4();
+	[[noreturn]] uint32_t am1Error5();
+	[[noreturn]] uint32_t bam1Error5();
+	[[noreturn]] uint32_t bam1Error6();
 	uint32_t am1Group7a();
 	uint32_t bam1Group7a();
 	uint32_t am1Group6();
@@ -379,14 +386,16 @@ private:
 	uint32_t am2Immediate();
 	uint32_t am2ImmediateQuick();
 	uint32_t am2Error1();
-	uint32_t am2Error2();
-	uint32_t am2Error4();
-	uint32_t am2Error5();
-	uint32_t bam2Error1();
-	uint32_t bam2Error2();
-	uint32_t bam2Error4();
-	uint32_t bam2Error5();
-	uint32_t bam2Error6();
+	[[noreturn]] uint32_t am2Error2();
+	[[noreturn]] [[maybe_unused]] uint32_t am2Error3();
+	[[noreturn]] uint32_t am2Error4();
+	[[noreturn]] uint32_t am2Error5();
+	[[noreturn]] uint32_t bam2Error1();
+	[[noreturn]] uint32_t bam2Error2();
+	[[noreturn]] [[maybe_unused]] uint32_t bam2Error3();
+	[[noreturn]] uint32_t bam2Error4();
+	[[noreturn]] uint32_t bam2Error5();
+	[[noreturn]] uint32_t bam2Error6();
 	uint32_t am2Group7a();
 	uint32_t bam2Group7a();
 	uint32_t am2Group6();
@@ -432,12 +441,13 @@ private:
 	uint32_t am3DirectAddressIndexed();
 	uint32_t am3DirectAddressDeferred();
 	uint32_t am3DirectAddressDeferredIndexed();
-	uint32_t am3Immediate();
-	uint32_t am3ImmediateQuick();
-	uint32_t am3Error1();
-	uint32_t am3Error2();
-	uint32_t am3Error4();
-	uint32_t am3Error5();
+	[[noreturn]] uint32_t am3Immediate();
+	[[noreturn]] uint32_t am3ImmediateQuick();
+	[[noreturn]] uint32_t am3Error1();
+	[[noreturn]] uint32_t am3Error2();
+	[[noreturn]] [[maybe_unused]] uint32_t am3Error3();
+	[[noreturn]] uint32_t am3Error4();
+	[[noreturn]] uint32_t am3Error5();
 	uint32_t am3Group7a();
 	uint32_t am3Group6();
 	uint32_t am3Group7();
@@ -569,8 +579,8 @@ private:
 	uint32_t opDIVFS();
 	uint32_t opSCLFS();
 	uint32_t opCMPF();
-	uint32_t op5FUNHANDLED();
-	uint32_t op5CUNHANDLED();
+	[[noreturn]] uint32_t op5FUNHANDLED();
+	[[noreturn]] uint32_t op5CUNHANDLED();
 	uint32_t op5F();
 	uint32_t op5C();
 	uint32_t opINCB();
@@ -756,20 +766,19 @@ private:
 	uint32_t opSUBRDC();
 	uint32_t opCVTDPZ();
 	uint32_t opCVTDZP();
-	uint32_t op58UNHANDLED();
-	uint32_t op5AUNHANDLED();
-	uint32_t op5BUNHANDLED();
-	uint32_t op5DUNHANDLED();
-	uint32_t op59UNHANDLED();
+	[[noreturn]] uint32_t op58UNHANDLED();
+	[[noreturn]] uint32_t op5AUNHANDLED();
+	[[noreturn]] uint32_t op5BUNHANDLED();
+	[[noreturn]] uint32_t op5DUNHANDLED();
+	[[noreturn]] uint32_t op59UNHANDLED();
 	uint32_t op58();
 	uint32_t op5A();
 	uint32_t op5B();
 	uint32_t op5D();
 	uint32_t op59();
-	uint32_t opUNHANDLED();
+	[[noreturn]] uint32_t opUNHANDLED();
 	void v60_do_irq(int vector);
 	void v60_try_irq();
-
 };
 
 
@@ -784,4 +793,4 @@ public:
 DECLARE_DEVICE_TYPE(V60, v60_device)
 DECLARE_DEVICE_TYPE(V70, v70_device)
 
-#endif // MAME_CPU_V60_V60_H
+#endif

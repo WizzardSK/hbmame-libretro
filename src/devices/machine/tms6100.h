@@ -82,27 +82,27 @@
 class tms6100_device : public device_t
 {
 public:
-	tms6100_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
+	tms6100_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock = 0);
 
 	// 4-bit mode (mask option)
 	// note: in 4-bit mode, use data_r, otherwise use data_line_r
 	void enable_4bit_mode(bool mode) { m_4bit_mode = mode; }
 
-	DECLARE_WRITE_LINE_MEMBER(m0_w);
-	DECLARE_WRITE_LINE_MEMBER(m1_w);
-	DECLARE_WRITE_LINE_MEMBER(rck_w);
-	DECLARE_WRITE_LINE_MEMBER(cs_w);
-	DECLARE_WRITE_LINE_MEMBER(clk_w);
+	void m0_w(int state);
+	void m1_w(int state);
+	void rck_w(int state);
+	void cs_w(int state);
+	void clk_w(int state);
 
-	DECLARE_WRITE8_MEMBER(add_w);
-	DECLARE_READ8_MEMBER(data_r); // 4bit
-	DECLARE_READ_LINE_MEMBER(data_line_r);
+	void add_w(u8 data);
+	u8 data_r(); // 4bit
+	int data_line_r();
 
 protected:
 	tms6100_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock);
 
-	// device-level overrides
-	virtual void device_start() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
 
 	void handle_command(u8 cmd);
 
@@ -131,11 +131,11 @@ protected:
 class m58819_device : public tms6100_device
 {
 public:
-	m58819_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
+	m58819_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock = 0);
 
 protected:
-	// device-level overrides
-	virtual void device_start() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
 };
 
 

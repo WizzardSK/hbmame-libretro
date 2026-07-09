@@ -16,15 +16,65 @@
 #define HP98543_SCREEN_NAME   "98543_screen"
 #define HP98543_ROM_REGION    "98543_rom"
 
+namespace {
+
+class dio16_98543_device :
+	public device_t,
+	public bus::hp_dio::device_dio16_card_interface,
+	public device_memory_interface
+{
+public:
+	dio16_98543_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+
+	uint16_t rom_r(offs_t offset);
+	void rom_w(offs_t offset, uint16_t data);
+
+	uint16_t ctrl_r(address_space &space, offs_t offset, uint16_t mem_mask = ~0);
+	void ctrl_w(address_space &space, offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
+	uint16_t vram_r(offs_t offset, uint16_t mem_mask = ~0);
+	void vram_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
+
+	static constexpr int TOPCAT_COUNT = 4;
+
+	required_device_array<topcat_device, TOPCAT_COUNT> m_topcat;
+	required_device<nereid_device> m_nereid;
+
+	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+protected:
+	dio16_98543_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+
+	virtual space_config_vector memory_space_config() const override;
+private:
+
+	void vblank_w(int state);
+	void int0_w(int state);
+	void int1_w(int state);
+	void int2_w(int state);
+	void int3_w(int state);
+
+	const address_space_config m_space_config;
+	void map(address_map &map) ATTR_COLD;
+	void update_int();
+	static constexpr int m_h_pix = 1024;
+	static constexpr int m_v_pix = 400;
+
+	required_region_ptr<uint8_t> m_rom;
+	required_shared_ptr<uint8_t> m_vram;
+
+	uint8_t m_intreg;
+	bool m_ints[4];
+};
+
 ROM_START(hp98543)
 	ROM_REGION(0x2000, HP98543_ROM_REGION, 0)
 	ROM_LOAD("1818-3907.bin", 0x000000, 0x002000, CRC(5e2bf02a) SHA1(9ba9391cf39624ef8027ce42c84e100344b2a2b8))
 ROM_END
-
-DEFINE_DEVICE_TYPE_NS(HPDIO_98543, bus::hp_dio, dio16_98543_device, "dio98543", "HP98543 medium-res color DIO video card")
-
-namespace bus {
-	namespace hp_dio {
 
 void dio16_98543_device::device_add_mconfig(machine_config &config)
 {
@@ -57,7 +107,7 @@ void dio16_98543_device::device_add_mconfig(machine_config &config)
 	topcat3.set_planemask(8);
 	topcat3.irq_out_cb().set(FUNC(dio16_98543_device::int3_w));
 
-	NEREID(config, m_nereid, 0);
+	NEREID(config, m_nereid);
 }
 
 const tiny_rom_entry *dio16_98543_device::device_rom_region() const
@@ -90,8 +140,8 @@ dio16_98543_device::dio16_98543_device(const machine_config &mconfig, device_typ
 	m_nereid(*this, "nereid"),
 	m_space_config("vram", ENDIANNESS_BIG, 8, 19, 0, address_map_constructor(FUNC(dio16_98543_device::map), this)),
 	m_rom(*this, HP98543_ROM_REGION),
-	m_vram(*this, "vram")
-
+	m_vram(*this, "vram"),
+	m_intreg(0)
 {
 }
 
@@ -102,12 +152,12 @@ void dio16_98543_device::device_start()
 
 	dio().install_memory(
 			0x200000, 0x27ffff,
-			read16_delegate(*this, FUNC(dio16_98543_device::vram_r)),
-			write16_delegate(*this, FUNC(dio16_98543_device::vram_w)));
+			read16s_delegate(*this, FUNC(dio16_98543_device::vram_r)),
+			write16s_delegate(*this, FUNC(dio16_98543_device::vram_w)));
 	dio().install_memory(
 			0x560000, 0x563fff,
-			read16_delegate(*this, FUNC(dio16_98543_device::rom_r)),
-			write16_delegate(*this, FUNC(dio16_98543_device::rom_w)));
+			read16sm_delegate(*this, FUNC(dio16_98543_device::rom_r)),
+			write16sm_delegate(*this, FUNC(dio16_98543_device::rom_w)));
 	dio().install_memory(
 			0x564000, 0x565fff,
 			read16_delegate(*this, FUNC(dio16_98543_device::ctrl_r)),
@@ -115,28 +165,29 @@ void dio16_98543_device::device_start()
 
 	dio().install_memory(
 			0x566000, 0x567fff,
-			read16_delegate(*m_nereid, FUNC(nereid_device::ctrl_r)),
-			write16_delegate(*m_nereid, FUNC(nereid_device::ctrl_w)));
+			read16s_delegate(*m_nereid, FUNC(nereid_device::ctrl_r)),
+			write16s_delegate(*m_nereid, FUNC(nereid_device::ctrl_w)));
 }
 
 void dio16_98543_device::device_reset()
 {
+	m_intreg = 0;
 }
 
-READ16_MEMBER(dio16_98543_device::rom_r)
+uint16_t dio16_98543_device::rom_r(offs_t offset)
 {
 	if (offset == 1)
 		return m_intreg;
 	return 0xff00 | m_rom[offset];
 }
 
-WRITE16_MEMBER(dio16_98543_device::rom_w)
+void dio16_98543_device::rom_w(offs_t offset, uint16_t data)
 {
 	if (offset == 1)
 		m_intreg = data;
 }
 
-READ16_MEMBER(dio16_98543_device::ctrl_r)
+uint16_t dio16_98543_device::ctrl_r(address_space &space, offs_t offset, uint16_t mem_mask)
 {
 	uint16_t ret = 0;
 
@@ -146,51 +197,51 @@ READ16_MEMBER(dio16_98543_device::ctrl_r)
 	return ret;
 }
 
-WRITE16_MEMBER(dio16_98543_device::ctrl_w)
+void dio16_98543_device::ctrl_w(address_space &space, offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	for (auto &tc: m_topcat)
 		tc->ctrl_w(space, offset, data, mem_mask);
 }
 
-READ16_MEMBER(dio16_98543_device::vram_r)
+uint16_t dio16_98543_device::vram_r(offs_t offset, uint16_t mem_mask)
 {
 	uint16_t ret = 0;
 	for (auto &tc: m_topcat)
-		ret |= tc->vram_r(space, offset, mem_mask);
+		ret |= tc->vram_r(offset, mem_mask);
 	return ret;
 }
 
-WRITE16_MEMBER(dio16_98543_device::vram_w)
+void dio16_98543_device::vram_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	for (auto &tc: m_topcat)
-		tc->vram_w(space, offset, data, mem_mask);
+		tc->vram_w(offset, data, mem_mask);
 }
 
-WRITE_LINE_MEMBER(dio16_98543_device::vblank_w)
+void dio16_98543_device::vblank_w(int state)
 {
 	for (auto &tc: m_topcat)
 		tc->vblank_w(state);
 }
 
-WRITE_LINE_MEMBER(dio16_98543_device::int0_w)
+void dio16_98543_device::int0_w(int state)
 {
 	m_ints[0] = state;
 	update_int();
 }
 
-WRITE_LINE_MEMBER(dio16_98543_device::int1_w)
+void dio16_98543_device::int1_w(int state)
 {
 	m_ints[1] = state;
 	update_int();
 }
 
-WRITE_LINE_MEMBER(dio16_98543_device::int2_w)
+void dio16_98543_device::int2_w(int state)
 {
 	m_ints[2] = state;
 	update_int();
 }
 
-WRITE_LINE_MEMBER(dio16_98543_device::int3_w)
+void dio16_98543_device::int3_w(int state)
 {
 
 	m_ints[3] = state;
@@ -234,7 +285,7 @@ uint32_t dio16_98543_device::screen_update(screen_device &screen, bitmap_rgb32 &
 	}
 
 	for (int y = 0; y < m_v_pix; y++) {
-		uint32_t *scanline = &bitmap.pix32(y);
+		uint32_t *scanline = &bitmap.pix(y);
 
 		for (int x = 0; x < m_h_pix; x++) {
 			uint8_t tmp = m_vram[y * m_h_pix + x];
@@ -251,5 +302,6 @@ uint32_t dio16_98543_device::screen_update(screen_device &screen, bitmap_rgb32 &
 	return 0;
 }
 
-} // namespace bus::hp_dio
-} // namespace bus
+} // anonymous namespace
+
+DEFINE_DEVICE_TYPE_PRIVATE(HPDIO_98543, bus::hp_dio::device_dio16_card_interface, dio16_98543_device, "dio98543", "HP98543 medium-res color DIO video card")

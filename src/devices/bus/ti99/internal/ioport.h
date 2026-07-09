@@ -9,9 +9,9 @@
 
 #pragma once
 
-#include "bus/ti99/ti99defs.h"
+#define TI99_IOPORT_TAG      "ioport"
 
-namespace bus { namespace ti99 { namespace internal {
+namespace bus::ti99::internal {
 
 extern const device_type IOPORT;
 
@@ -29,22 +29,23 @@ public:
 	{ }
 
 	// Methods called from the console / ioport
-	virtual DECLARE_READ8Z_MEMBER( readz ) { }
+	virtual void readz(offs_t offset, uint8_t *value) { }
 	virtual void write(offs_t offset, uint8_t data) { }
-	virtual DECLARE_SETADDRESS_DBIN_MEMBER( setaddress_dbin ) { }
-	virtual DECLARE_READ8Z_MEMBER( crureadz ) { }
+	virtual void setaddress_dbin(offs_t offset, int state) { }
+	virtual void crureadz(offs_t offset, uint8_t *value) { }
 	virtual void cruwrite(offs_t offset, uint8_t data) { }
-	virtual DECLARE_WRITE_LINE_MEMBER( memen_in ) { }
-	virtual DECLARE_WRITE_LINE_MEMBER( msast_in ) { }
-	virtual DECLARE_WRITE_LINE_MEMBER( clock_in ) { }
-	virtual DECLARE_WRITE_LINE_MEMBER( reset_in ) { }
+	virtual void memen_in(int state) { }
+	virtual void msast_in(int state) { }
+	virtual void clock_in(int state) { }
+	virtual void reset_in(int state) { }
+	virtual void sbe(int state) { }
 
 	void set_ioport(ioport_device* ioport) { m_ioport = ioport; }
 
 protected:
 	// Methods called from the external device
-	DECLARE_WRITE_LINE_MEMBER( set_extint );
-	DECLARE_WRITE_LINE_MEMBER( set_ready );
+	void set_extint(int state);
+	void set_ready(int state);
 private:
 	ioport_device* m_ioport;
 };
@@ -53,7 +54,7 @@ private:
     I/O port
 ********************************************************************/
 
-class ioport_device : public device_t, public device_slot_interface
+class ioport_device : public device_t, public device_single_card_slot_interface<ioport_attached_device>
 {
 	friend class ioport_attached_device;
 
@@ -62,32 +63,36 @@ public:
 	ioport_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, U &&opts, const char *dflt)
 		: ioport_device(mconfig, tag, owner, clock)
 	{
-		option_reset();
-		opts(*this);
-		set_default_option(dflt);
-		set_fixed(false);
+		set_options(std::forward<U>(opts), dflt, false);
+	}
+	template <typename U>
+	ioport_device(const machine_config &mconfig, const char *tag, device_t *owner, U &&opts, const char *dflt)
+		: ioport_device(mconfig, tag, owner)
+	{
+		set_options(std::forward<U>(opts), dflt, false);
 	}
 
-	ioport_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	ioport_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	// Methods called from the console
-	DECLARE_READ8Z_MEMBER( readz );
+	void readz(offs_t offset, uint8_t *value);
 	void write(offs_t offset, uint8_t data);
-	DECLARE_SETADDRESS_DBIN_MEMBER( setaddress_dbin );
-	DECLARE_READ8Z_MEMBER( crureadz );
+	void setaddress_dbin(offs_t offset, int state);
+	void crureadz(offs_t offset, uint8_t *value);
 	void cruwrite(offs_t offset, uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER( memen_in );
-	DECLARE_WRITE_LINE_MEMBER( msast_in );
-	DECLARE_WRITE_LINE_MEMBER( clock_in );
-	DECLARE_WRITE_LINE_MEMBER( reset_in );
+	void memen_in(int state);
+	void msast_in(int state);
+	void clock_in(int state);
+	void reset_in(int state);
+	void sbe(int state);
 
 	// Callbacks
 	auto extint_cb() { return m_console_extint.bind(); }
 	auto ready_cb() { return m_console_ready.bind(); }
 
 protected:
-	void device_start() override;
-	void device_config_complete() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_config_complete() override;
 
 	// Methods called back from the external device
 	devcb_write_line m_console_extint;   // EXTINT line
@@ -96,11 +101,13 @@ protected:
 private:
 	ioport_attached_device*    m_connected;
 };
-}   }  } // end namespace bus::ti99::internal
+
+} // end namespace bus::ti99::internal
 
 DECLARE_DEVICE_TYPE_NS(TI99_IOPORT, bus::ti99::internal, ioport_device)
 
 void ti99_ioport_options_plain(device_slot_interface &device);
 void ti99_ioport_options_evpc(device_slot_interface &device);
+void ti99_ioport_options_evpc1(device_slot_interface &device);
 
 #endif /* __TI99IOPORT__ */

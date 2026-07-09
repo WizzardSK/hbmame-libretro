@@ -7,10 +7,10 @@
     Enhanced Octal Universal Asynchronous Receiver/Transmitter
 
 Notes:
-    This device is similiar to four 2681 DUART chips tied together
+    This device is similar to four 2681 DUART chips tied together
     in a single package, with some shared resources.
     The 2681 DUART is implemented in scn2681_device - but this
-    chip is being independently emulated seperately for mainly
+    chip is being independently emulated separately for mainly
     educational purposes. When functionality for this device is
     completed we will consider merging the devices if it's
     practical.
@@ -26,7 +26,6 @@ Quirks:
 #include "emu.h"
 #include "scc2698b.h"
 
-#define LOG_GENERAL (1U << 0)
 #define LOG_CONFIG_CHANGE (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_CONFIG_CHANGE)
@@ -342,11 +341,11 @@ void scc2698b_channel::recompute_pin_output(bool force)
 
 
 
-WRITE_LINE_MEMBER( scc2698b_channel::mpi0_w )
+void scc2698b_channel::mpi0_w(int state)
 {
 
 }
-WRITE_LINE_MEMBER( scc2698b_channel::mpi1_w )
+void scc2698b_channel::mpi1_w(int state)
 {
 
 }
@@ -364,29 +363,12 @@ scc2698b_device::scc2698b_device(const machine_config &mconfig, const char *tag,
 	write_mpp2(*this),
 	write_mpo(*this)
 {
-
 }
 
-
-
-void scc2698b_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
-{
-
-}
 
 
 void scc2698b_device::device_start()
 {
-	write_intr_A.resolve_safe();
-	write_intr_B.resolve_safe();
-	write_intr_C.resolve_safe();
-	write_intr_D.resolve_safe();
-
-	write_tx.resolve_all_safe();
-	write_mpp1.resolve_all_safe();
-	write_mpp2.resolve_all_safe();
-	write_mpo.resolve_all_safe();
-
 	for (int i = 0; i < 8; i++)
 	{
 		m_channel[i]->channel_port = i;
@@ -398,13 +380,12 @@ void scc2698b_device::device_start()
 
 void scc2698b_device::device_reset()
 {
-
 }
 
 
 void scc2698b_device::write_line_tx(int port, int value)
 {
-	if ((0 <= port) && (ARRAY_LENGTH(write_tx) > port))
+	if ((0 <= port) && (std::size(write_tx) > port))
 		write_tx[port](value);
 	else
 		logerror("Unsupported port %d in write_line_tx\n", port);
@@ -412,7 +393,7 @@ void scc2698b_device::write_line_tx(int port, int value)
 
 void scc2698b_device::write_line_mpp1(int port, int value)
 {
-	if ((0 <= port) && (ARRAY_LENGTH(write_mpp1) > port))
+	if ((0 <= port) && (std::size(write_mpp1) > port))
 		write_mpp1[port](value);
 	else
 		logerror("Unsupported port %d in write_line_mpp1\n", port);
@@ -420,7 +401,7 @@ void scc2698b_device::write_line_mpp1(int port, int value)
 
 void scc2698b_device::write_line_mpp2(int port, int value)
 {
-	if ((0 <= port) && (ARRAY_LENGTH(write_mpp2) > port))
+	if ((0 <= port) && (std::size(write_mpp2) > port))
 		write_mpp2[port](value);
 	else
 		logerror("Unsupported port %d in write_line_mpp2\n", port);
@@ -428,25 +409,13 @@ void scc2698b_device::write_line_mpp2(int port, int value)
 
 void scc2698b_device::write_line_mpo(int port, int value)
 {
-	if ((0 <= port) && (ARRAY_LENGTH(write_mpo) > port))
+	if ((0 <= port) && (std::size(write_mpo) > port))
 		write_mpo[port](value);
 	else
 		logerror("Unsupported port %d in write_line_mpo\n", port);
 }
 
-
-READ8_MEMBER(scc2698b_device::read)
-{
-	return read_reg(offset);
-}
-
-WRITE8_MEMBER(scc2698b_device::write)
-{
-	write_reg(offset, data);
-}
-
-
-uint8_t scc2698b_device::read_reg(int offset)
+uint8_t scc2698b_device::read(offs_t offset)
 {
 	int device = (offset >> 4) & 3;
 	int reg = (offset & 15);
@@ -496,7 +465,7 @@ uint8_t scc2698b_device::read_reg(int offset)
 	return data;
 }
 
-void scc2698b_device::write_reg(int offset, uint8_t data)
+void scc2698b_device::write(offs_t offset, u8 data)
 {
 	int device = (offset >> 4) & 3;
 	int reg = (offset & 15);
@@ -576,14 +545,14 @@ void scc2698b_device::write_reg(int offset, uint8_t data)
 	}
 }
 
-WRITE_LINE_MEMBER(scc2698b_device::port_a_rx_w) { m_channel[0]->rx_w(state); }
-WRITE_LINE_MEMBER(scc2698b_device::port_b_rx_w) { m_channel[1]->rx_w(state); }
-WRITE_LINE_MEMBER(scc2698b_device::port_c_rx_w) { m_channel[2]->rx_w(state); }
-WRITE_LINE_MEMBER(scc2698b_device::port_d_rx_w) { m_channel[3]->rx_w(state); }
-WRITE_LINE_MEMBER(scc2698b_device::port_e_rx_w) { m_channel[4]->rx_w(state); }
-WRITE_LINE_MEMBER(scc2698b_device::port_f_rx_w) { m_channel[5]->rx_w(state); }
-WRITE_LINE_MEMBER(scc2698b_device::port_g_rx_w) { m_channel[6]->rx_w(state); }
-WRITE_LINE_MEMBER(scc2698b_device::port_h_rx_w) { m_channel[7]->rx_w(state); }
+void scc2698b_device::port_a_rx_w(int state) { m_channel[0]->rx_w(state); }
+void scc2698b_device::port_b_rx_w(int state) { m_channel[1]->rx_w(state); }
+void scc2698b_device::port_c_rx_w(int state) { m_channel[2]->rx_w(state); }
+void scc2698b_device::port_d_rx_w(int state) { m_channel[3]->rx_w(state); }
+void scc2698b_device::port_e_rx_w(int state) { m_channel[4]->rx_w(state); }
+void scc2698b_device::port_f_rx_w(int state) { m_channel[5]->rx_w(state); }
+void scc2698b_device::port_g_rx_w(int state) { m_channel[6]->rx_w(state); }
+void scc2698b_device::port_h_rx_w(int state) { m_channel[7]->rx_w(state); }
 
 
 scc2698b_channel* scc2698b_device::get_channel(int port)
@@ -766,5 +735,5 @@ attotime scc2698b_device::generate_baudrate(int block, int tx, int table_index)
 void scc2698b_device::device_add_mconfig(machine_config &config)
 {
 	for (required_device<scc2698b_channel> &channel : m_channel)
-		SCC2698B_CHANNEL(config, channel, 0);
+		SCC2698B_CHANNEL(config, channel);
 }

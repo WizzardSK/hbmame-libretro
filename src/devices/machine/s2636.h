@@ -27,7 +27,8 @@ class s2636_device : public device_t,
 				public device_sound_interface
 {
 public:
-	s2636_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	s2636_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
+	virtual ~s2636_device();
 
 	void set_offsets(int y_offset, int x_offset) { m_x_offset = x_offset; m_y_offset = y_offset; }
 
@@ -40,25 +41,26 @@ public:
 	// D3 indicates how the S2636 drew this pixel - 0 = background, 1 = object/score
 	bitmap_ind16 const &bitmap() const { return m_bitmap; }
 
-	// this function is for backwards compatibility and will eventually be removed
-	// use the functions below for per-scanline drawing/collisions
+	// This function is for backwards compatibility and will eventually be removed.
+	// Please note that it is not compatible with partial updates, use the functions
+	// below for per-scanline drawing/collisions.
 	bitmap_ind16 const &update(const rectangle &cliprect);
 
-	// call render_first_line to render the first line of the display and render_next_line for each additional line
-	void render_first_line();
+	// render_next_line will draw one line at a time, call start_new_frame at line 0
+	void start_new_frame() { m_screen_line = 0; }
 	void render_next_line();
 
-	DECLARE_READ8_MEMBER( read_data );
-	DECLARE_WRITE8_MEMBER( write_data );
+	uint8_t read_data(offs_t offset);
+	void write_data(offs_t offset, uint8_t data);
 
-	DECLARE_WRITE_LINE_MEMBER( write_intack );
+	void write_intack(int state);
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	// sound stream update overrides
-	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples) override;
+	virtual void sound_stream_update(sound_stream &stream) override;
 
 private:
 	enum
@@ -125,7 +127,7 @@ private:
 	bitmap_ind16        m_bitmap;
 
 	// 256-byte register file (not all of this really exists)
-	uint8_t   m_registers[0x100];
+	uint8_t m_registers[0x100];
 
 	// tracking where we're up to in the screen update
 	bool    m_vrst;

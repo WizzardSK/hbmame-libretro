@@ -21,8 +21,8 @@ public:
 	auto int_time() { return m_int_time_cb.bind(); }
 	void set_offsets(int offsx, int offsy) { m_offsx = offsx; m_offsy = offsy; }
 
-	DECLARE_READ8_MEMBER( read );  // CCU registers
-	DECLARE_WRITE8_MEMBER( write );
+	uint8_t read(offs_t offset);  // CCU registers
+	void write(offs_t offset, uint8_t data);
 
 	void res_change();
 
@@ -30,12 +30,12 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual void device_clock_changed() override { reset_internal_state(); }
 	void reset_internal_state();
 
-	private:
+private:
 	// internal state
 	uint8_t   m_regs[16];
 	uint16_t  m_hc,m_hfp,m_hbp;

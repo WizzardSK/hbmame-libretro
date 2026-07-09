@@ -1,5 +1,5 @@
-// license:GPL-2.0+
-// copyright-holders:Dirk Best
+// license: GPL-2.0+
+// copyright-holders: Dirk Best
 /***************************************************************************
 
     Commodore A2065
@@ -11,31 +11,33 @@
 #include "emu.h"
 #include "a2065.h"
 
-
-//**************************************************************************
-//  CONSTANTS / MACROS
-//**************************************************************************
-
 #define VERBOSE 1
 #include "logmacro.h"
 
 
 //**************************************************************************
-//  DEVICE DEFINITIONS
+//  TYPE DEFINITIONS
 //**************************************************************************
 
-DEFINE_DEVICE_TYPE_NS(ZORRO_A2065, bus::amiga::zorro, a2065_device, "zorro_a2065", "CBM A2065 Ethernet Card")
+DEFINE_DEVICE_TYPE(AMIGA_A2065, bus::amiga::zorro::a2065_device, "amiga_a2065", "Commodore A2065 Ethernet Card")
+
+namespace bus::amiga::zorro {
+
+a2065_device::a2065_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
+	device_t(mconfig, AMIGA_A2065, tag, owner, clock),
+	device_zorro2_card_interface(mconfig, *this),
+	m_lance(*this, "lance")
+{
+}
 
 
-namespace bus { namespace amiga { namespace zorro {
-
-//-------------------------------------------------
-//  device_add_mconfig - add device configuration
-//-------------------------------------------------
+//**************************************************************************
+//  MACHINE DEFINITIONS
+//**************************************************************************
 
 void a2065_device::device_add_mconfig(machine_config &config)
 {
-	AM7990(config, m_lance);
+	AM7990(config, m_lance, 20_MHz_XTAL / 2);
 	m_lance->intr_out().set(FUNC(a2065_device::lance_irq_w));
 	m_lance->dma_in().set(FUNC(a2065_device::lance_ram_r));
 	m_lance->dma_out().set(FUNC(a2065_device::lance_ram_w));
@@ -43,23 +45,8 @@ void a2065_device::device_add_mconfig(machine_config &config)
 
 
 //**************************************************************************
-//  LIVE DEVICE
+//  MACHINE EMULATION
 //**************************************************************************
-
-//-------------------------------------------------
-//  a2065_device - constructor
-//-------------------------------------------------
-
-a2065_device::a2065_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	device_t(mconfig, ZORRO_A2065, tag, owner, clock),
-	device_zorro2_card_interface(mconfig, *this),
-	m_lance(*this, "lance")
-{
-}
-
-//-------------------------------------------------
-//  device_start - device-specific startup
-//-------------------------------------------------
 
 void a2065_device::device_start()
 {
@@ -71,9 +58,41 @@ void a2065_device::device_start()
 	save_pointer(NAME(m_ram), 0x4000);
 }
 
+uint16_t a2065_device::host_ram_r(offs_t offset)
+{
+	// logerror("host read offset %04x\n", offset);
+	return m_ram[offset & 0x3fff];
+}
+
+void a2065_device::host_ram_w(offs_t offset, uint16_t data, uint16_t mem_mask)
+{
+	// logerror("host write %04x = %04x\n", offset, data);
+	COMBINE_DATA(&m_ram[offset]);
+}
+
+uint16_t a2065_device::lance_ram_r(offs_t offset)
+{
+	offset = (offset >> 1) & 0x3fff;
+	// logerror("lance read offset %04x\n", offset);
+	return m_ram[offset];
+}
+
+void a2065_device::lance_ram_w(offs_t offset, uint16_t data, uint16_t mem_mask)
+{
+	offset = (offset >> 1) & 0x3fff;
+	// logerror("lance write %04x = %04x\n", offset, data);
+	COMBINE_DATA(&m_ram[offset]);
+}
+
+void a2065_device::lance_irq_w(int state)
+{
+	// default is irq 2, can be changed via jumper
+	m_zorro->int2_w(!state);
+}
+
 
 //**************************************************************************
-//  IMPLEMENTATION
+//  AUTOCONFIG
 //**************************************************************************
 
 void a2065_device::autoconfig_base_address(offs_t address)
@@ -82,30 +101,32 @@ void a2065_device::autoconfig_base_address(offs_t address)
 	LOG("-> installing a2065\n");
 
 	// stop responding to default autoconfig
-	m_slot->space().unmap_readwrite(0xe80000, 0xe8007f);
+	m_zorro->space().unmap_readwrite(0xe80000, 0xe8007f);
 
 	// install autoconfig handler to new location
-	m_slot->space().install_readwrite_handler(address, address + 0x7f,
+	m_zorro->space().install_readwrite_handler(address, address + 0x7f,
 			read16_delegate(*this, FUNC(amiga_autoconfig::autoconfig_read)),
 			write16_delegate(*this, FUNC(amiga_autoconfig::autoconfig_write)), 0xffff);
 
 	// install access to lance registers
-	m_slot->space().install_readwrite_handler(address + 0x4000, address + 0x4003,
-			read16_delegate(*m_lance, FUNC(am7990_device::regs_r)),
-			write16_delegate(*m_lance, FUNC(am7990_device::regs_w)), 0xffff);
+	m_zorro->space().install_read_handler(address + 0x4000, address + 0x4003,
+			read16m_delegate(*m_lance, FUNC(am7990_device::regs_r)), 0xffff);
+	m_zorro->space().install_write_handler(address + 0x4000, address + 0x4003,
+			write16sm_delegate(*m_lance, FUNC(am7990_device::regs_w)), 0xffff);
 
 	// install access to onboard ram (32k)
-	m_slot->space().install_readwrite_handler(address + 0x8000, address + 0x8000 + 0x7fff,
-			read16_delegate(*this, FUNC(a2065_device::host_ram_r)),
-			write16_delegate(*this, FUNC(a2065_device::host_ram_w)), 0xffff);
+	m_zorro->space().install_read_handler(address + 0x8000, address + 0x8000 + 0x7fff,
+			read16sm_delegate(*this, FUNC(a2065_device::host_ram_r)), 0xffff);
+	m_zorro->space().install_write_handler(address + 0x8000, address + 0x8000 + 0x7fff,
+			write16s_delegate(*this, FUNC(a2065_device::host_ram_w)), 0xffff);
 
 	// we're done
-	m_slot->cfgout_w(0);
+	m_zorro->cfgout_w(0);
 }
 
-WRITE_LINE_MEMBER( a2065_device::cfgin_w )
+void a2065_device::cfgin_w(int state)
 {
-	LOG("%s: configin_w (%d)\n", shortname(), state);
+	LOG("%s: cfgin_w (%d)\n", shortname(), state);
 
 	if (state == 0)
 	{
@@ -113,8 +134,8 @@ WRITE_LINE_MEMBER( a2065_device::cfgin_w )
 		autoconfig_board_type(BOARD_TYPE_ZORRO2);
 		autoconfig_board_size(BOARD_SIZE_64K);
 
-		autoconfig_product(0x70);
-		autoconfig_manufacturer(0x0202);
+		autoconfig_product(112);
+		autoconfig_manufacturer(514);
 		autoconfig_serial(0x00123456); // last 3 bytes = last 3 bytes of mac address
 
 		autoconfig_link_into_memory(false);
@@ -124,42 +145,10 @@ WRITE_LINE_MEMBER( a2065_device::cfgin_w )
 		autoconfig_can_shutup(true); // ?
 
 		// install autoconfig handler
-		m_slot->space().install_readwrite_handler(0xe80000, 0xe8007f,
-				read16_delegate(*this, FUNC(amiga_autoconfig::autoconfig_read)),
-				write16_delegate(*this, FUNC(amiga_autoconfig::autoconfig_write)), 0xffff);
+		m_zorro->space().install_readwrite_handler(0xe80000, 0xe8007f,
+			read16_delegate(*this, FUNC(amiga_autoconfig::autoconfig_read)),
+			write16_delegate(*this, FUNC(amiga_autoconfig::autoconfig_write)), 0xffff);
 	}
 }
 
-READ16_MEMBER( a2065_device::host_ram_r )
-{
-	// logerror("host read offset %04x\n", offset);
-	return m_ram[offset & 0x3fff];
-}
-
-WRITE16_MEMBER( a2065_device::host_ram_w )
-{
-	// logerror("host write %04x = %04x\n", offset, data);
-	COMBINE_DATA(&m_ram[offset]);
-}
-
-READ16_MEMBER( a2065_device::lance_ram_r )
-{
-	offset = (offset >> 1) & 0x3fff;
-	// logerror("lance read offset %04x\n", offset);
-	return m_ram[offset];
-}
-
-WRITE16_MEMBER( a2065_device::lance_ram_w )
-{
-	offset = (offset >> 1) & 0x3fff;
-	// logerror("lance write %04x = %04x\n", offset, data);
-	COMBINE_DATA(&m_ram[offset]);
-}
-
-WRITE_LINE_MEMBER( a2065_device::lance_irq_w )
-{
-	// default is irq 2, can be changed via jumper
-	m_slot->int2_w(!state);
-}
-
-} } } // namespace bus::amiga::zorro
+} // namespace bus::amiga::zorro

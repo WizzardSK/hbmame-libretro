@@ -1,4 +1,4 @@
-// For licensing and usage information, read docs/winui_license.txt
+// For licensing and usage information, read docs/release/winui_license.txt
 //****************************************************************************
 #ifndef WINUI
 #define WINUI
@@ -9,7 +9,7 @@
 #undef wmain
 #define main mame_main
 #define wmain mame_main
-#include "windows/main.cpp"
+#include "main.cpp"
 #undef main
 #undef wmain
 
@@ -20,3 +20,4 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 {
 	return MameUIMain(hInstance, lpCmdLine, nCmdShow);
 }
+

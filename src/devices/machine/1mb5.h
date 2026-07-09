@@ -17,7 +17,7 @@ class hp_1mb5_device : public device_t
 {
 public:
 	// construction/destruction
-	hp_1mb5_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	hp_1mb5_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	// static configuration helpers
 	auto irl_handler() { return m_irl_handler.bind(); }
@@ -26,20 +26,20 @@ public:
 	auto int_handler() { return m_int_handler.bind(); }
 
 	// CPU access
-	DECLARE_READ8_MEMBER(cpu_r);
-	DECLARE_WRITE8_MEMBER(cpu_w);
+	uint8_t cpu_r(offs_t offset);
+	void cpu_w(offs_t offset, uint8_t data);
 
 	// uC access
-	DECLARE_READ8_MEMBER(uc_r);
-	DECLARE_WRITE8_MEMBER(uc_w);
+	uint8_t uc_r(offs_t offset);
+	void uc_w(offs_t offset, uint8_t data);
 
 	// Signals to CPU
-	DECLARE_READ_LINE_MEMBER(irl_r);
-	DECLARE_READ_LINE_MEMBER(halt_r);
+	int irl_r();
+	int halt_r();
 
 	// Signals to uC
-	DECLARE_READ_LINE_MEMBER(reset_r);
-	DECLARE_READ_LINE_MEMBER(int_r);
+	int reset_r();
+	int int_r();
 
 	// Interrupt enable
 	void inten();
@@ -49,8 +49,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	devcb_write_line m_irl_handler;

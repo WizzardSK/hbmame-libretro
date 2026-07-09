@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Fabio Priuli
-#ifndef MAME_BUS_ASTROCADE_RAM_H
-#define MAME_BUS_ASTROCADE_RAM_H
+#ifndef MAME_BUS_ASTROCDE_RAM_H
+#define MAME_BUS_ASTROCDE_RAM_H
 
 #pragma once
 
@@ -19,13 +19,13 @@ public:
 	astrocade_blueram_4k_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device-level overrides
-	virtual ioport_constructor device_input_ports() const override;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read) override;
-	virtual DECLARE_WRITE8_MEMBER(write) override;
-	virtual DECLARE_READ8_MEMBER(read_io) override;
-	virtual DECLARE_WRITE8_MEMBER(write_io) override;
+	virtual uint8_t read(offs_t offset) override;
+	virtual void write(offs_t offset, uint8_t data) override;
+	virtual uint8_t read_io(offs_t offset) override;
+	virtual void write_io(offs_t offset, uint8_t data) override;
 
 	uint8_t porta_r();
 	uint8_t portb_r();
@@ -37,7 +37,7 @@ protected:
 
 	virtual void device_start() override { m_ram.resize(0x1000); save_item(NAME(m_ram)); }
 	virtual void device_reset() override { }
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	std::vector<uint8_t> m_ram;
 	required_ioport m_write_prot;
@@ -76,11 +76,11 @@ public:
 	astrocade_viper_sys1_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device-level overrides
-	virtual ioport_constructor device_input_ports() const override;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read) override;
-	virtual DECLARE_WRITE8_MEMBER(write) override;
+	virtual uint8_t read(offs_t offset) override;
+	virtual void write(offs_t offset, uint8_t data) override;
 
 protected:
 	virtual void device_start() override { m_ram.resize(0x4000); save_item(NAME(m_ram)); }
@@ -100,11 +100,11 @@ public:
 	astrocade_whiteram_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device-level overrides
-	virtual ioport_constructor device_input_ports() const override;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read) override;
-	virtual DECLARE_WRITE8_MEMBER(write) override;
+	virtual uint8_t read(offs_t offset) override;
+	virtual void write(offs_t offset, uint8_t data) override;
 
 protected:
 	virtual void device_start() override { m_ram.resize(0x8000); save_item(NAME(m_ram)); }
@@ -124,11 +124,11 @@ public:
 	astrocade_rl64ram_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// device-level overrides
-	virtual ioport_constructor device_input_ports() const override;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read) override;
-	virtual DECLARE_WRITE8_MEMBER(write) override;
+	virtual uint8_t read(offs_t offset) override;
+	virtual void write(offs_t offset, uint8_t data) override;
 
 protected:
 	virtual void device_start() override { m_ram.resize(0xb000); save_item(NAME(m_ram)); }
@@ -150,4 +150,4 @@ DECLARE_DEVICE_TYPE(ASTROCADE_WHITERAM,    astrocade_whiteram_device)
 DECLARE_DEVICE_TYPE(ASTROCADE_RL64RAM,     astrocade_rl64ram_device)
 
 
-#endif // MAME_BUS_ASTROCADE_RAM_H
+#endif // MAME_BUS_ASTROCDE_RAM_H

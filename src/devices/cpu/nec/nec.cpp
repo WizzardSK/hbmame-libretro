@@ -107,14 +107,18 @@
 #include "emu.h"
 #include "nec.h"
 #include "necdasm.h"
-#include "debugger.h"
+
+#define LOG_BUSLOCK (1 << 1)
+//#define VERBOSE (...)
+
+#include "logmacro.h"
 
 typedef uint8_t BOOLEAN;
 typedef uint8_t BYTE;
 typedef uint16_t WORD;
 typedef uint32_t DWORD;
 
-#include "necpriv.h"
+#include "necpriv.ipp"
 
 DEFINE_DEVICE_TYPE(V20,  v20_device,  "v20",  "NEC V20")
 DEFINE_DEVICE_TYPE(V30,  v30_device,  "v30",  "NEC V30")
@@ -122,26 +126,27 @@ DEFINE_DEVICE_TYPE(V33,  v33_device,  "v33",  "NEC V33")
 DEFINE_DEVICE_TYPE(V33A, v33a_device, "v33a", "NEC V33A")
 
 
-nec_common_device::nec_common_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, bool is_16bit, uint8_t prefetch_size, uint8_t prefetch_cycles, uint32_t chip_type, address_map_constructor internal_port_map)
+nec_common_device::nec_common_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, bool is_16bit, uint8_t prefetch_size, uint8_t prefetch_cycles, uint32_t chip_type, bool has_div_quirk, address_map_constructor internal_port_map)
 	: cpu_device(mconfig, type, tag, owner, clock)
 	, m_program_config("program", ENDIANNESS_LITTLE, is_16bit ? 16 : 8, chip_type == V33_TYPE ? 24 : 20, 0, 20, chip_type == V33_TYPE ? 14 : 0)
 	, m_io_config("io", ENDIANNESS_LITTLE, is_16bit ? 16 : 8, 16, 0, internal_port_map)
 	, m_prefetch_size(prefetch_size)
 	, m_prefetch_cycles(prefetch_cycles)
 	, m_chip_type(chip_type)
+	, m_has_div_quirk(has_div_quirk)
 	, m_v33_transtable(*this, "v33_transtable")
 {
 }
 
 
 v20_device::v20_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: nec_common_device(mconfig, V20, tag, owner, clock, false, 4, 4, V20_TYPE)
+	: nec_common_device(mconfig, V20, tag, owner, clock, false, 4, 4, V20_TYPE, true)
 {
 }
 
 
 v30_device::v30_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: nec_common_device(mconfig, V30, tag, owner, clock, true, 6, 2, V30_TYPE)
+	: nec_common_device(mconfig, V30, tag, owner, clock, true, 6, 2, V30_TYPE, true)
 {
 }
 
@@ -158,7 +163,7 @@ device_memory_interface::space_config_vector nec_common_device::memory_space_con
  * complete guess below, nbbatman will not work
  * properly without. */
 v33_base_device::v33_base_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_constructor internal_port_map)
-	: nec_common_device(mconfig, type, tag, owner, clock, true, 6, 1, V33_TYPE, internal_port_map)
+	: nec_common_device(mconfig, type, tag, owner, clock, true, 6, 1, V33_TYPE, false, internal_port_map)
 {
 }
 
@@ -197,8 +202,10 @@ offs_t nec_common_device::v33_translate(offs_t addr)
 		return addr & 0xfffff;
 }
 
-bool v33_base_device::memory_translate(int spacenum, int intention, offs_t &address)
+bool v33_base_device::memory_translate(int spacenum, int intention, offs_t &address, address_space *&target_space)
 {
+	target_space = &space(spacenum);
+
 	if (spacenum == AS_PROGRAM)
 		address = v33_translate(address);
 	return true;
@@ -207,7 +214,7 @@ bool v33_base_device::memory_translate(int spacenum, int intention, offs_t &addr
 
 std::unique_ptr<util::disasm_interface> nec_common_device::create_disassembler()
 {
-	return std::make_unique<nec_disassembler>();
+	return std::make_unique<nec_disassembler>(this);
 }
 
 
@@ -216,21 +223,19 @@ void nec_common_device::prefetch()
 	m_prefetch_count--;
 }
 
-void nec_common_device::do_prefetch(int previous_ICount)
+void nec_common_device::do_prefetch()
 {
-	int diff = previous_ICount - (int) m_icount;
-
 	/* The implementation is not accurate, but comes close.
 	 * It does not respect that the V30 will fetch two bytes
 	 * at once directly, but instead uses only 2 cycles instead
 	 * of 4. There are however only very few sources publicly
 	 * available and they are vague.
 	 */
-	while (m_prefetch_count<0)
+	while (m_prefetch_count < 0)
 	{
 		m_prefetch_count++;
-		if (diff>m_prefetch_cycles)
-			diff -= m_prefetch_cycles;
+		if (m_cur_cycles > m_prefetch_cycles)
+			m_cur_cycles -= m_prefetch_cycles;
 		else
 			m_icount -= m_prefetch_cycles;
 	}
@@ -242,18 +247,17 @@ void nec_common_device::do_prefetch(int previous_ICount)
 		return;
 	}
 
-	while (diff>=m_prefetch_cycles && m_prefetch_count < m_prefetch_size)
+	while (m_cur_cycles >= m_prefetch_cycles && m_prefetch_count < m_prefetch_size)
 	{
-		diff -= m_prefetch_cycles;
+		m_cur_cycles -= m_prefetch_cycles;
 		m_prefetch_count++;
 	}
-
 }
 
 uint8_t nec_common_device::fetch()
 {
 	prefetch();
-	return m_dr8((Sreg(PS)<<4)+m_ip++);
+	return m_dr8((Sreg(PS)<<4) + m_ip++);
 }
 
 uint16_t nec_common_device::fetchword()
@@ -273,7 +277,7 @@ static uint8_t parity_table[256];
 uint8_t nec_common_device::fetchop()
 {
 	prefetch();
-	return m_dr8((Sreg(PS)<<4)+m_ip++);
+	return m_dr8((Sreg(PS)<<4) + m_ip++);
 }
 
 
@@ -285,10 +289,13 @@ void nec_common_device::device_reset()
 	memset( &m_regs.w, 0, sizeof(m_regs.w));
 
 	m_ip = 0;
+	m_prev_ip = 0;
+	m_rep_ip = 0;
 	m_TF = 0;
 	m_IF = 0;
 	m_DF = 0;
-	m_MF = 1;  // brkem should set to 0 when implemented
+	m_MF = 1;
+	m_em = 1;
 	m_SignVal = 0;
 	m_AuxVal = 0;
 	m_OverVal = 0;
@@ -300,6 +307,7 @@ void nec_common_device::device_reset()
 	m_irq_state = 0;
 	m_poll_state = 1;
 	m_halted = 0;
+	m_rep_params = 0;
 
 	if (m_chip_type == V33_TYPE)
 		m_xa = false;
@@ -317,18 +325,21 @@ void nec_common_device::nec_interrupt(unsigned int_num, int/*INTSOURCES*/ source
 {
 	uint32_t dest_seg, dest_off;
 
+	m_rep_params = 0;
 	i_pushf();
 	m_TF = m_IF = 0;
+	m_MF = 1;
 
 	if (source == INT_IRQ)  /* get vector */
-		int_num = (standard_irq_callback)(0);
+		int_num = standard_irq_callback(0, PC());
+	debugger_exception_hook(int_num);
 
 	dest_off = read_mem_word(int_num*4);
 	dest_seg = read_mem_word(int_num*4+2);
 
 	PUSH(Sreg(PS));
 	PUSH(m_ip);
-	m_ip = (WORD)dest_off;
+	m_prev_ip = m_ip = (WORD)dest_off;
 	Sreg(PS) = (WORD)dest_seg;
 	CHANGE_PC;
 }
@@ -341,7 +352,15 @@ void nec_common_device::nec_trap()
 
 void nec_common_device::nec_brk(unsigned int_num)
 {
-	m_ip = read_mem_word(int_num*4);
+	if (m_chip_type != V33_TYPE)
+	{
+		m_em = 0;
+		m_MF = 0;
+		i_pushf();
+		PUSH(Sreg(PS));
+		PUSH(m_ip);
+	}
+	m_prev_ip = m_ip = read_mem_word(int_num*4);
 	Sreg(PS) = read_mem_word(int_num*4+2);
 	CHANGE_PC;
 }
@@ -368,6 +387,7 @@ void nec_common_device::external_int()
 /****************************************************************************/
 
 #include "necinstr.hxx"
+#include "nec80inst.hxx"
 
 /*****************************************************************************/
 
@@ -443,6 +463,7 @@ void nec_common_device::device_start()
 	}
 
 	m_no_interrupt = 0;
+	m_cur_cycles = 0;
 	m_prefetch_count = 0;
 	m_prefetch_reset = 0;
 	m_prefix_base = 0;
@@ -452,6 +473,8 @@ void nec_common_device::device_start()
 	m_E16 = 0;
 	m_debugger_temp = 0;
 	m_ip = 0;
+	m_prev_ip = 0;
+	m_rep_ip = 0;
 
 	memset(m_regs.w, 0x00, sizeof(m_regs.w));
 	memset(m_sregs, 0x00, sizeof(m_sregs));
@@ -460,6 +483,8 @@ void nec_common_device::device_start()
 	save_item(NAME(m_sregs));
 
 	save_item(NAME(m_ip));
+	save_item(NAME(m_prev_ip));
+	save_item(NAME(m_rep_ip));
 	save_item(NAME(m_TF));
 	save_item(NAME(m_IF));
 	save_item(NAME(m_DF));
@@ -476,51 +501,59 @@ void nec_common_device::device_start()
 	save_item(NAME(m_poll_state));
 	save_item(NAME(m_no_interrupt));
 	save_item(NAME(m_halted));
+	save_item(NAME(m_rep_params));
 	save_item(NAME(m_prefetch_count));
 	save_item(NAME(m_prefetch_reset));
 
 	m_program = &space(AS_PROGRAM);
 	if (m_program->data_width() == 8)
 	{
-		auto cache = m_program->cache<0, 0, ENDIANNESS_LITTLE>();
-		m_dr8 = [cache](offs_t address) -> u8 { return cache->read_byte(address); };
+		m_program->cache(m_cache8);
+		m_dr8 = [this](offs_t address) -> u8 { return m_cache8.read_byte(address); };
 	}
 	else if (m_chip_type == V33_TYPE)
 	{
 		save_item(NAME(m_xa));
-		auto cache = m_program->cache<1, 0, ENDIANNESS_LITTLE>();
-		m_dr8 = [cache, this](offs_t address) -> u8 { return cache->read_byte(v33_translate(address)); };
+		m_program->cache(m_cache16);
+		m_dr8 = [this](offs_t address) -> u8 { return m_cache16.read_byte(v33_translate(address)); };
 	}
 	else
 	{
-		auto cache = m_program->cache<1, 0, ENDIANNESS_LITTLE>();
-		m_dr8 = [cache](offs_t address) -> u8 { return cache->read_byte(address); };
+		m_program->cache(m_cache16);
+		m_dr8 = [this](offs_t address) -> u8 { return m_cache16.read_byte(address); };
 	}
 
 	m_io = &space(AS_IO);
 
-	state_add( NEC_PC,    "PC", m_debugger_temp).callimport().callexport().formatstr("%05X");
-	state_add( NEC_IP,    "IP", m_ip).formatstr("%04X");
-	state_add( NEC_SP,    "SP", Wreg(SP)).formatstr("%04X");
-	state_add( NEC_FLAGS, "F", m_debugger_temp).callimport().callexport().formatstr("%04X");
-	state_add( NEC_AW,    "AW", Wreg(AW)).formatstr("%04X");
-	state_add( NEC_CW,    "CW", Wreg(CW)).formatstr("%04X");
-	state_add( NEC_DW,    "DW", Wreg(DW)).formatstr("%04X");
-	state_add( NEC_BW,    "BW", Wreg(BW)).formatstr("%04X");
-	state_add( NEC_BP,    "BP", Wreg(BP)).formatstr("%04X");
-	state_add( NEC_IX,    "IX", Wreg(IX)).formatstr("%04X");
-	state_add( NEC_IY,    "IY", Wreg(IY)).formatstr("%04X");
-	state_add( NEC_ES,    "DS1", Sreg(DS1)).formatstr("%04X");
-	state_add( NEC_CS,    "PS", Sreg(PS)).formatstr("%04X");
-	state_add( NEC_SS,    "SS", Sreg(SS)).formatstr("%04X");
-	state_add( NEC_DS,    "DS0", Sreg(DS0)).formatstr("%04X");
+	state_add( NEC_PC,  "PC", m_ip).formatstr("%04X");
+	state_add( NEC_PSW, "PSW", m_debugger_temp).callimport().callexport().formatstr("%04X");
+	state_add( NEC_AW,  "AW", Wreg(AW)).formatstr("%04X");
+	state_add( NEC_CW,  "CW", Wreg(CW)).formatstr("%04X");
+	state_add( NEC_DW,  "DW", Wreg(DW)).formatstr("%04X");
+	state_add( NEC_BW,  "BW", Wreg(BW)).formatstr("%04X");
+	state_add( NEC_SP,  "SP", Wreg(SP)).formatstr("%04X");
+	state_add( NEC_BP,  "BP", Wreg(BP)).formatstr("%04X");
+	state_add( NEC_IX,  "IX", Wreg(IX)).formatstr("%04X");
+	state_add( NEC_IY,  "IY", Wreg(IY)).formatstr("%04X");
+	state_add( NEC_DS1, "DS1", Sreg(DS1)).formatstr("%04X");
+	state_add( NEC_PS,  "PS", Sreg(PS)).formatstr("%04X");
+	state_add( NEC_SS,  "SS", Sreg(SS)).formatstr("%04X");
+	state_add( NEC_DS0, "DS0", Sreg(DS0)).formatstr("%04X");
+
+	state_add( NEC_AL, "AL", Breg(AL)).noshow();
+	state_add( NEC_AH, "AH", Breg(AH)).noshow();
+	state_add( NEC_CL, "CL", Breg(CL)).noshow();
+	state_add( NEC_CH, "CH", Breg(CH)).noshow();
+	state_add( NEC_DL, "DL", Breg(DL)).noshow();
+	state_add( NEC_DH, "DH", Breg(DH)).noshow();
+	state_add( NEC_BL, "BL", Breg(BL)).noshow();
+	state_add( NEC_BH, "BH", Breg(BH)).noshow();
 
 	if (m_chip_type == V33_TYPE)
 		state_add(NEC_XA, "XA", m_xa);
 
 	state_add( STATE_GENPC, "GENPC", m_debugger_temp).callexport().noshow();
 	state_add( STATE_GENPCBASE, "CURPC", m_debugger_temp).callexport().noshow();
-	state_add( STATE_GENSP, "GENSP", m_debugger_temp).callimport().callexport().noshow();
 	state_add( STATE_GENFLAGS, "GENFLAGS", m_debugger_temp).formatstr("%16s").noshow();
 
 	set_icountptr(m_icount);
@@ -558,7 +591,7 @@ void nec_common_device::state_import(const device_state_entry &entry)
 {
 	switch (entry.index())
 	{
-		case NEC_PC:
+		case STATE_GENPC:
 			if (m_debugger_temp - (Sreg(PS)<<4) < 0x10000)
 			{
 				m_ip = m_debugger_temp - (Sreg(PS)<<4);
@@ -568,9 +601,10 @@ void nec_common_device::state_import(const device_state_entry &entry)
 				Sreg(PS) = m_debugger_temp >> 4;
 				m_ip = m_debugger_temp & 0x0000f;
 			}
+			m_prev_ip = m_ip;
 			break;
 
-		case NEC_FLAGS:
+		case NEC_PSW:
 			ExpandFlags(m_debugger_temp);
 			break;
 	}
@@ -582,16 +616,14 @@ void nec_common_device::state_export(const device_state_entry &entry)
 	switch (entry.index())
 	{
 		case STATE_GENPC:
-		case STATE_GENPCBASE:
-		case NEC_PC:
 			m_debugger_temp = (Sreg(PS)<<4) + m_ip;
 			break;
 
-		case STATE_GENSP:
-			m_debugger_temp = (Sreg(SS)<<4) + Wreg(SP);
+		case STATE_GENPCBASE:
+			m_debugger_temp = (Sreg(PS)<<4) + m_prev_ip;
 			break;
 
-		case NEC_FLAGS:
+		case NEC_PSW:
 			m_debugger_temp = CompressFlags();
 			break;
 	}
@@ -600,17 +632,18 @@ void nec_common_device::state_export(const device_state_entry &entry)
 
 void nec_common_device::execute_run()
 {
-	int prev_ICount;
-
 	if (m_halted)
 	{
+		debugger_wait_hook();
 		m_icount = 0;
-		debugger_instruction_hook((Sreg(PS)<<4) + m_ip);
 		return;
 	}
 
-	while(m_icount>0) {
-		/* Dispatch IRQ */
+	while(m_icount>0)
+	{
+		m_prev_ip = m_ip;
+
+		// Dispatch IRQ
 		if (m_pending_irq && m_no_interrupt==0)
 		{
 			if (m_pending_irq & NMI_IRQ)
@@ -619,13 +652,22 @@ void nec_common_device::execute_run()
 				external_int();
 		}
 
-		/* No interrupt allowed between last instruction and this one */
+		// No interrupt allowed between last instruction and this one
 		if (m_no_interrupt)
 			m_no_interrupt--;
 
 		debugger_instruction_hook((Sreg(PS)<<4) + m_ip);
-		prev_ICount = m_icount;
-		(this->*s_nec_instruction[fetchop()])();
-		do_prefetch(prev_ICount);
+		m_cur_cycles = 0;
+
+		if (m_rep_params)
+			cont_rep();
+		else
+		{
+			if (m_MF)
+				(this->*s_nec_instruction[fetchop()])();
+			else
+				(this->*s_nec80_instruction[fetchop()])();
+		}
+		do_prefetch();
 	}
 }

@@ -1,14 +1,8 @@
-// Proyecto De Inicio:"2016/2017"
-// Derechos Del Autor:Gaston90
+// license:GPL_2.0
+// copyright-holders:Robbbert
 #include "../mame/drivers/igs011.cpp"
 
-// PSmame (c) gaston90 used with permission
-
- /****************************************************
-         Proyecto Shadows Mame Build Plus
-*****************************************************/
- 
- /***************
+/***************
  Long Hu Bang II
 ******************/
 
@@ -41,11 +35,12 @@ ROM_START( wlccs01 ) //wlccc
 
 	ROM_REGION( 0x80000, "oki", 0 )
 	ROM_LOAD( "m0202.snd", 0x00000, 0x80000, CRC(220949aa) SHA1(1e0dba168a0687d32aaaed42714ae24358f4a3e7) )
-	ROM_CONTINUE(             0x00000, 0x80000 ) 
+	ROM_CONTINUE(             0x00000, 0x80000 )
 ROM_END
 
 /*    YEAR  NAME            PARENT    MACHINE        INPUT       INIT             MONITOR COMPANY                 FULLNAME FLAGS */
 // Long Hu Bang II
 GAME( 1996, lhb2s01, lhb2, lhb2, lhb2, igs011_state, init_lhb2, ROT0, "whistler_wmz", "Long Hu Bang II (No AI Cheat)",   MACHINE_SUPPORTS_SAVE )
 // Wanli Changcheng
-GAME( 2006, wlccs01, xymg, wlcc, wlcc, igs011_state, init_wlcc, ROT0, "hack",          "Wanli Changcheng (No AI Cheat 2006-01-01)", MACHINE_SUPPORTS_SAVE )
+GAME( 2006, wlccs01, xymg, wlcc, wlcc, igs011_state, init_wlcc, ROT0, "hack", "Wanli Changcheng (No AI Cheat, 2006-01-01)", MACHINE_SUPPORTS_SAVE )
+

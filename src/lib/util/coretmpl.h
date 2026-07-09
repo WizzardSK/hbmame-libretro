@@ -13,30 +13,25 @@
 #pragma once
 
 #include "osdcomm.h"
-#include "osdcore.h"
-#include "corealloc.h"
+#include "vecstream.h"
 
 #include <array>
-#include <cassert>
 #include <cstddef>
-#include <functional>
-#include <initializer_list>
 #include <iterator>
-#include <list>
 #include <map>
-#include <memory>
-#include <set>
+#include <numeric>
 #include <stdexcept>
-#include <tuple>
+#include <string>
+#include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
-#include <vector>
 
 // ======================> simple_list
 
 // a simple_list is a singly-linked list whose 'next' pointer is owned
 // by the object
-template<class ElementType>
+template <class ElementType>
 class simple_list final
 {
 public:
@@ -202,7 +197,7 @@ public:
 				if (m_tail == &toreplace)
 					m_tail = &object;
 				object.m_next = toreplace.m_next;
-				global_free(&toreplace);
+				delete &toreplace;
 				return object;
 			}
 		return append(object);
@@ -253,7 +248,7 @@ public:
 	// remove the given object and free its memory
 	void remove(ElementType &object) noexcept
 	{
-		global_free(&detach(object));
+		delete &detach(object);
 	}
 
 	// find an object by index in the list
@@ -305,7 +300,7 @@ public:
 	{
 		ItemType *result = m_freelist.detach_head();
 		if (result == nullptr)
-			result = global_alloc(ItemType);
+			result = new ItemType;
 		return result;
 	}
 
@@ -322,8 +317,6 @@ private:
 };
 
 
-// ======================> contiguous_sequence_wrapper
-
 namespace util {
 
 using osd::u8;
@@ -337,449 +330,96 @@ using osd::s32;
 using osd::s64;
 
 
-// wraps an existing sequence of values
-template<typename T>
-class contiguous_sequence_wrapper
+template <typename CharT, typename Traits = std::char_traits<CharT> >
+struct transparent_string_equal
 {
-public:
-	typedef std::ptrdiff_t difference_type;
-	typedef std::size_t size_type;
-	typedef T value_type;
-	typedef T &reference;
-	typedef const T &const_reference;
-	typedef T *pointer;
-	typedef T *iterator;
-	typedef const T *const_iterator;
-	typedef std::reverse_iterator<iterator> reverse_iterator;
-	typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+	using is_transparent = void;
 
-	contiguous_sequence_wrapper(T *ptr, std::size_t size)
-		: m_begin(ptr)
-		, m_end(ptr + size)
-	{
-	}
+	template <typename AllocA, typename AllocB>
+	bool operator()(std::basic_string<CharT, Traits, AllocA> const &a, std::basic_string<CharT, Traits, AllocB> const &b) const
+	{ return a == b; }
 
-	contiguous_sequence_wrapper(const contiguous_sequence_wrapper &that) = default;
+	bool operator()(std::basic_string_view<CharT, Traits> const &a, std::basic_string_view<CharT, Traits> const &b) const
+	{ return a == b; }
 
-	// iteration
-	iterator begin() { return m_begin; }
-	const_iterator begin() const { return m_begin; }
-	const_iterator cbegin() const { return m_begin; }
-	iterator end() { return m_end; }
-	const_iterator end() const { return m_end; }
-	const_iterator cend() const { return m_end; }
+	template <typename AllocA>
+	bool operator()(std::basic_string<CharT, Traits, AllocA> const &a, std::basic_string_view<CharT, Traits> const &b) const
+	{ return a == b; }
 
-	// reverse iteration
-	reverse_iterator rbegin() { return std::reverse_iterator<iterator>(end()); }
-	const_reverse_iterator rbegin() const { return std::reverse_iterator<const_iterator>(end()); }
-	const_reverse_iterator crbegin() const { return std::reverse_iterator<const_iterator>(cend()); }
-	reverse_iterator rend() { return std::reverse_iterator<iterator>(begin()); }
-	const_reverse_iterator rend() const { return std::reverse_iterator<iterator>(begin()); }
-	const_reverse_iterator crend() const { return std::reverse_iterator<iterator>(begin()); }
+	template <typename AllocB>
+	bool operator()(std::basic_string_view<CharT, Traits> const &a, std::basic_string<CharT, Traits, AllocB> const &b) const
+	{ return a == b; }
 
-	// capacity
-	size_type size() const { return m_end - m_begin; }
-	size_type max_size() const { return size(); }
-	bool empty() const { return size() == 0; }
+	template <typename AllocA>
+	bool operator()(std::basic_string<CharT, Traits, AllocA> const &a, CharT const *b) const
+	{ return a == b; }
 
-	// element access
-	reference front() { return operator[](0); }
-	const_reference front() const { return operator[](0); }
-	reference back() { return operator[](size() - 1); }
-	const_reference back() const { return operator[](size() - 1); }
-	reference operator[] (size_type n) { return m_begin[n]; }
-	const_reference operator[] (size_type n) const { return m_begin[n]; }
-	reference at(size_type n) { check_in_bounds(n); return operator[](n); }
-	const_reference at(size_type n) const { check_in_bounds(n); return operator[](n); }
+	template <typename AllocB>
+	bool operator()(CharT const *a, std::basic_string<CharT, Traits, AllocB> const &b) const
+	{ return a == b; }
 
-private:
-	iterator m_begin;
-	iterator m_end;
+	bool operator()(std::basic_string_view<CharT, Traits> const &a, CharT const *b) const
+	{ return a == b; }
 
-	void check_in_bounds(size_type n)
-	{
-		if (n < 0 || n >= size())
-			throw std::out_of_range("invalid contiguous_sequence_wrapper<T> subscript");
-	}
+	bool operator()(CharT const *a, std::basic_string_view<CharT, Traits> const &b) const
+	{ return a == b; }
 };
 
-
-// LRU cache that behaves like std::map with differences:
-// * drops least-recently used items if necessary on insert to prevent size from exceeding max_size
-// * operator[], at, insert, emplace and find freshen existing entries
-// * iterates from least- to most-recently used rather than in order by key
-// * iterators to dropped items are invalidated
-// * not all map interfaces implemented
-// * copyable and swappable but not movable
-// * swap may invalidate past-the-end iterator, other iterators refer to new container
-template <typename Key, typename T, typename Compare = std::less<Key>, class Allocator = std::allocator<std::pair<Key const, T> > >
-class lru_cache_map
+template <typename CharT, typename Traits = std::char_traits<CharT> >
+struct transparent_string_less
 {
-private:
-	class iterator_compare;
-	typedef std::list<std::pair<Key const, T>, Allocator> value_list;
-	typedef typename std::allocator_traits<Allocator>::template rebind_alloc<typename value_list::iterator> iterator_allocator_type;
-	typedef std::set<typename value_list::iterator, iterator_compare, iterator_allocator_type> iterator_set;
+	using is_transparent = void;
 
-	class iterator_compare
-	{
-	public:
-		typedef std::true_type is_transparent;
-		iterator_compare(Compare const &comp) : m_comp(comp) { }
-		iterator_compare(iterator_compare const &that) = default;
-		iterator_compare(iterator_compare &&that) = default;
-		Compare key_comp() const { return m_comp; }
-		iterator_compare &operator=(iterator_compare const &that) = default;
-		iterator_compare &operator=(iterator_compare &&that) = default;
-		bool operator()(typename value_list::iterator const &lhs, typename value_list::iterator const &rhs) const { return m_comp(lhs->first, rhs->first); }
-		template <typename K> bool operator()(typename value_list::iterator const &lhs, K const &rhs) const { return m_comp(lhs->first, rhs); }
-		template <typename K> bool operator()(K const &lhs, typename value_list::iterator const &rhs) const { return m_comp(lhs, rhs->first); }
-	private:
-		Compare m_comp;
-	};
+	template <typename AllocA, typename AllocB>
+	bool operator()(std::basic_string<CharT, Traits, AllocA> const &a, std::basic_string<CharT, Traits, AllocB> const &b) const
+	{ return a < b; }
 
-public:
-	typedef Key key_type;
-	typedef T mapped_type;
-	typedef std::pair<Key const, T> value_type;
-	typedef typename value_list::size_type size_type;
-	typedef typename value_list::difference_type difference_type;
-	typedef Compare key_compare;
-	typedef Allocator allocator_type;
-	typedef value_type &reference;
-	typedef value_type const &const_reference;
-	typedef typename std::allocator_traits<Allocator>::pointer pointer;
-	typedef typename std::allocator_traits<Allocator>::const_pointer const_pointer;
-	typedef typename value_list::iterator iterator;
-	typedef typename value_list::const_iterator const_iterator;
-	typedef typename value_list::reverse_iterator reverse_iterator;
-	typedef typename value_list::const_reverse_iterator const_reverse_iterator;
+	bool operator()(std::basic_string_view<CharT, Traits> const &a, std::basic_string_view<CharT, Traits> const &b) const
+	{ return a < b; }
 
-	explicit lru_cache_map(size_type max_size)
-		: lru_cache_map(max_size, key_compare())
-	{
-	}
-	lru_cache_map(size_type max_size, key_compare const &comp, allocator_type const &alloc = allocator_type())
-		: m_max_size(max_size)
-		, m_size(0U)
-		, m_elements(alloc)
-		, m_mapping(iterator_compare(comp), iterator_allocator_type(alloc))
-	{
-		assert(0U < m_max_size);
-	}
-	lru_cache_map(lru_cache_map const &that)
-		: m_max_size(that.m_max_size)
-		, m_size(that.m_size)
-		, m_elements(that.m_elements)
-		, m_mapping(that.m_mapping.key_comp(), that.m_mapping.get_allocator())
-	{
-		for (iterator it = m_elements.begin(); it != m_elements.end(); ++it)
-			m_mapping.insert(it);
-		assert(m_elements.size() == m_size);
-		assert(m_mapping.size() == m_size);
-	}
+	template <typename AllocA>
+	bool operator()(std::basic_string<CharT, Traits, AllocA> const &a, std::basic_string_view<CharT, Traits> const &b) const
+	{ return a < b; }
 
-	allocator_type get_allocator() const { return m_elements.get_allocator(); }
+	template <typename AllocB>
+	bool operator()(std::basic_string_view<CharT, Traits> const &a, std::basic_string<CharT, Traits, AllocB> const &b) const
+	{ return a < b; }
 
-	iterator begin() { return m_elements.begin(); }
-	const_iterator begin() const { return m_elements.cbegin(); }
-	const_iterator cbegin() const { return m_elements.cbegin(); }
-	iterator end() { return m_elements.end(); }
-	const_iterator end() const { return m_elements.cend(); }
-	const_iterator cend() const { return m_elements.cend(); }
-	reverse_iterator rbegin() { return m_elements.rbegin(); }
-	const_reverse_iterator rbegin() const { return m_elements.crbegin(); }
-	const_reverse_iterator crbegin() const { return m_elements.crbegin(); }
-	reverse_iterator rend() { return m_elements.end(); }
-	const_reverse_iterator rend() const { return m_elements.crend(); }
-	const_reverse_iterator crend() const { return m_elements.crend(); }
+	template <typename AllocA>
+	bool operator()(std::basic_string<CharT, Traits, AllocA> const &a, CharT const *b) const
+	{ return a < b; }
 
-	bool empty() const { return !m_size; }
-	size_type size() const { return m_size; }
-	size_type max_size() const { return m_max_size; }
+	template <typename AllocB>
+	bool operator()(CharT const *a, std::basic_string<CharT, Traits, AllocB> const &b) const
+	{ return a < b; }
 
-	mapped_type &operator[](key_type const &key)
-	{
-		typename iterator_set::iterator existing(m_mapping.lower_bound(key));
-		if ((m_mapping.end() != existing) && !m_mapping.key_comp()(key, *existing))
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *existing);
-			return (*existing)->second;
-		}
-		make_space(existing);
-		iterator const inserted(m_elements.emplace(m_elements.end(), std::piecewise_construct, std::forward_as_tuple(key), std::tuple<>()));
-		m_mapping.insert(existing, inserted);
-		++m_size;
-		assert(m_elements.size() == m_size);
-		assert(m_mapping.size() == m_size);
-		return inserted->second;
-	}
-	mapped_type &operator[](key_type &&key)
-	{
-		typename iterator_set::iterator existing(m_mapping.lower_bound(key));
-		if ((m_mapping.end() != existing) && !m_mapping.key_comp()(key, *existing))
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *existing);
-			return (*existing)->second;
-		}
-		make_space(existing);
-		iterator const inserted(m_elements.emplace(m_elements.end(), std::piecewise_construct, std::forward_as_tuple(std::move(key)), std::tuple<>()));
-		m_mapping.insert(existing, inserted);
-		++m_size;
-		assert(m_elements.size() == m_size);
-		assert(m_mapping.size() == m_size);
-		return inserted->second;
-	}
-	mapped_type &at(key_type const &key)
-	{
-		typename iterator_set::iterator existing(m_mapping.find(key));
-		if (m_mapping.end() != existing)
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *existing);
-			return (*existing)->second;
-		}
-		else
-		{
-			throw std::out_of_range("lru_cache_map::at");
-		}
-	}
-	mapped_type const &at(key_type const &key) const
-	{
-		typename iterator_set::iterator existing(m_mapping.find(key));
-		if (m_mapping.end() != existing)
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *existing);
-			return (*existing)->second;
-		}
-		else
-		{
-			throw std::out_of_range("lru_cache_map::at");
-		}
-	}
+	bool operator()(std::basic_string_view<CharT, Traits> const &a, CharT const *b) const
+	{ return a < b; }
 
-	void clear()
-	{
-		m_size = 0U;
-		m_elements.clear();
-		m_mapping.clear();
-	}
-	std::pair<iterator, bool> insert(value_type const &value)
-	{
-		typename iterator_set::iterator existing(m_mapping.lower_bound(value.first));
-		if ((m_mapping.end() != existing) && !m_mapping.key_comp()(value.first, *existing))
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *existing);
-			return std::pair<iterator, bool>(*existing, false);
-		}
-		make_space(existing);
-		iterator const inserted(m_elements.emplace(m_elements.end(), value));
-		m_mapping.insert(existing, inserted);
-		++m_size;
-		assert(m_elements.size() == m_size);
-		assert(m_mapping.size() == m_size);
-		return std::pair<iterator, bool>(inserted, true);
-	}
-	std::pair<iterator, bool> insert(value_type &&value)
-	{
-		typename iterator_set::iterator existing(m_mapping.lower_bound(value.first));
-		if ((m_mapping.end() != existing) && !m_mapping.key_comp()(value.first, *existing))
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *existing);
-			return std::pair<iterator, bool>(*existing, false);
-		}
-		make_space(existing);
-		iterator const inserted(m_elements.emplace(m_elements.end(), std::move(value)));
-		m_mapping.insert(existing, inserted);
-		++m_size;
-		assert(m_elements.size() == m_size);
-		assert(m_mapping.size() == m_size);
-		return std::pair<iterator, bool>(inserted, true);
-	}
-	template <typename P>
-	std::enable_if_t<std::is_constructible<value_type, P>::value, std::pair<iterator, bool> > insert(P &&value)
-	{
-		return emplace(std::forward<P>(value));
-	}
-	template <typename InputIt>
-	void insert(InputIt first, InputIt last)
-	{
-		while (first != last)
-		{
-			insert(*first);
-			++first;
-		}
-	}
-	void insert(std::initializer_list<value_type> ilist)
-	{
-		for (value_type const &value : ilist)
-			insert(value);
-	}
-	template <typename... Params>
-	std::pair<iterator, bool> emplace(Params &&... args)
-	{
-		// TODO: is there a more efficient way than depending on value_type being efficiently movable?
-		return insert(value_type(std::forward<Params>(args)...));
-	}
-	iterator erase(const_iterator pos)
-	{
-		m_mapping.erase(m_elements.erase(pos, pos));
-		iterator const result(m_elements.erase(pos));
-		--m_size;
-		assert(m_elements.size() == m_size);
-		assert(m_mapping.size() == m_size);
-		return result;
-	}
-	iterator erase(const_iterator first, const_iterator last)
-	{
-		iterator pos(m_elements.erase(first, first));
-		while (pos != last)
-		{
-			m_mapping.erase(pos);
-			pos = m_elements.erase(pos);
-			--m_size;
-		}
-		assert(m_elements.size() == m_size);
-		assert(m_mapping.size() == m_size);
-		return pos;
-	}
-	size_type erase(key_type const &key)
-	{
-		typename iterator_set::iterator const found(m_mapping.find(key));
-		if (m_mapping.end() == found)
-		{
-			return 0U;
-		}
-		else
-		{
-			m_elements.erase(*found);
-			m_mapping.erase(found);
-			--m_size;
-			assert(m_elements.size() == m_size);
-			assert(m_mapping.size() == m_size);
-			return 1U;
-		}
-	}
-	void swap(lru_cache_map &that)
-	{
-		using std::swap;
-		swap(m_max_size, that.m_max_size);
-		swap(m_size, that.m_size);
-		swap(m_elements, that.m_elements);
-		swap(m_mapping, that.m_mapping);
-	}
-
-	size_type count(key_type const &key) const
-	{
-		// TODO: perhaps this should freshen an element
-		return m_mapping.count(key);
-	}
-	template <typename K>
-	size_type count(K const &x) const
-	{
-		// FIXME: should only enable this overload if Compare::is_transparent
-		// TODO: perhaps this should freshen an element
-		return m_mapping.count(x);
-	}
-	iterator find(key_type const &key)
-	{
-		typename iterator_set::const_iterator const found(m_mapping.find(key));
-		if (m_mapping.end() == found)
-		{
-			return m_elements.end();
-		}
-		else
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *found);
-			return *found;
-		}
-	}
-	iterator find(key_type const &key) const
-	{
-		typename iterator_set::const_iterator const found(m_mapping.find(key));
-		if (m_mapping.end() == found)
-		{
-			return m_elements.end();
-		}
-		else
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *found);
-			return *found;
-		}
-	}
-	template <typename K>
-	iterator find(K const &x)
-	{
-		// FIXME: should only enable this overload if Compare::is_transparent
-		typename iterator_set::const_iterator const found(m_mapping.find(x));
-		if (m_mapping.end() == found)
-		{
-			return m_elements.end();
-		}
-		else
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *found);
-			return *found;
-		}
-	}
-	template <typename K>
-	iterator find(K const &x) const
-	{
-		// FIXME: should only enable this overload if Compare::is_transparent
-		typename iterator_set::const_iterator const found(m_mapping.find(x));
-		if (m_mapping.end() == found)
-		{
-			return m_elements.end();
-		}
-		else
-		{
-			m_elements.splice(m_elements.cend(), m_elements, *found);
-			return *found;
-		}
-	}
-
-	key_compare key_comp() const
-	{
-		return m_mapping.key_comp().key_comp();
-	}
-
-	lru_cache_map &operator=(lru_cache_map const &that)
-	{
-		m_max_size = that.m_max_size;
-		m_size = that.m_size;
-		m_elements = that.m_elements;
-		m_mapping.clear();
-		for (iterator it = m_elements.begin(); it != m_elements.end(); ++it)
-			m_mapping.insert(it);
-		assert(m_elements.size() == m_size);
-		assert(m_mapping.size() == m_size);
-		return *this;
-	}
-
-private:
-	void make_space(typename iterator_set::iterator &existing)
-	{
-		while (m_max_size <= m_size)
-		{
-			if ((m_mapping.end() != existing) && (m_elements.begin() == *existing))
-				existing = m_mapping.erase(existing);
-			else
-				m_mapping.erase(m_elements.begin());
-			m_elements.erase(m_elements.begin());
-			--m_size;
-		}
-	}
-
-	size_type           m_max_size;
-	size_type           m_size;
-	mutable value_list  m_elements;
-	iterator_set        m_mapping;
+	bool operator()(CharT const *a, std::basic_string_view<CharT, Traits> const &b) const
+	{ return a < b; }
 };
 
-template <typename Key, typename T, typename Compare, class Allocator>
-void swap(lru_cache_map<Key, T, Compare, Allocator> &lhs, lru_cache_map<Key, T, Compare, Allocator> &rhs)
+template <typename CharT, typename Traits = std::char_traits<CharT> >
+struct transparent_string_hash : protected std::hash<std::basic_string_view<CharT, Traits> >
 {
-	lhs.swap(rhs);
-}
+	using is_transparent = void;
+
+	using std::hash<std::basic_string_view<CharT, Traits> >::operator();
+
+	template <typename Alloc>
+	std::size_t operator()(std::basic_string<CharT, Traits, Alloc> const &a) const
+	{ return std::hash<std::basic_string_view<CharT, Traits> >::operator()(a); }
+
+	std::size_t operator()(CharT const *a) const
+	{ return std::hash<std::basic_string_view<CharT, Traits> >::operator()(a); }
+};
+
+template <typename Key, typename T, typename Allocator = std::allocator<std::pair<Key const, T> > >
+using transparent_string_map = std::map<Key, T, transparent_string_less<typename Key::value_type, typename Key::traits_type>, Allocator>;
+
+template <typename Key, typename T, typename Allocator = std::allocator<std::pair<Key const, T> > >
+using transparent_string_unordered_map = std::unordered_map<Key, T, transparent_string_hash<typename Key::value_type, typename Key::traits_type>, transparent_string_equal<typename Key::value_type, typename Key::traits_type>, Allocator>;
 
 
 template <typename T, std::size_t N, bool WriteWrap = false, bool ReadWrap = WriteWrap>
@@ -912,19 +552,35 @@ private:
 };
 
 
-template <typename E>
-using enable_enum_t = typename std::enable_if_t<std::is_enum<E>::value, typename std::underlying_type_t<E> >;
+// extract a string_view from an ovectorstream buffer
+template <typename CharT, typename Traits, typename Allocator>
+std::basic_string_view<CharT, Traits> buf_to_string_view(basic_ovectorstream<CharT, Traits, Allocator> &stream)
+{
+	// this works on the assumption that the value tellp returns is the same both before and after vec is called
+	return std::basic_string_view<CharT, Traits>(&stream.vec()[0], stream.tellp());
+}
+
+
+// For declaring an array of the same dimensions as another array (including multi-dimensional arrays)
+template <typename T, typename U> struct equivalent_array_or_type { typedef T type; };
+template <typename T, typename U, std::size_t N> struct equivalent_array_or_type<T, U[N]> { typedef typename equivalent_array_or_type<T, U>::type type[N]; };
+template <typename T, typename U> using equivalent_array_or_type_t = typename equivalent_array_or_type<T, U>::type;
+template <typename T, typename U> struct equivalent_array { };
+template <typename T, typename U, std::size_t N> struct equivalent_array<T, U[N]> { typedef equivalent_array_or_type_t<T, U> type[N]; };
+template <typename T, typename U> using equivalent_array_t = typename equivalent_array<T, U>::type;
+#define EQUIVALENT_ARRAY(a, T) util::equivalent_array_t<T, std::remove_reference_t<decltype(a)> >
+
 
 // template function which takes a strongly typed enumerator and returns its value as a compile-time constant
 template <typename E>
-constexpr enable_enum_t<E> underlying_value(E e) noexcept
+constexpr std::underlying_type_t<E> underlying_value(E e) noexcept requires std::is_enum_v<E>
 {
 	return static_cast<typename std::underlying_type_t<E> >(e);
 }
 
 // template function which takes an integral value and returns its representation as enumerator (even strongly typed)
 template <typename E , typename T>
-constexpr typename std::enable_if_t<std::is_enum<E>::value && std::is_integral<T>::value, E> enum_value(T value) noexcept
+constexpr E enum_value(T value) noexcept requires (std::is_enum_v<E> && std::is_integral_v<T>)
 {
 	return static_cast<E>(value);
 }
@@ -977,20 +633,6 @@ template <typename T, typename U, typename V> constexpr T BIT(T x, U n, V w)
 }
 
 
-/// \brief Extract and right-align a single bit field
-///
-/// This overload is used to terminate a recursive template
-/// implementation.  It is functionally equivalent to the BIT
-/// function for extracting a single bit.
-///
-/// \param [in] val The integer to extract the bit from.
-/// \param [in] b The bit to extract, where zero is the least
-///   significant bit of the input.
-/// \return The specified bit of the input extracted to the least
-///   significant position.
-template <typename T, typename U> constexpr T bitswap(T val, U b) noexcept { return BIT(val, b) << 0U; }
-
-
 /// \brief Extract bits in arbitrary order
 ///
 /// Extracts bits from an integer.  Specify the bits in the order they
@@ -1008,7 +650,10 @@ template <typename T, typename U> constexpr T bitswap(T val, U b) noexcept { ret
 /// \return The extracted bits packed into a right-aligned field.
 template <typename T, typename U, typename... V> constexpr T bitswap(T val, U b, V... c) noexcept
 {
-	return (BIT(val, b) << sizeof...(c)) | bitswap(val, c...);
+	if constexpr (sizeof...(c) > 0U)
+		return (BIT(val, b) << sizeof...(c)) | bitswap(val, c...);
+	else
+		return BIT(val, b);
 }
 
 
@@ -1032,7 +677,7 @@ template <typename T, typename U, typename... V> constexpr T bitswap(T val, U b,
 ///   bit of the input.  Specify bits in the order they should appear in
 ///   the output field, from most significant to least significant.
 /// \return The extracted bits packed into a right-aligned field.
-template <unsigned B, typename T, typename... U> T bitswap(T val, U... b) noexcept
+template <unsigned B, typename T, typename... U> constexpr T bitswap(T val, U... b) noexcept
 {
 	static_assert(sizeof...(b) == B, "wrong number of bits");
 	static_assert((sizeof(std::remove_reference_t<T>) * 8) >= B, "return type too small for result");
@@ -1042,26 +687,27 @@ template <unsigned B, typename T, typename... U> T bitswap(T val, U... b) noexce
 /// \}
 
 
+// utility function for sign-extending values of arbitrary width
+template <typename T, typename U>
+constexpr std::make_signed_t<T> sext(T value, U width) noexcept
+{
+	return std::make_signed_t<T>(value << (8 * sizeof(value) - width)) >> (8 * sizeof(value) - width);
+}
+
+
 // constexpr absolute value of an integer
 template <typename T>
-constexpr std::enable_if_t<std::is_signed<T>::value, T> iabs(T v) noexcept
+constexpr T iabs(T v) noexcept requires std::is_signed_v<T>
 {
 	return (v < T(0)) ? -v : v;
 }
 
 
-// returns greatest common divisor of a and b using the Euclidean algorithm
-template <typename M, typename N>
-constexpr std::common_type_t<M, N> euclid_gcd(M a, N b)
-{
-	return b ? euclid_gcd(b, a % b) : a;
-}
-
 // reduce a fraction
 template <typename M, typename N>
 inline void reduce_fraction(M &num, N &den)
 {
-	auto const div(euclid_gcd(num, den));
+	auto const div(std::gcd(num, den));
 	if (div)
 	{
 		num /= div;
@@ -1069,6 +715,6 @@ inline void reduce_fraction(M &num, N &den)
 	}
 }
 
-}; // namespace util
+} // namespace util
 
 #endif // MAME_UTIL_CORETMPL_H

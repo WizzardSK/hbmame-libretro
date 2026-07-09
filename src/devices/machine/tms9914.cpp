@@ -7,7 +7,6 @@
     Texas Instruments TMS9914(A) GPIB Controller
 
     TODO:
-    - A few minor FSMs only used in non-controller devices (SR,PP)
     - A few interface commands
     - A few auxiliary commands
 
@@ -21,11 +20,13 @@
 
 // Debugging
 #define LOG_NOISY_MASK  (LOG_GENERAL << 1)
-#define LOG_NOISY(...)  LOGMASKED(LOG_NOISY_MASK, __VA_ARGS__)
 #define LOG_REG_MASK    (LOG_NOISY_MASK << 1)
-#define LOG_REG(...)    LOGMASKED(LOG_REG_MASK, __VA_ARGS__)
 #define LOG_INT_MASK    (LOG_REG_MASK << 1)
+
+#define LOG_NOISY(...)  LOGMASKED(LOG_NOISY_MASK, __VA_ARGS__)
+#define LOG_REG(...)    LOGMASKED(LOG_REG_MASK, __VA_ARGS__)
 #define LOG_INT(...)    LOGMASKED(LOG_INT_MASK, __VA_ARGS__)
+
 //#define VERBOSE (LOG_GENERAL)
 #include "logmacro.h"
 
@@ -36,12 +37,12 @@ namespace {
 		return (T)1U << n;
 	}
 
-	template<typename T> void BIT_CLR(T& w , unsigned n)
+	template<typename T> void BIT_CLR(T& w, unsigned n)
 	{
 		w &= ~BIT_MASK<T>(n);
 	}
 
-	template<typename T> void BIT_SET(T& w , unsigned n)
+	template<typename T> void BIT_SET(T& w, unsigned n)
 	{
 		w |= BIT_MASK<T>(n);
 	}
@@ -77,8 +78,8 @@ constexpr uint8_t  REG_INT0_INT_MASK = 0x3f;    // Mask of actual interrupt bits
 
 // Interrupt status/mask 1
 constexpr unsigned REG_INT1_IFC_BIT = 0;    // IFC received
-constexpr unsigned REG_INT1_MA_BIT = 1;     // My address received
-constexpr unsigned REG_INT1_SRQ_BIT = 2;    // SRQ asserted
+constexpr unsigned REG_INT1_SRQ_BIT = 1;    // SRQ asserted
+constexpr unsigned REG_INT1_MA_BIT = 2;     // My address received
 constexpr unsigned REG_INT1_DCAS_BIT = 3;   // DCAS state active
 constexpr unsigned REG_INT1_APT_BIT = 4;    // Address Pass-Through
 constexpr unsigned REG_INT1_UNC_BIT = 5;    // Unrecognized command
@@ -173,69 +174,119 @@ constexpr uint8_t IFCMD_UNT        = 0x5f;  // Untalk
 DEFINE_DEVICE_TYPE(TMS9914, tms9914_device, "tms9914", "TMS9914 GPIB Controller")
 
 // Constructors
-tms9914_device::tms9914_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig , TMS9914 , tag , owner , clock),
-	  m_dio_read_func(*this),
-	  m_dio_write_func(*this),
-	  m_signal_wr_fns(*this),
-	  m_int_write_func(*this),
-	  m_accrq_write_func(*this)
+tms9914_device::tms9914_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
+	device_t(mconfig, TMS9914, tag, owner, clock),
+	m_dio_read_func(*this, 0xff),
+	m_dio_write_func(*this),
+	m_signal_wr_fns(*this),
+	m_int_write_func(*this),
+	m_accrq_write_func(*this),
+	m_int_line{false},
+	m_accrq_line{false},
+	m_dio{0},
+	m_signals{false},
+	m_ext_signals{false},
+	m_no_reflection{false},
+	m_ext_state_change{false},
+	m_reg_int0_status{0},
+	m_reg_int0_mask{0},
+	m_reg_int1_status{0},
+	m_reg_int1_mask{0},
+	m_reg_address{0},
+	m_reg_serial_p{0},
+	m_reg_2nd_serial_p{0},
+	m_reg_parallel_p{0},
+	m_reg_2nd_parallel_p{0},
+	m_reg_di{0},
+	m_reg_do{0},
+	m_reg_ulpa{false},
+	m_swrst{false},
+	m_hdfa{false},
+	m_hdfe{false},
+	m_rtl{false},
+	m_gts{false},
+	m_rpp{false},
+	m_sic{false},
+	m_sre{false},
+	m_dai{false},
+	m_pts{false},
+	m_stdl{false},
+	m_shdw{false},
+	m_vstdl{false},
+	m_rsvd2{false},
+	m_ah_state{FSM_AH_AIDS},
+	m_ah_adhs{false},
+	m_ah_anhs{false},
+	m_ah_aehs{false},
+	m_sh_state{FSM_SH_SIDS},
+	m_sh_shfs{false},
+	m_sh_vsts{false},
+	m_t_state{FSM_T_TIDS},
+	m_t_tpas{false},
+	m_t_spms{false},
+	m_t_eoi_state{FSM_T_ENIS},
+	m_l_state{FSM_L_LIDS},
+	m_l_lpas{false},
+	m_sr_state{FSM_SR_NPRS},
+	m_rl_state{FSM_RL_LOCS},
+	m_pp_ppas{false},
+	m_c_state{FSM_C_CIDS},
+	m_next_eoi{false}
 {
 	// Silence compiler complaints about unused variables
-	(void)REG_INT0_RLC_BIT;
-	(void)REG_INT0_SPAS_BIT;
 	(void)REG_INT1_IFC_BIT;
-	(void)REG_INT1_SRQ_BIT;
 	(void)REG_INT1_GET_BIT;
-	(void)REG_SERIAL_P_MASK;
-	(void)REG_SERIAL_P_RSV1_BIT;
 }
 
 // Signal inputs
-WRITE_LINE_MEMBER(tms9914_device::eoi_w)
+void tms9914_device::eoi_w(int state)
 {
-	set_ext_signal(IEEE_488_EOI , state);
+	set_ext_signal(IEEE_488_EOI, state);
 }
 
-WRITE_LINE_MEMBER(tms9914_device::dav_w)
+void tms9914_device::dav_w(int state)
 {
-	set_ext_signal(IEEE_488_DAV , state);
+	set_ext_signal(IEEE_488_DAV, state);
 }
 
-WRITE_LINE_MEMBER(tms9914_device::nrfd_w)
+void tms9914_device::nrfd_w(int state)
 {
-	set_ext_signal(IEEE_488_NRFD , state);
+	set_ext_signal(IEEE_488_NRFD, state);
 }
 
-WRITE_LINE_MEMBER(tms9914_device::ndac_w)
+void tms9914_device::ndac_w(int state)
 {
-	set_ext_signal(IEEE_488_NDAC , state);
+	set_ext_signal(IEEE_488_NDAC, state);
 }
 
-WRITE_LINE_MEMBER(tms9914_device::ifc_w)
+void tms9914_device::ifc_w(int state)
 {
-	set_ext_signal(IEEE_488_IFC , state);
+	set_ext_signal(IEEE_488_IFC, state);
 }
 
-WRITE_LINE_MEMBER(tms9914_device::srq_w)
+void tms9914_device::srq_w(int state)
 {
-	set_ext_signal(IEEE_488_SRQ , state);
+	bool prev_srq = get_signal(IEEE_488_SRQ);
+	set_ext_signal(IEEE_488_SRQ, state);
+	if (cont_r() && !prev_srq && get_signal(IEEE_488_SRQ)) {
+		set_int1_bit(REG_INT1_SRQ_BIT);
+	}
 }
 
-WRITE_LINE_MEMBER(tms9914_device::atn_w)
+void tms9914_device::atn_w(int state)
 {
-	set_ext_signal(IEEE_488_ATN , state);
+	set_ext_signal(IEEE_488_ATN, state);
 }
 
-WRITE_LINE_MEMBER(tms9914_device::ren_w)
+void tms9914_device::ren_w(int state)
 {
-	set_ext_signal(IEEE_488_REN , state);
+	set_ext_signal(IEEE_488_REN, state);
 }
 
 // Register I/O
 void tms9914_device::write(offs_t offset, uint8_t data)
 {
-	LOG_REG("W %u=%02x\n" , offset , data);
+	LOG_REG("W %u=%02x\n", offset, data);
 
 	switch (offset) {
 	case REG_W_INT_MASK0:
@@ -249,29 +300,31 @@ void tms9914_device::write(offs_t offset, uint8_t data)
 		break;
 
 	case REG_W_AUX_CMD:
-		do_aux_cmd(data & REG_AUXCMD_CMD_MASK , BIT(data , REG_AUXCMD_CS_BIT));
+		do_aux_cmd(data & REG_AUXCMD_CMD_MASK, BIT(data, REG_AUXCMD_CS_BIT));
 		break;
 
 	case REG_W_ADDRESS:
 		{
 			uint8_t diff = m_reg_address ^ data;
 			m_reg_address = data;
-			if (BIT(diff , REG_ADDR_DAT_BIT) || BIT(diff , REG_ADDR_DAL_BIT)) {
+			if (BIT(diff, REG_ADDR_DAT_BIT) || BIT(diff, REG_ADDR_DAL_BIT)) {
 				update_fsm();
 			}
 		}
 		break;
 
 	case REG_W_SERIAL_P:
-		m_reg_serial_p = data;
-		// TODO: update FSM?
+		{
+			uint8_t diff = m_reg_2nd_serial_p ^ data;
+			m_reg_2nd_serial_p = data;
+			if (BIT(diff, REG_SERIAL_P_RSV1_BIT)) {
+				update_fsm();
+			}
+		}
 		break;
 
 	case REG_W_PARALLEL_P:
 		m_reg_2nd_parallel_p = data;
-		if (!m_pp_ppas) {
-			m_reg_parallel_p = data;
-		}
 		break;
 
 	case REG_W_DO:
@@ -291,7 +344,7 @@ void tms9914_device::write(offs_t offset, uint8_t data)
 
 		set_accrq(false);
 		if (!m_swrst) {
-			BIT_CLR(m_reg_int0_status , REG_INT0_BO_BIT);
+			BIT_CLR(m_reg_int0_status, REG_INT0_BO_BIT);
 			update_int();
 			if (m_t_eoi_state == FSM_T_ENRS) {
 				m_t_eoi_state = FSM_T_ERAS;
@@ -310,7 +363,7 @@ void tms9914_device::write(offs_t offset, uint8_t data)
 		break;
 
 	default:
-		LOG("Write to unmapped reg %u\n" , offset);
+		LOG("Write to unmapped reg %u\n", offset);
 		break;
 	}
 }
@@ -322,69 +375,73 @@ uint8_t tms9914_device::read(offs_t offset)
 	switch (offset) {
 	case REG_R_INT_STAT0:
 		res = m_reg_int0_status;
-		m_reg_int0_status = 0;
-		update_int();
+		if (!machine().side_effects_disabled()) {
+			m_reg_int0_status = 0;
+			update_int();
+		}
 		break;
 
 	case REG_R_INT_STAT1:
 		res = m_reg_int1_status;
-		m_reg_int1_status = 0;
-		update_int();
+		if (!machine().side_effects_disabled()) {
+			m_reg_int1_status = 0;
+			update_int();
+		}
 		break;
 
 	case REG_R_ADDR_STAT:
 		res = 0;
 		if (m_reg_ulpa) {
-			BIT_SET(res , REG_AS_ULPA_BIT);
+			BIT_SET(res, REG_AS_ULPA_BIT);
 		}
 		if (m_t_state != FSM_T_TIDS) {
-			BIT_SET(res , REG_AS_TADS_BIT);
+			BIT_SET(res, REG_AS_TADS_BIT);
 		}
 		if (m_l_state != FSM_L_LIDS) {
-			BIT_SET(res , REG_AS_LADS_BIT);
+			BIT_SET(res, REG_AS_LADS_BIT);
 		}
 		if (m_t_tpas) {
-			BIT_SET(res , REG_AS_TPAS_BIT);
+			BIT_SET(res, REG_AS_TPAS_BIT);
 		}
 		if (m_l_lpas) {
-			BIT_SET(res , REG_AS_LPAS_BIT);
+			BIT_SET(res, REG_AS_LPAS_BIT);
 		}
 		if (get_signal(IEEE_488_ATN)) {
-			BIT_SET(res , REG_AS_ATN_BIT);
+			BIT_SET(res, REG_AS_ATN_BIT);
 		}
 		if (m_rl_state == FSM_RL_RWLS || m_rl_state == FSM_RL_LWLS) {
-			BIT_SET(res , REG_AS_LLO_BIT);
+			BIT_SET(res, REG_AS_LLO_BIT);
 		}
 		if (m_rl_state == FSM_RL_REMS || m_rl_state == FSM_RL_RWLS) {
-			BIT_SET(res , REG_AS_REM_BIT);
+			BIT_SET(res, REG_AS_REM_BIT);
 		}
 		break;
 
 	case REG_R_BUS_STAT:
 		res = 0;
 		if (get_signal(IEEE_488_REN)) {
-			BIT_SET(res , REG_BS_REN_BIT);
+			BIT_SET(res, REG_BS_REN_BIT);
 		}
 		if (get_ifcin()) {
-			BIT_SET(res , REG_BS_IFC_BIT);
+			BIT_SET(res, REG_BS_IFC_BIT);
 		}
 		if (get_signal(IEEE_488_SRQ)) {
-			BIT_SET(res , REG_BS_SRQ_BIT);
+			BIT_SET(res, REG_BS_SRQ_BIT);
 		}
 		if (get_signal(IEEE_488_EOI)) {
-			BIT_SET(res , REG_BS_EOI_BIT);
+			BIT_SET(res, REG_BS_EOI_BIT);
 		}
 		if (get_signal(IEEE_488_NRFD)) {
-			BIT_SET(res , REG_BS_NRFD_BIT);
+			BIT_SET(res, REG_BS_NRFD_BIT);
 		}
 		if (get_signal(IEEE_488_NDAC)) {
-			BIT_SET(res , REG_BS_NDAC_BIT);
+			BIT_SET(res, REG_BS_NDAC_BIT);
 		}
 		if (get_signal(IEEE_488_DAV)) {
-			BIT_SET(res , REG_BS_DAV_BIT);
+			BIT_SET(res, REG_BS_DAV_BIT);
 		}
 		if (get_signal(IEEE_488_ATN)) {
-			BIT_SET(res , REG_BS_ATN_BIT);
+			BIT_SET(res, REG_BS_ATN_BIT);
 		}
 		break;
 
@@ -394,32 +451,38 @@ uint8_t tms9914_device::read(offs_t offset)
 
 	case REG_R_DI:
 		res = m_reg_di;
-		BIT_CLR(m_reg_int0_status , REG_INT0_BI_BIT);
-		update_int();
-		set_accrq(false);
-		if (!m_hdfa && m_ah_anhs) {
-			m_ah_anhs = false;
-			update_fsm();
+		if (!machine().side_effects_disabled()) {
+			BIT_CLR(m_reg_int0_status, REG_INT0_BI_BIT);
+			update_int();
+			set_accrq(false);
+			if (!m_hdfa && m_ah_anhs) {
+				m_ah_anhs = false;
+				update_fsm();
+			}
+			// TODO: ACRS -> ANRS ?
 		}
-		// TODO: ACRS -> ANRS ?
 		break;
 
 	default:
-		LOG("Read from unmapped reg %u\n" , offset);
+		if (!machine().side_effects_disabled()) {
+			LOG("Read from unmapped reg %u\n", offset);
+		}
 		res = 0;
 		break;
 	}
 
-	LOG_REG("R %u=%02x\n" , offset , res);
+	if (!machine().side_effects_disabled()) {
+		LOG_REG("R %u=%02x\n", offset, res);
+	}
 	return res;
 }
 
-READ_LINE_MEMBER(tms9914_device::cont_r)
+int tms9914_device::cont_r()
 {
-	return m_c_state != FSM_C_CIDS && m_c_state != FSM_C_CADS;
+	return (m_c_state != FSM_C_CIDS) && (m_c_state != FSM_C_CADS);
 }
 
-// device-level overrides
+// device_t implementation
 void tms9914_device::device_start()
 {
 	save_item(NAME(m_int_line));
@@ -435,6 +498,7 @@ void tms9914_device::device_start()
 	save_item(NAME(m_reg_int1_mask));
 	save_item(NAME(m_reg_address));
 	save_item(NAME(m_reg_serial_p));
+	save_item(NAME(m_reg_2nd_serial_p));
 	save_item(NAME(m_reg_parallel_p));
 	save_item(NAME(m_reg_2nd_parallel_p));
 	save_item(NAME(m_reg_di));
@@ -453,6 +517,7 @@ void tms9914_device::device_start()
 	save_item(NAME(m_stdl));
 	save_item(NAME(m_shdw));
 	save_item(NAME(m_vstdl));
+	save_item(NAME(m_rsvd2));
 	save_item(NAME(m_ah_state));
 	save_item(NAME(m_ah_adhs));
 	save_item(NAME(m_ah_anhs));
@@ -471,15 +536,9 @@ void tms9914_device::device_start()
 	save_item(NAME(m_c_state));
 	save_item(NAME(m_next_eoi));
 
-	m_dio_read_func.resolve_safe(0xff);
-	m_dio_write_func.resolve_safe();
-	m_signal_wr_fns.resolve_all_safe();
-	m_int_write_func.resolve_safe();
-	m_accrq_write_func.resolve_safe();
-
-	m_sh_dly_timer = timer_alloc(SH_DELAY_TMR_ID);
-	m_ah_dly_timer = timer_alloc(AH_DELAY_TMR_ID);
-	m_c_dly_timer = timer_alloc(C_DELAY_TMR_ID);
+	m_sh_dly_timer = timer_alloc(FUNC(tms9914_device::fsm_tick), this);
+	m_ah_dly_timer = timer_alloc(FUNC(tms9914_device::fsm_tick), this);
+	m_c_dly_timer = timer_alloc(FUNC(tms9914_device::fsm_tick), this);
 }
 
 void tms9914_device::device_reset()
@@ -494,13 +553,17 @@ void tms9914_device::device_reset()
 	m_sic = false;
 	m_sre = false;
 	m_dai = false;
-	m_pts = false;
 	m_stdl = false;
 	m_shdw = false;
 	m_vstdl = false;
+	m_rsvd2 = false;
+	m_int_line = true;
 	m_accrq_line = true;    // Ensure change is propagated
 
+	m_reg_int0_status = 0;
+	m_reg_int1_status = 0;
 	m_reg_serial_p = 0;
+	m_reg_2nd_serial_p = 0;
 	m_reg_parallel_p = 0;
 	m_reg_2nd_parallel_p = 0;
 
@@ -511,9 +574,8 @@ void tms9914_device::device_reset()
 	update_ren();
 }
 
-void tms9914_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(tms9914_device::fsm_tick)
 {
-	LOG_NOISY("tmr %d\n" , id);
 	update_fsm();
 }
 
@@ -525,7 +587,7 @@ uint8_t tms9914_device::get_dio()
 void tms9914_device::set_dio(uint8_t data)
 {
 	if (data != m_dio) {
-		LOG_NOISY("DIO=%02x\n" , data);
+		LOG_NOISY("DIO=%02x\n", data);
 		m_dio = data;
 		m_dio_write_func(~data);
 	}
@@ -533,7 +595,7 @@ void tms9914_device::set_dio(uint8_t data)
 
 bool tms9914_device::get_signal(ieee_488_signal_t signal) const
 {
-	return m_ext_signals[ signal ];
+	return m_ext_signals[signal];
 }
 
 bool tms9914_device::get_ifcin() const
@@ -541,38 +603,38 @@ bool tms9914_device::get_ifcin() const
 	return get_signal(IEEE_488_IFC) && !m_sic;
 }
 
-void tms9914_device::set_ext_signal(ieee_488_signal_t signal , int state)
+void tms9914_device::set_ext_signal(ieee_488_signal_t signal, int state)
 {
 	state = !state;
-	if (m_ext_signals[ signal ] != state) {
-		m_ext_signals[ signal ] = state;
-		LOG_NOISY("EXT EOI %d DAV %d NRFD %d NDAC %d IFC %d SRQ %d ATN %d REN %d\n" ,
-				  m_ext_signals[ IEEE_488_EOI ] ,
-				  m_ext_signals[ IEEE_488_DAV ] ,
-				  m_ext_signals[ IEEE_488_NRFD ] ,
-				  m_ext_signals[ IEEE_488_NDAC ] ,
-				  m_ext_signals[ IEEE_488_IFC ] ,
-				  m_ext_signals[ IEEE_488_SRQ ] ,
-				  m_ext_signals[ IEEE_488_ATN ] ,
-				  m_ext_signals[ IEEE_488_REN ]);
+	if (m_ext_signals[signal] != state) {
+		m_ext_signals[signal] = state;
+		LOG_NOISY("EXT EOI %d DAV %d NRFD %d NDAC %d IFC %d SRQ %d ATN %d REN %d\n",
+				  m_ext_signals[IEEE_488_EOI],
+				  m_ext_signals[IEEE_488_DAV],
+				  m_ext_signals[IEEE_488_NRFD],
+				  m_ext_signals[IEEE_488_NDAC],
+				  m_ext_signals[IEEE_488_IFC],
+				  m_ext_signals[IEEE_488_SRQ],
+				  m_ext_signals[IEEE_488_ATN],
+				  m_ext_signals[IEEE_488_REN]);
 		update_fsm();
 	}
 }
 
-void tms9914_device::set_signal(ieee_488_signal_t signal , bool state)
+void tms9914_device::set_signal(ieee_488_signal_t signal, bool state)
 {
-	if (state != m_signals[ signal ]) {
-		m_signals[ signal ] = state;
-		LOG_NOISY("INT EOI %d DAV %d NRFD %d NDAC %d IFC %d SRQ %d ATN %d REN %d\n" ,
-				  m_signals[ IEEE_488_EOI ] ,
-				  m_signals[ IEEE_488_DAV ] ,
-				  m_signals[ IEEE_488_NRFD ] ,
-				  m_signals[ IEEE_488_NDAC ] ,
-				  m_signals[ IEEE_488_IFC ] ,
-				  m_signals[ IEEE_488_SRQ ] ,
-				  m_signals[ IEEE_488_ATN ] ,
-				  m_signals[ IEEE_488_REN ]);
-		m_signal_wr_fns[ signal ](!state);
+	if (state != m_signals[signal]) {
+		m_signals[signal] = state;
+		LOG_NOISY("INT EOI %d DAV %d NRFD %d NDAC %d IFC %d SRQ %d ATN %d REN %d\n",
+				  m_signals[IEEE_488_EOI],
+				  m_signals[IEEE_488_DAV],
+				  m_signals[IEEE_488_NRFD],
+				  m_signals[IEEE_488_NDAC],
+				  m_signals[IEEE_488_IFC],
+				  m_signals[IEEE_488_SRQ],
+				  m_signals[IEEE_488_ATN],
+				  m_signals[IEEE_488_REN]);
+		m_signal_wr_fns[signal](!state);
 	}
 }
 
@@ -606,12 +668,12 @@ void tms9914_device::do_swrst()
 
 bool tms9914_device::listener_reset() const
 {
-	return m_swrst || BIT(m_reg_address , REG_ADDR_DAL_BIT) || m_sic || get_ifcin();
+	return m_swrst || BIT(m_reg_address, REG_ADDR_DAL_BIT) || m_sic || get_ifcin();
 }
 
 bool tms9914_device::talker_reset() const
 {
-	return m_swrst || BIT(m_reg_address , REG_ADDR_DAT_BIT) || m_sic || get_ifcin();
+	return m_swrst || BIT(m_reg_address, REG_ADDR_DAT_BIT) || m_sic || get_ifcin();
 }
 
 bool tms9914_device::controller_reset() const
@@ -636,9 +698,9 @@ void tms9914_device::update_fsm()
 	int prev_state;
 	// Loop until all changes settle
 	while (changed) {
-		LOG_NOISY("SH %d SHFS %d AH %d T %d TPAS %d L %d LPAS %d PP %d C %d\n" ,
-				  m_sh_state , m_sh_shfs , m_ah_state , m_t_state , m_t_tpas ,
-				  m_l_state , m_l_lpas , m_pp_ppas , m_c_state);
+		LOG_NOISY("SH %d SHFS %d AH %d T %d TPAS %d L %d LPAS %d PP %d C %d\n",
+				  m_sh_state, m_sh_shfs, m_ah_state, m_t_state, m_t_tpas,
+				  m_l_state, m_l_lpas, m_pp_ppas, m_c_state);
 		changed = m_ext_state_change;
 		m_ext_state_change = false;
 
@@ -669,7 +731,7 @@ void tms9914_device::update_fsm()
 					m_sh_state = FSM_SH_SDYS;
 					unsigned clocks = m_sh_vsts ? 4 : (m_stdl ? 8 : 12);
 					m_sh_dly_timer->adjust(clocks_to_attotime(clocks));
-					LOG_NOISY("SH DLY %u\n" , clocks);
+					LOG_NOISY("SH DLY %u\n", clocks);
 				}
 				break;
 
@@ -717,14 +779,14 @@ void tms9914_device::update_fsm()
 							else if (tmp >= 0x60 && tmp <= 0x7f)
 								snprintf(cmd, 16, "MSA%d", tmp & 0x1f);
 						}
-						LOG("%.6f TX %s %02X/%d %s\n" , machine().time().as_double() , m_signals[IEEE_488_ATN] ? "C" : "D", m_dio , m_signals[ IEEE_488_EOI ], cmd);
+						LOG("%.6f TX %s %02X/%d %s\n", machine().time().as_double(), m_signals[IEEE_488_ATN] ? "C" : "D", m_dio, m_signals[IEEE_488_EOI], cmd);
 					}
 					m_sh_state = FSM_SH_SGNS;
 				}
 				break;
 
 			default:
-				LOG("Invalid SH state %d\n" , m_sh_state);
+				LOG("Invalid SH state %d\n", m_sh_state);
 				m_sh_state = FSM_SH_SIDS;
 			}
 		}
@@ -735,22 +797,34 @@ void tms9914_device::update_fsm()
 				// BO interrupt is raised when SGNS state is entered
 				set_int0_bit(REG_INT0_BO_BIT);
 			}
+			if (prev_state == FSM_SH_STRS && m_t_state == FSM_T_SPAS &&
+				(m_sr_state == FSM_SR_APRS1 || m_sr_state == FSM_SR_APRS2)) {
+				set_int0_bit(REG_INT0_SPAS_BIT);
+			}
 		}
 		// SH outputs
 		// EOI is controlled by SH & C FSMs
 		// DIO is controlled by SH & PP FSMs
 		bool eoi_signal = false;
 		uint8_t dio_byte = 0;
-		set_signal(IEEE_488_DAV , m_sh_state == FSM_SH_STRS);
+		set_signal(IEEE_488_DAV, m_sh_state == FSM_SH_STRS);
 		if (sh_active()) {
-			dio_byte = m_t_state == FSM_T_SPAS ? m_reg_serial_p : m_reg_do;
+			if (m_t_state == FSM_T_SPAS) {
+				dio_byte = m_reg_serial_p & REG_SERIAL_P_MASK;
+				if (m_sr_state == FSM_SR_APRS1 || m_sr_state == FSM_SR_APRS2) {
+					// Set RQS
+					BIT_SET(dio_byte, 6);
+				}
+			} else {
+				dio_byte = m_reg_do;
+			}
 			eoi_signal = m_t_eoi_state == FSM_T_ERAS || m_t_eoi_state == FSM_T_ENAS;
 		}
 
 		// AH FSM
 		prev_state = m_ah_state;
 		bool ah_reset = m_swrst ||
-			(get_signal(IEEE_488_ATN) && m_c_state != FSM_C_CIDS && m_c_state != FSM_C_CADS) ||
+			(get_signal(IEEE_488_ATN) && cont_r()) ||
 			(!get_signal(IEEE_488_ATN) && m_l_state != FSM_L_LADS && m_l_state != FSM_L_LACS);
 		if (ah_reset) {
 			m_ah_state = FSM_AH_AIDS;
@@ -797,7 +871,7 @@ void tms9914_device::update_fsm()
 						if_cmd_received(if_cmd & IFCMD_MASK);
 					} else {
 						// Got a DAB
-						dab_received(get_dio() , get_signal(IEEE_488_EOI));
+						dab_received(get_dio(), get_signal(IEEE_488_EOI));
 					}
 				}
 				break;
@@ -817,7 +891,7 @@ void tms9914_device::update_fsm()
 				break;
 
 			default:
-				LOG("Invalid AH state %d\n" , m_ah_state);
+				LOG("Invalid AH state %d\n", m_ah_state);
 				m_ah_state = FSM_AH_AIDS;
 			}
 		}
@@ -825,8 +899,8 @@ void tms9914_device::update_fsm()
 			changed = true;
 		}
 		// AH outputs
-		set_signal(IEEE_488_NRFD , m_ah_state == FSM_AH_ANRS || m_ah_state == FSM_AH_ACDS1 || m_ah_state == FSM_AH_ACDS2 || m_ah_state == FSM_AH_AWNS);
-		set_signal(IEEE_488_NDAC , m_ah_state == FSM_AH_ANRS || m_ah_state == FSM_AH_ACRS || m_ah_state == FSM_AH_ACDS1 || m_ah_state == FSM_AH_ACDS2);
+		set_signal(IEEE_488_NRFD, m_ah_state == FSM_AH_ANRS || m_ah_state == FSM_AH_ACDS1 || m_ah_state == FSM_AH_ACDS2 || m_ah_state == FSM_AH_AWNS);
+		set_signal(IEEE_488_NDAC, m_ah_state == FSM_AH_ANRS || m_ah_state == FSM_AH_ACRS || m_ah_state == FSM_AH_ACDS1 || m_ah_state == FSM_AH_ACDS2);
 
 		// T FSM
 		prev_state = m_t_state;
@@ -841,6 +915,9 @@ void tms9914_device::update_fsm()
 				if (!get_signal(IEEE_488_ATN)) {
 					if (m_t_spms) {
 						m_t_state = FSM_T_SPAS;
+						// When entering SPAS, serial poll register is copied into the
+						// register that is actually output (as it's double buffered)
+						m_reg_serial_p = m_reg_2nd_serial_p;
 					} else {
 						m_t_state = FSM_T_TACS;
 					}
@@ -855,14 +932,14 @@ void tms9914_device::update_fsm()
 				break;
 
 			default:
-				LOG("Invalid T state %d\n" , m_t_state);
+				LOG("Invalid T state %d\n", m_t_state);
 				m_t_state = FSM_T_TIDS;
 			}
 		}
 		if (m_t_state != prev_state) {
 			changed = true;
 		}
-		if (m_t_spms && (m_swrst || get_ifcin() || (m_c_state != FSM_C_CIDS && m_c_state != FSM_C_CADS))) {
+		if (m_t_spms && (m_swrst || get_ifcin() || cont_r())) {
 			m_t_spms = false;
 			changed = true;
 		}
@@ -890,7 +967,7 @@ void tms9914_device::update_fsm()
 				break;
 
 			default:
-				LOG("Invalid L state %d\n" , m_l_state);
+				LOG("Invalid L state %d\n", m_l_state);
 				m_l_state = FSM_L_LIDS;
 			}
 		}
@@ -899,7 +976,77 @@ void tms9914_device::update_fsm()
 		}
 		// No direct L outputs
 
-		// TODO: SR & PP FSMs
+		// PP FSM
+		if (!m_pp_ppas) {
+			// PPSS
+			if (!m_swrst && get_signal(IEEE_488_ATN) && get_signal(IEEE_488_EOI) && !cont_r()) {
+				m_pp_ppas = true;
+				changed = true;
+				// Copy m_reg_2nd_parallel_p when entering PPAS
+				m_reg_parallel_p = m_reg_2nd_parallel_p;
+			}
+		} else {
+			// PPAS
+			if (m_swrst || !get_signal(IEEE_488_ATN) || !get_signal(IEEE_488_EOI) || cont_r()) {
+				m_pp_ppas = false;
+				changed = true;
+			}
+		}
+		// PP output
+		if (m_pp_ppas) {
+			dio_byte |= m_reg_parallel_p;
+		}
+
+		// SR FSM
+		prev_state = m_sr_state;
+		if (m_swrst) {
+			m_sr_state = FSM_SR_NPRS;
+		} else {
+			switch (m_sr_state) {
+			case FSM_SR_NPRS:
+				if (m_t_state != FSM_T_SPAS &&
+					(BIT(m_reg_2nd_serial_p, REG_SERIAL_P_RSV1_BIT) || m_rsvd2)) {
+					m_sr_state = FSM_SR_SRQS;
+				}
+				break;
+
+			case FSM_SR_SRQS:
+				if (m_t_state == FSM_T_SPAS) {
+					m_sr_state = FSM_SR_APRS1;
+				} else if (!BIT(m_reg_2nd_serial_p, REG_SERIAL_P_RSV1_BIT) && !m_rsvd2) {
+					m_sr_state = FSM_SR_NPRS;
+				}
+				break;
+
+			case FSM_SR_APRS1:
+				if (m_t_state == FSM_T_SPAS && m_sh_state == FSM_SH_STRS) {
+					m_rsvd2 = false;
+				}
+				if (!BIT(m_reg_2nd_serial_p, REG_SERIAL_P_RSV1_BIT) && !m_rsvd2) {
+					m_sr_state = FSM_SR_APRS2;
+				}
+				break;
+
+			case FSM_SR_APRS2:
+				if (m_t_state == FSM_T_SPAS) {
+					if (m_sh_state == FSM_SH_STRS) {
+						m_rsvd2 = false;
+					}
+				} else {
+					m_sr_state = FSM_SR_NPRS;
+				}
+				break;
+
+			default:
+				LOG("Invalid SR state %d\n", m_sr_state);
+				m_sr_state = FSM_SR_NPRS;
+			}
+		}
+		if (m_sr_state != prev_state) {
+			changed = true;
+		}
+		// SR outputs
+		set_signal(IEEE_488_SRQ, m_sr_state == FSM_SR_SRQS);
 
 		// RL FSM
 		if (m_rl_state != FSM_RL_LOCS && (m_swrst || !get_signal(IEEE_488_REN))) {
@@ -917,7 +1064,10 @@ void tms9914_device::update_fsm()
 		} else {
 			switch (m_c_state) {
 			case FSM_C_CIDS:
-				// sic | rqc -> CADS
+				// See also sic & rqc aux commands
+				if (m_sic) {
+					m_c_state = FSM_C_CADS;
+				}
 				break;
 
 			case FSM_C_CADS:
@@ -978,18 +1128,18 @@ void tms9914_device::update_fsm()
 				break;
 
 			default:
-				LOG("Invalid C state %d\n" , m_c_state);
+				LOG("Invalid C state %d\n", m_c_state);
 				m_c_state = FSM_C_CIDS;
 			}
 		}
 		if (m_c_state != prev_state) {
 			changed = true;
 		}
-		set_signal(IEEE_488_ATN , m_c_state == FSM_C_CACS ||
+		set_signal(IEEE_488_ATN, m_c_state == FSM_C_CACS ||
 				   m_c_state == FSM_C_CSWS || m_c_state == FSM_C_CAWS ||
 				   m_c_state == FSM_C_CPWS);
 		eoi_signal = eoi_signal || m_c_state == FSM_C_CPWS;
-		set_signal(IEEE_488_EOI , eoi_signal);
+		set_signal(IEEE_488_EOI, eoi_signal);
 		set_dio(dio_byte);
 	}
 
@@ -999,12 +1149,12 @@ void tms9914_device::update_fsm()
 bool tms9914_device::is_my_address(uint8_t addr)
 {
 	uint8_t diff = (addr ^ m_reg_address) & REG_ADDR_ADDR_MASK;
-	if (BIT(m_reg_address , REG_ADDR_EDPA_BIT)) {
+	if (BIT(m_reg_address, REG_ADDR_EDPA_BIT)) {
 		// If dual-address mode is enabled, difference in LSB of address is ignored
-		BIT_CLR(diff , 0);
+		BIT_CLR(diff, 0);
 	}
 	if (diff == 0) {
-		m_reg_ulpa = BIT(addr , 0);
+		m_reg_ulpa = BIT(addr, 0);
 	}
 	return diff == 0;
 }
@@ -1042,7 +1192,7 @@ void tms9914_device::do_TAF()
 
 void tms9914_device::if_cmd_received(uint8_t if_cmd)
 {
-	LOG("%.6f RX cmd:%02x\n" , machine().time().as_double() , if_cmd);
+	LOG("%.6f RX cmd:%02x\n", machine().time().as_double(), if_cmd);
 
 	bool sahf = false;
 
@@ -1068,7 +1218,7 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 	case IFCMD_SDC:
 		if (m_l_state == FSM_L_LADS) {
 			set_int1_bit(REG_INT1_DCAS_BIT);
-			sahf = BIT(m_reg_int1_mask , REG_INT1_DCAS_BIT);
+			sahf = BIT(m_reg_int1_mask, REG_INT1_DCAS_BIT);
 		}
 		break;
 
@@ -1079,7 +1229,7 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 	case IFCMD_TCT:
 		if (m_t_state == FSM_T_TADS) {
 			set_int1_bit(REG_INT1_UNC_BIT);
-			sahf = BIT(m_reg_int1_mask , REG_INT1_UNC_BIT);
+			sahf = BIT(m_reg_int1_mask, REG_INT1_UNC_BIT);
 		}
 		break;
 
@@ -1093,15 +1243,21 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 
 	case IFCMD_DCL:
 		set_int1_bit(REG_INT1_DCAS_BIT);
-		sahf = BIT(m_reg_int1_mask , REG_INT1_DCAS_BIT);
+		sahf = BIT(m_reg_int1_mask, REG_INT1_DCAS_BIT);
 		break;
 
 	case IFCMD_SPE:
-		// TODO:
+		if (!get_ifcin() && !m_t_spms) {
+			m_t_spms = true;
+			m_ext_state_change = true;
+		}
 		break;
 
 	case IFCMD_SPD:
-		// TODO:
+		if (m_t_spms) {
+			m_t_spms = false;
+			m_ext_state_change = true;
+		}
 		break;
 
 	case IFCMD_UNL:
@@ -1123,18 +1279,18 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 			// ACG
 			if (m_l_state == FSM_L_LADS) {
 				set_int1_bit(REG_INT1_UNC_BIT);
-				sahf = BIT(m_reg_int1_mask , REG_INT1_UNC_BIT);
+				sahf = BIT(m_reg_int1_mask, REG_INT1_UNC_BIT);
 			}
 		} else if ((if_cmd & IFCMD_UCG_MASK) == IFCMD_UCG_VALUE) {
 			// UCG
 			set_int1_bit(REG_INT1_UNC_BIT);
-			sahf = BIT(m_reg_int1_mask , REG_INT1_UNC_BIT);
+			sahf = BIT(m_reg_int1_mask, REG_INT1_UNC_BIT);
 		} else if ((if_cmd & IFCMD_GROUP_MASK) == IFCMD_LAG_VALUE) {
 			// LAG
 			if (is_my_address(if_cmd)) {
 				// MLA
 				m_l_lpas = true;
-				if (!BIT(m_reg_int1_mask , REG_INT1_APT_BIT)) {
+				if (!BIT(m_reg_int1_mask, REG_INT1_APT_BIT)) {
 					// Not using secondary addressing
 					if (!listener_reset()) {
 						if (m_l_state != FSM_L_LADS) {
@@ -1144,7 +1300,7 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 					}
 					if (!m_t_spms) {
 						set_int1_bit(REG_INT1_MA_BIT);
-						sahf = BIT(m_reg_int1_mask , REG_INT1_MA_BIT);
+						sahf = BIT(m_reg_int1_mask, REG_INT1_MA_BIT);
 					}
 				}
 			}
@@ -1153,7 +1309,7 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 			if (is_my_address(if_cmd)) {
 				// MTA
 				m_t_tpas = true;
-				if (!BIT(m_reg_int1_mask , REG_INT1_APT_BIT)) {
+				if (!BIT(m_reg_int1_mask, REG_INT1_APT_BIT)) {
 					// Not using secondary addressing
 					if (!talker_reset()) {
 						if (m_t_state != FSM_T_TADS) {
@@ -1163,7 +1319,7 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 					}
 					if (!m_t_spms) {
 						set_int1_bit(REG_INT1_MA_BIT);
-						sahf = BIT(m_reg_int1_mask , REG_INT1_MA_BIT);
+						sahf = BIT(m_reg_int1_mask, REG_INT1_MA_BIT);
 					}
 				}
 			} else {
@@ -1177,11 +1333,11 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 			// SCG
 			if (m_pts) {
 				set_int1_bit(REG_INT1_UNC_BIT);
-				sahf = BIT(m_reg_int1_mask , REG_INT1_UNC_BIT);
+				sahf = BIT(m_reg_int1_mask, REG_INT1_UNC_BIT);
 				m_pts = false;
 			} else if (m_l_lpas || m_t_tpas) {
 				set_int1_bit(REG_INT1_APT_BIT);
-				sahf = BIT(m_reg_int1_mask , REG_INT1_APT_BIT);
+				sahf = BIT(m_reg_int1_mask, REG_INT1_APT_BIT);
 			}
 		}
 		break;
@@ -1192,9 +1348,9 @@ void tms9914_device::if_cmd_received(uint8_t if_cmd)
 	}
 }
 
-void tms9914_device::dab_received(uint8_t dab , bool eoi)
+void tms9914_device::dab_received(uint8_t dab, bool eoi)
 {
-	LOG("%.6f RX DAB:%02x/%d\n" , machine().time().as_double() , dab , eoi);
+	LOG("%.6f RX DAB:%02x/%d\n", machine().time().as_double(), dab, eoi);
 	m_reg_di = dab;
 	if (!m_shdw) {
 		m_ah_anhs = true;
@@ -1208,7 +1364,7 @@ void tms9914_device::dab_received(uint8_t dab , bool eoi)
 	}
 }
 
-void tms9914_device::do_aux_cmd(unsigned cmd , bool set_bit)
+void tms9914_device::do_aux_cmd(unsigned cmd, bool set_bit)
 {
 	switch (cmd) {
 	case AUXCMD_SWRST:
@@ -1224,7 +1380,7 @@ void tms9914_device::do_aux_cmd(unsigned cmd , bool set_bit)
 	case AUXCMD_DACR:
 		if (m_ah_adhs) {
 			m_ah_adhs = false;
-			if (BIT(m_reg_int1_mask , REG_INT1_APT_BIT)) {
+			if (BIT(m_reg_int1_mask, REG_INT1_APT_BIT)) {
 				// Using secondary addressing
 				if (set_bit && !listener_reset() && m_l_lpas) {
 					do_LAF();
@@ -1387,7 +1543,7 @@ void tms9914_device::do_aux_cmd(unsigned cmd , bool set_bit)
 		break;
 
 	case AUXCMD_STDL:
-		LOG("Unimplemented STDL cmd\n");
+		LOG("Unimplemented STDL=%d cmd\n", set_bit);
 		break;
 
 	case AUXCMD_SHDW:
@@ -1401,22 +1557,25 @@ void tms9914_device::do_aux_cmd(unsigned cmd , bool set_bit)
 		break;
 
 	case AUXCMD_VSTDL:
-		LOG("Unimplemented VSTDL cmd\n");
+		LOG("Unimplemented VSTDL=%d cmd\n", set_bit);
 		break;
 
 	case AUXCMD_RSV2:
-		LOG("Unimplemented RSV2 cmd\n");
+		if (set_bit != m_rsvd2) {
+			m_rsvd2 = set_bit;
+			update_fsm();
+		}
 		break;
 
 	default:
-		LOG("Unrecognized aux cmd %u\n" , cmd);
+		LOG("Unrecognized aux cmd %u\n", cmd);
 		break;
 	}
 }
 
 void tms9914_device::set_int0_bit(unsigned bit_no)
 {
-	BIT_SET(m_reg_int0_status , bit_no);
+	BIT_SET(m_reg_int0_status, bit_no);
 	update_int();
 	if (bit_no == REG_INT0_BI_BIT || (bit_no == REG_INT0_BO_BIT && m_c_state != FSM_C_CACS)) {
 		set_accrq(true);
@@ -1425,7 +1584,7 @@ void tms9914_device::set_int0_bit(unsigned bit_no)
 
 void tms9914_device::set_int1_bit(unsigned bit_no)
 {
-	BIT_SET(m_reg_int1_status , bit_no);
+	BIT_SET(m_reg_int1_status, bit_no);
 	update_int();
 }
 
@@ -1434,18 +1593,18 @@ void tms9914_device::update_int()
 	bool new_int_line = false;
 	m_reg_int0_status &= REG_INT0_INT_MASK;
 	if (m_reg_int0_status & m_reg_int0_mask) {
-		BIT_SET(m_reg_int0_status , REG_INT0_INT0_BIT);
+		BIT_SET(m_reg_int0_status, REG_INT0_INT0_BIT);
 		new_int_line = true;
 	}
 	if (m_reg_int1_status & m_reg_int1_mask) {
-		BIT_SET(m_reg_int0_status , REG_INT0_INT1_BIT);
+		BIT_SET(m_reg_int0_status, REG_INT0_INT1_BIT);
 		new_int_line = true;
 	}
 	if (m_dai) {
 		new_int_line = false;
 	}
 	if (new_int_line != m_int_line) {
-		LOG_INT("INT=%d\n" , new_int_line);
+		LOG_INT("INT=%d\n", new_int_line);
 		m_int_line = new_int_line;
 		m_int_write_func(m_int_line);
 	}
@@ -1453,18 +1612,18 @@ void tms9914_device::update_int()
 
 void tms9914_device::update_ifc()
 {
-	set_signal(IEEE_488_IFC , m_sic);
+	set_signal(IEEE_488_IFC, m_sic);
 }
 
 void tms9914_device::update_ren()
 {
-	set_signal(IEEE_488_REN , m_sre);
+	set_signal(IEEE_488_REN, m_sre);
 }
 
 void tms9914_device::set_accrq(bool state)
 {
 	if (state != m_accrq_line) {
-		LOG_INT("ACCRQ=%d\n" , state);
+		LOG_INT("ACCRQ=%d\n", state);
 		m_accrq_line = state;
 		m_accrq_write_func(m_accrq_line);
 	}

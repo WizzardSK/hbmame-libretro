@@ -65,10 +65,7 @@ public:
 	spectrum_expansion_slot_device(machine_config const &mconfig, char const *tag, device_t *owner, T &&slot_options, const char *default_option)
 		: spectrum_expansion_slot_device(mconfig, tag, owner)
 	{
-		option_reset();
-		slot_options(*this);
-		set_default_option(default_option);
-		set_fixed(false);
+		set_options(std::forward<T>(slot_options), default_option, false);
 	}
 
 	spectrum_expansion_slot_device(machine_config const &mconfig, char const *tag, device_t *owner, uint32_t clock = 0);
@@ -76,6 +73,7 @@ public:
 	// callbacks
 	auto irq_handler() { return m_irq_handler.bind(); }
 	auto nmi_handler() { return m_nmi_handler.bind(); }
+	auto fb_r_handler() { return m_fb_r_handler.bind(); }
 
 	void pre_opcode_fetch(offs_t offset);
 	void post_opcode_fetch(offs_t offset);
@@ -86,20 +84,22 @@ public:
 	void mreq_w(offs_t offset, uint8_t data);
 	uint8_t iorq_r(offs_t offset);
 	void iorq_w(offs_t offset, uint8_t data);
-	DECLARE_READ_LINE_MEMBER( romcs );
+	bool romcs();
 
-	DECLARE_WRITE_LINE_MEMBER( irq_w ) { m_irq_handler(state); }
-	DECLARE_WRITE_LINE_MEMBER( nmi_w ) { m_nmi_handler(state); }
+	void irq_w(int state) { m_irq_handler(state); }
+	void nmi_w(int state) { m_nmi_handler(state); }
+	uint8_t fb_r() { return m_fb_r_handler(); }
 
 protected:
-	// device-level overrides
-	virtual void device_start() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
 
 	device_spectrum_expansion_interface *m_card;
 
 private:
 	devcb_write_line m_irq_handler;
 	devcb_write_line m_nmi_handler;
+	devcb_read8      m_fb_r_handler;
 };
 
 
@@ -109,15 +109,15 @@ class device_spectrum_expansion_interface : public device_interface
 {
 public:
 	// reading and writing
-	virtual void pre_opcode_fetch(offs_t offset) { };
-	virtual void post_opcode_fetch(offs_t offset) { };
-	virtual void pre_data_fetch(offs_t offset) { };
-	virtual void post_data_fetch(offs_t offset) { };
+	virtual void pre_opcode_fetch(offs_t offset) { }
+	virtual void post_opcode_fetch(offs_t offset) { }
+	virtual void pre_data_fetch(offs_t offset) { }
+	virtual void post_data_fetch(offs_t offset) { }
 	virtual uint8_t mreq_r(offs_t offset) { return 0xff; }
 	virtual void mreq_w(offs_t offset, uint8_t data) { }
-	virtual uint8_t iorq_r(offs_t offset) { return 0xff; }
+	virtual uint8_t iorq_r(offs_t offset) { return offset & 1 ? m_slot->fb_r() : 0xff; }
 	virtual void iorq_w(offs_t offset, uint8_t data) { }
-	virtual DECLARE_READ_LINE_MEMBER(romcs) { return 0; }
+	virtual bool romcs() { return 0; }
 
 protected:
 	// construction/destruction
@@ -127,7 +127,7 @@ protected:
 };
 
 
-// device type definition
+// device type declaration
 DECLARE_DEVICE_TYPE(SPECTRUM_EXPANSION_SLOT, spectrum_expansion_slot_device)
 
 void spectrum_expansion_devices(device_slot_interface &device);

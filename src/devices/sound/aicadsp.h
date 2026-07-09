@@ -8,14 +8,14 @@
 //the DSP Context
 struct AICADSP
 {
-	void init();
-	void setsample(s32 sample, u8 SEL, s32 MXL);
+	void init() noexcept;
+	void setsample(s32 sample, u8 SEL, s32 MXL) noexcept;
 	void step();
-	void start();
+	void start() noexcept;
 
 //Config
-	address_space *space;
-	memory_access_cache<1, 0, ENDIANNESS_LITTLE> *cache;
+	memory_access<23, 1, 0, ENDIANNESS_LITTLE>::cache cache;
+	memory_access<23, 1, 0, ENDIANNESS_LITTLE>::specific space;
 	u32 RBP; //Ring buf pointer
 	u32 RBL; //Delay ram (Ring buffer) size in words
 

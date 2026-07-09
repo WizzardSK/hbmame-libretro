@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "cpu/mcs51/mcs51.h"
+#include "cpu/mcs51/i8051.h"
 #include "pc_kbdc.h"
 
 //**************************************************************************
@@ -36,28 +36,28 @@ protected:
 			uint32_t clock);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual ioport_constructor device_input_ports() const override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
 
-	virtual DECLARE_WRITE_LINE_MEMBER(clock_write) override;
-	virtual DECLARE_WRITE_LINE_MEMBER(data_write) override;
+	virtual void clock_write(int state) override;
+	virtual void data_write(int state) override;
 
-	DECLARE_READ8_MEMBER( internal_data_read );
-	DECLARE_WRITE8_MEMBER( internal_data_write );
-	DECLARE_READ8_MEMBER( p1_read );
-	DECLARE_WRITE8_MEMBER( p1_write );
-	DECLARE_READ8_MEMBER( p2_read );
-	DECLARE_WRITE8_MEMBER( p2_write );
-	DECLARE_READ8_MEMBER( p3_read );
-	DECLARE_WRITE8_MEMBER( p3_write );
+	uint8_t internal_data_read(offs_t offset);
+	void internal_data_write(offs_t offset, uint8_t data);
+	uint8_t p1_read();
+	void p1_write(uint8_t data);
+	uint8_t p2_read();
+	void p2_write(uint8_t data);
+	uint8_t p3_read();
+	void p3_write(uint8_t data);
 
-	void keytronic_pc3270_io(address_map &map);
-	void keytronic_pc3270_program(address_map &map);
+	void keytronic_pc3270_data(address_map &map) ATTR_COLD;
+	void keytronic_pc3270_program(address_map &map) ATTR_COLD;
 
 	required_device<i8051_device> m_cpu;
 
@@ -75,7 +75,7 @@ public:
 	// construction/destruction
 	pc_kbd_keytronic_pc3270_at_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	virtual ioport_constructor device_input_ports() const override;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 };
 
 

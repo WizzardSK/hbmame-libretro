@@ -14,6 +14,8 @@
 
 #include "cpu/mips/ps2vu.h"
 
+#include <algorithm>
+
 
 DEFINE_DEVICE_TYPE(SONYIOP_DMA, iop_dma_device, "iopdma", "PlayStation 2 IOP DMAC")
 
@@ -72,8 +74,8 @@ void iop_dma_device::device_start()
 
 void iop_dma_device::device_reset()
 {
-	memset(m_channels, 0, sizeof(channel_t) * 16);
-	memset(m_int_ctrl, 0, sizeof(intctrl_t) * 2);
+	std::fill(std::begin(m_channels), std::end(m_channels), channel_t());
+	std::fill(std::begin(m_int_ctrl), std::end(m_int_ctrl), intctrl_t{ 0, 0, false });
 	m_dpcr[0] = 0;
 	m_dpcr[1] = 0;
 	m_dicr[0] = 0;
@@ -312,7 +314,7 @@ void iop_dma_device::transfer_finish(uint32_t chan)
 	}
 }
 
-READ32_MEMBER(iop_dma_device::bank0_r)
+uint32_t iop_dma_device::bank0_r(offs_t offset, uint32_t mem_mask)
 {
 	uint32_t ret = 0;
 	switch (offset)
@@ -350,7 +352,7 @@ READ32_MEMBER(iop_dma_device::bank0_r)
 	return ret;
 }
 
-WRITE32_MEMBER(iop_dma_device::bank0_w)
+void iop_dma_device::bank0_w(offs_t offset, uint32_t data, uint32_t mem_mask)
 {
 	switch (offset)
 	{
@@ -385,7 +387,7 @@ WRITE32_MEMBER(iop_dma_device::bank0_w)
 	}
 }
 
-READ32_MEMBER(iop_dma_device::bank1_r)
+uint32_t iop_dma_device::bank1_r(offs_t offset, uint32_t mem_mask)
 {
 	uint32_t ret = 0;
 	switch (offset)
@@ -424,7 +426,7 @@ READ32_MEMBER(iop_dma_device::bank1_r)
 	return ret;
 }
 
-WRITE32_MEMBER(iop_dma_device::bank1_w)
+void iop_dma_device::bank1_w(offs_t offset, uint32_t data, uint32_t mem_mask)
 {
 	switch (offset & 0x1f)
 	{

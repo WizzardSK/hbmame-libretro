@@ -52,13 +52,13 @@ void neogeo_state::create_rgb_lookups()
 							0, nullptr, nullptr, 0, 0,
 							0, nullptr, nullptr, 0, 0);
 
-	for (int i = 0; i < 32; i++)
+	for (u8 i = 0; i < 32; i++)
 	{
-		int i4 = (i >> 4) & 1;
-		int i3 = (i >> 3) & 1;
-		int i2 = (i >> 2) & 1;
-		int i1 = (i >> 1) & 1;
-		int i0 = (i >> 0) & 1;
+		u8 i4 = (i >> 4) & 1;
+		u8 i3 = (i >> 3) & 1;
+		u8 i2 = (i >> 2) & 1;
+		u8 i1 = (i >> 1) & 1;
+		u8 i0 = (i >> 0) & 1;
 		m_palette_lookup[i][0] = combine_weights(weights_normal, i0, i1, i2, i3, i4);
 		m_palette_lookup[i][1] = combine_weights(weights_dark, i0, i1, i2, i3, i4);
 		m_palette_lookup[i][2] = combine_weights(weights_shadow, i0, i1, i2, i3, i4);
@@ -88,16 +88,17 @@ void neogeo_state::neogeo_set_palette_bank( int data )
 }
 
 
-READ16_MEMBER(neogeo_state::neogeo_paletteram_r)
+u16 neogeo_state::neogeo_paletteram_r(offs_t offset)
 {
 	return m_paletteram[m_palette_bank + offset];
 }
 
 
-WRITE16_MEMBER(neogeo_state::neogeo_paletteram_w)
+void neogeo_state::neogeo_paletteram_w(offs_t offset, u16 data, u16 mem_mask)
 {
 	offset += m_palette_bank;
-	data = COMBINE_DATA(&m_paletteram[offset]);
+	//data = COMBINE_DATA(&m_paletteram[offset]);
+	m_paletteram[offset] = data;   // 2023-12-23 from PR#11869
 
 	int dark = data >> 15;
 	int r = ((data >> 14) & 0x1) | ((data >> 7) & 0x1e);
@@ -149,7 +150,7 @@ void neogeo_state::video_start()
  *
  *************************************/
 
-uint32_t neogeo_state::screen_update_neogeo(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
+u32 neogeo_state::screen_update_neogeo(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	// fill with background color first
 	bitmap.fill(*m_bg_pen, cliprect);
@@ -169,11 +170,8 @@ uint32_t neogeo_state::screen_update_neogeo(screen_device &screen, bitmap_rgb32 
  *
  *************************************/
 
-uint16_t neogeo_state::get_video_control(  )
+u16  neogeo_state::get_video_control(  )
 {
-	uint16_t ret;
-	uint16_t v_counter;
-
 	/*
 	    The format of this very important location is:  AAAA AAAA A??? BCCC
 
@@ -196,12 +194,12 @@ uint16_t neogeo_state::get_video_control(  )
 	*/
 
 	/* the vertical counter chain goes from 0xf8 - 0x1ff */
-	v_counter = m_screen->vpos() + 0x100;
+	u16 v_counter = m_screen->vpos() + 0x100;
 
 	if (v_counter >= 0x200)
 		v_counter = v_counter - NEOGEO_VTOTAL;
 
-	ret = (v_counter << 7) | (m_sprgen->neogeo_get_auto_animation_counter() & 0x0007);
+	u16 ret = (v_counter << 7) | (m_sprgen->neogeo_get_auto_animation_counter() & 0x0007);
 
 	if (VERBOSE) logerror("%s: video_control read (%04x)\n", machine().describe_context(), ret);
 
@@ -209,7 +207,7 @@ uint16_t neogeo_state::get_video_control(  )
 }
 
 
-void neogeo_state::set_video_control( uint16_t data )
+void neogeo_state::set_video_control( u16  data )
 {
 	if (VERBOSE) logerror("%s: video control write %04x\n", machine().describe_context(), data);
 
@@ -220,13 +218,13 @@ void neogeo_state::set_video_control( uint16_t data )
 }
 
 
-READ16_MEMBER(neogeo_state::neogeo_video_register_r)
+u16 neogeo_state::neogeo_video_register_r(address_space &space, offs_t offset, u16 mem_mask)
 {
-	uint16_t ret;
+	u16  ret = 0U;
 
 	/* accessing the LSB only is not mapped */
 	if (mem_mask == 0x00ff)
-		ret = neogeo_unmapped_r(space, 0, 0xffff) & 0x00ff;
+		ret = neogeo_unmapped_r(space) & 0x00ff;
 	else
 	{
 		switch (offset)
@@ -243,7 +241,7 @@ READ16_MEMBER(neogeo_state::neogeo_video_register_r)
 }
 
 
-WRITE16_MEMBER(neogeo_state::neogeo_video_register_w)
+void neogeo_state::neogeo_video_register_w(offs_t offset, u16 data, u16 mem_mask)
 {
 	/* accessing the LSB only is not mapped */
 	if (mem_mask != 0x00ff)

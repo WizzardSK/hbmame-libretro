@@ -1,14 +1,6 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/timeplt.cpp"
-
-
-/*************************************
- *
- *  ROM definitions
- *
- *************************************/
-
 
 // At normal use, the rom screen is flipped.
 // For proper diagnostics, you must adjust the dips so the SW2 switches are all up (3rd switch doesn't matter).
@@ -39,12 +31,5 @@ ROM_START( timepltdiag )
 	ROM_LOAD( "timeplt.e12",  0x0140, 0x0100, CRC(f7b7663e) SHA1(151bd2dff4e4ef76d6438c1ab2cae71f987b9dad) )
 ROM_END
 
-
-
-/*************************************
- *
- *  Game drivers
- *
- *************************************/
-
 GAME( 2015, timepltdiag, timeplt, timeplt,  timeplt,  timeplt_state, empty_init, ROT90,  "Shoestring", "Time Pilot Tester", MACHINE_SUPPORTS_SAVE )
+

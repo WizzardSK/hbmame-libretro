@@ -47,19 +47,18 @@ public:
 	auto dib_cb() { return m_dib_cb.bind(); }
 	auto do_cb() { return m_do_cb.bind(); }
 
-	DECLARE_READ16_MEMBER(address_bus_r);
+	u16 address_bus_r(address_space &space);
 
 protected:
 	pps4_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual u32 execute_min_cycles() const noexcept override { return 1; }
 	virtual u32 execute_max_cycles() const noexcept override { return 3; }
-	virtual u32 execute_input_lines() const noexcept override { return 0; }
 	virtual void execute_run() override;
 
 	// device_memory_interface overrides
@@ -79,11 +78,13 @@ protected:
 	devcb_read8 m_dib_cb;
 	devcb_write8 m_do_cb;
 
-	address_space *m_program;
-	memory_access_cache<0, 0, ENDIANNESS_LITTLE> *m_cache;
-	address_space *m_data;
-	address_space *m_io;
+	memory_access<12, 0, 0, ENDIANNESS_LITTLE>::cache m_cache;
+	memory_access<12, 0, 0, ENDIANNESS_LITTLE>::specific m_program;
+	memory_access<12, 0, 0, ENDIANNESS_LITTLE>::specific m_data;
+	memory_access< 8, 0, 0, ENDIANNESS_LITTLE>::specific m_io;
 	int     m_icount;
+	int     m_wasldi;
+	int     m_waslbl;
 
 	u8        m_A;        //!< Accumulator A(4:1)
 	u8        m_X;        //!< X register X(4:1)
@@ -98,7 +99,6 @@ protected:
 	u8        m_FF2;      //!< Flip-flop 2
 	u8        m_I1;        //!< Most recent instruction I(8:1)
 	u8        m_I2;       //!< Most recent parameter I2(8:1)
-	u8        m_Ip;       //!< Previous instruction I(8:1)
 
 	//! return memory at address B(12:1)
 	inline u8 M();
@@ -174,8 +174,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_execute_interface overrides (NOTE: these assume internal XTAL divider is always used)
 	virtual u64 execute_clocks_to_cycles(u64 clocks) const noexcept override { return (clocks + 18 - 1) / 18; }

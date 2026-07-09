@@ -16,10 +16,10 @@
 ***************************************************************************/
 
 #include "emu.h"
-#include "machine/cs8221.h"
+#include "cs8221.h"
+
 #include "machine/ram.h"
 
-#define LOG_GENERAL     (1U << 0)
 #define LOG_REGISTER    (1U << 1)
 #define LOG_MEMORY      (1U << 2)
 
@@ -96,13 +96,13 @@ void cs8221_device::map(address_map &map)
 	map(0x0023, 0x0023).rw("cs8221", FUNC(cs8221_device::data_r), FUNC(cs8221_device::data_w));
 }
 
-WRITE8_MEMBER( cs8221_device::address_w )
+void cs8221_device::address_w(uint8_t data)
 {
 	m_address = data;
 	m_address_valid = ((m_address & 0x60)== 0x60) ? true : false;
 }
 
-READ8_MEMBER( cs8221_device::data_r )
+uint8_t cs8221_device::data_r()
 {
 	uint8_t result = 0xff;
 
@@ -119,7 +119,7 @@ READ8_MEMBER( cs8221_device::data_r )
 	return result;
 }
 
-WRITE8_MEMBER( cs8221_device::data_w )
+void cs8221_device::data_w(uint8_t data)
 {
 	if (m_address_valid)
 	{

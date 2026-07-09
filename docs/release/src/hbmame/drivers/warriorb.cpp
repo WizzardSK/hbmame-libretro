@@ -1,4 +1,4 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/warriorb.cpp"
 
@@ -29,11 +29,11 @@ ROM_START( sagaiav2 )
 	ROM_LOAD16_WORD_SWAP( "c07-03.47", 0x00000, 0x80000, CRC(189bafce) SHA1(d885e444523489fe24269b90dec58e0d92cfbd6e) )
 	ROM_LOAD16_WORD_SWAP( "c07-04.48", 0x80000, 0x80000, CRC(50421e81) SHA1(27ac420602f1dac00dc32903543a518e6f47fb2f) )
 
-	ROM_REGION( 0x100000, "ymsnd", 0 )
+	ROM_REGION( 0x100000, "ymsnd:adpcma", 0 )
 	ROM_LOAD( "c07-10.95", 0x00000, 0x80000, CRC(4bbe0ed9) SHA1(081b73c4e4d4fa548445e5548573099bcb1e9213) )
 	ROM_LOAD( "c07-11.96", 0x80000, 0x80000, CRC(3c815699) SHA1(0471ff5b0c0da905267f2cee52fd68c8661cccc9) )
 
-	ROM_REGION( 0x080000, "ymsnd.deltat", 0 )
+	ROM_REGION( 0x080000, "ymsnd:adpcmb", 0 )
 	ROM_LOAD( "c07-12.107", 0x00000, 0x80000, CRC(e0b71258) SHA1(0258e308b643d723475824752ebffc4ea29d1ac4) )
 
 	ROM_REGION( 0x001000, "user1", 0 )
@@ -41,5 +41,5 @@ ROM_START( sagaiav2 )
 	ROM_LOAD( "c07-14.38", 0x00000, 0x00400, CRC(baf2a193) SHA1(b7f103b5f5aab0702dd21fd7e3a82261ae1760e9) )
 ROM_END
 
-GAME( 2018, sagaiav2, 0, darius2d, sagaia,   warriorb_state, empty_init, ROT0,   "Taito Corporation Japan", "Sagaia (dual screen) (V2)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_SOUND )
+GAME( 2018, sagaiav2, 0, darius2d, sagaia,   warriorb_state, empty_init, ROT0,   "Taito Corporation Japan", "Sagaia (dual screen) (V2)", MACHINE_SUPPORTS_SAVE )
 

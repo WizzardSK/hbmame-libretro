@@ -14,6 +14,8 @@
 
 #include "screen.h"
 
+#include <numbers>
+
 
 #define LOG 0
 #define FIFO_LOG 0
@@ -423,7 +425,7 @@ inline void hd63484_device::queue_w(uint8_t data)
 	else
 	{
 		// TODO what happen? somebody set us up the bomb
-		printf("FIFO?\n");
+		logerror("FIFO?\n");
 	}
 }
 
@@ -479,7 +481,7 @@ inline void hd63484_device::queue_r(uint8_t data)
 	else
 	{
 		// TODO what happen? somebody set us up the bomb
-		printf("FIFO?\n");
+		logerror("FIFO?\n");
 	}
 }
 
@@ -516,13 +518,13 @@ inline void hd63484_device::recompute_parameters()
 
 	if (LOG)
 	{
-		printf("HC %d HSW %d HDS %d HDW %d HWS %d HWW %d\n",m_hc,m_hsw,m_hds,m_hdw,m_hws,m_hww);
-		printf("VC %d VDS %d VSW %d VWS %d VWW %d\n",m_vc,m_vds,m_vsw,m_vws,m_vww);
-		printf("SP0 %d SP1 %d SP2 %d\n",m_sp[0],m_sp[1],m_sp[2]);
+		logerror("HC %d HSW %d HDS %d HDW %d HWS %d HWW %d\n",m_hc,m_hsw,m_hds,m_hdw,m_hws,m_hww);
+		logerror("VC %d VDS %d VSW %d VWS %d VWW %d\n",m_vc,m_vds,m_vsw,m_vws,m_vww);
+		logerror("SP0 %d SP1 %d SP2 %d\n",m_sp[0],m_sp[1],m_sp[2]);
 	}
 
 	int gai = (m_omr>>4) & 0x07;
-	if (gai > 3)    printf("unsupported GAI=%d\n", gai);
+	if (gai > 3)    logerror("unsupported GAI=%d\n", gai);
 	int acm = (m_omr & 0x08) ? 2 : 1;
 	int ppw = 16 / get_bpp();
 	int ppmc = ppw * (1 << gai) / acm;  // TODO: GAI > 3
@@ -535,6 +537,8 @@ inline void hd63484_device::recompute_parameters()
 	visarea.set(hbend, hbend + (m_hdw * ppmc) - 1, m_vds, vbstart - 1);
 	attoseconds_t frame_period = screen().frame_period().attoseconds(); // TODO: use clock() to calculate the frame_period
 	screen().configure(m_hc * ppmc, m_vc, visarea, frame_period);
+	if (LOG)
+		logerror("ACRTC: full %dx%d vis (%d, %d)-(%d, %d)\n", m_hc * ppmc, m_vc, visarea.min_x, visarea.min_y, visarea.max_x, visarea.max_y);
 }
 
 
@@ -823,8 +827,8 @@ void hd63484_device::draw_ellipse(int16_t cx, int16_t cy, double dx, double dy, 
 	double inc = 1.0 / (std::max(dx, dy) * 100);
 	for (double angol = s_angol; fabs(angol - e_angol) >= inc*2; angol += inc * (c ? -1 : +1))
 	{
-		if (angol > DEGREE_TO_RADIAN(360))    angol -= DEGREE_TO_RADIAN(360);
-		if (angol < DEGREE_TO_RADIAN(0))      angol += DEGREE_TO_RADIAN(360);
+		if (angol > 2.0 * std::numbers::pi) angol -= 2.0 * std::numbers::pi;
+		if (angol < 0.0)                    angol += 2.0 * std::numbers::pi;
 
 		double px = cos(angol) * dx;
 		double py = sin(angol) * dy;
@@ -921,7 +925,7 @@ uint16_t hd63484_device::command_rpr_exec()
 		case 0x0d: // Read Write Pointer L
 			return (m_rwp[m_rwp_dn] & 0x0fff) << 4;
 		default:
-			if(LOG) printf("Read %sx\n", wpr_regnames[m_cr & 0x1f]);
+			if(LOG) logerror("Read %sx\n", wpr_regnames[m_cr & 0x1f]);
 			return 0;
 	}
 }
@@ -981,7 +985,7 @@ void hd63484_device::command_wpr_exec()
 			m_rwp[m_rwp_dn] = (m_rwp[m_rwp_dn] & 0xff000) | ((m_pr[0] & 0xfff0) >> 4);
 			break;
 		default:
-			if(LOG) printf("%s -> %02x\n",wpr_regnames[m_cr & 0x1f],m_pr[0]);
+			if(LOG) logerror("%s -> %02x\n",wpr_regnames[m_cr & 0x1f],m_pr[0]);
 			break;
 	}
 }
@@ -1362,8 +1366,8 @@ void hd63484_device::command_arc_exec()
 	double r = sqrt(pow((double)(xc - m_cpx), 2) + pow((double)(yc - m_cpy), 2));
 	double s_angol = atan2((double)(m_cpy - yc), (double)(m_cpx - xc));
 	double e_angol = atan2((double)(ye - yc), (double)(xe - xc));
-	if (s_angol < 0)    s_angol += DEGREE_TO_RADIAN(360);
-	if (e_angol < 0)    e_angol += DEGREE_TO_RADIAN(360);
+	if (s_angol < 0)    s_angol += 2.0 * std::numbers::pi;
+	if (e_angol < 0)    e_angol += 2.0 * std::numbers::pi;
 
 	draw_ellipse(xc, yc, r, r, s_angol, e_angol, BIT(m_cr, 8));
 
@@ -1393,8 +1397,8 @@ void hd63484_device::command_earc_exec()
 	double dy = sqrt((double)b);
 	double s_angol = atan2((double)(m_cpy - yc) / dy, (double)(m_cpx - xc) / dx);
 	double e_angol = atan2((double)(ye - yc) / dy, (double)(xe - xc) / dx);
-	if (s_angol < 0)    s_angol += DEGREE_TO_RADIAN(360);
-	if (e_angol < 0)    e_angol += DEGREE_TO_RADIAN(360);
+	if (s_angol < 0)    s_angol += 2.0 * std::numbers::pi;
+	if (e_angol < 0)    e_angol += 2.0 * std::numbers::pi;
 
 	draw_ellipse(xc, yc, r * dx, r * dy, s_angol, e_angol, BIT(m_cr, 8));
 
@@ -1428,7 +1432,7 @@ void hd63484_device::process_fifo()
 	{
 		case COMMAND_INVALID:
 			if (CMD_LOG)    logerror("HD63484 '%s': <invalid %04x>\n", tag(), m_cr);
-			printf("HD63484 '%s' Invalid Command Byte %02x\n", tag(), m_cr);
+			logerror("HD63484 '%s' Invalid Command Byte %02x\n", tag(), m_cr);
 			m_sr |= HD63484_SR_CER; // command error
 			command_end_seq();
 			break;
@@ -1679,7 +1683,7 @@ void hd63484_device::process_fifo()
 			{
 				if (CMD_LOG)    logerror("HD63484 '%s': CRCL (%d, %d, %d, %d) %d\n", tag(), BIT(m_cr, 8), (m_cr >> 5) & 0x07, (m_cr >> 3) & 0x03, (m_cr >> 0) & 0x07, m_pr[0]);
 				uint16_t r = m_pr[0] & 0x1fff;
-				draw_ellipse(m_cpx, m_cpy, r, r, DEGREE_TO_RADIAN(0), DEGREE_TO_RADIAN(360), BIT(m_cr, 8));
+				draw_ellipse(m_cpx, m_cpy, r, r, 0.0, 2.0 * std::numbers::pi, BIT(m_cr, 8));
 				command_end_seq();
 			}
 			break;
@@ -1690,7 +1694,7 @@ void hd63484_device::process_fifo()
 				if (CMD_LOG)    logerror("HD63484 '%s': ELPS (%d, %d, %d, %d) %d, %d, %d\n", tag(), BIT(m_cr, 8), (m_cr >> 5) & 0x07, (m_cr >> 3) & 0x03, (m_cr >> 0) & 0x07, m_pr[0], m_pr[1], m_pr[2]);
 				double dx = (double)m_pr[3];
 				double dy = sqrt(pow(dx, 2) / ((double)m_pr[0] / m_pr[1]));
-				draw_ellipse(m_cpx, m_cpy, dx, dy, DEGREE_TO_RADIAN(0), DEGREE_TO_RADIAN(360), BIT(m_cr, 8));
+				draw_ellipse(m_cpx, m_cpy, dx, dy, 0.0, 2.0 * std::numbers::pi, BIT(m_cr, 8));
 				command_end_seq();
 			}
 			break;
@@ -1765,7 +1769,7 @@ void hd63484_device::process_fifo()
 			break;
 
 		default:
-			printf("%04x\n",m_cr);
+			logerror("%04x\n",m_cr);
 			fatalerror("stop!\n");
 	}
 }
@@ -1792,7 +1796,7 @@ uint16_t hd63484_device::video_registers_r(int offset)
 			break;
 
 		default:
-			if(LOG) printf("%s R\n",acrtc_regnames[m_ar/2]);
+			if(LOG) logerror("%s R\n",acrtc_regnames[m_ar/2]);
 			break;
 	}
 
@@ -1810,7 +1814,7 @@ void hd63484_device::video_registers_w(int offset)
 		case 0x00: // FIFO entry
 			queue_w((vreg_data & 0xff00) >> 8);
 			queue_w((vreg_data & 0x00ff) >> 0);
-			if(FIFO_LOG) printf("%s -> %04x\n",acrtc_regnames[m_ar/2],vreg_data);
+			if(FIFO_LOG) logerror("%s -> %04x\n",acrtc_regnames[m_ar/2],vreg_data);
 			process_fifo();
 			break;
 
@@ -1909,97 +1913,109 @@ void hd63484_device::video_registers_w(int offset)
 			break;
 
 		default:
-			if(LOG) printf("%s -> %04x\n",acrtc_regnames[m_ar/2],vreg_data);
+			if(LOG) logerror("%s -> %04x\n",acrtc_regnames[m_ar/2],vreg_data);
 			break;
 	}
 }
 
-READ16_MEMBER( hd63484_device::status16_r )
+uint16_t hd63484_device::read16(offs_t offset)
 {
-	// kothello is coded so that upper byte of this should be 0xff (tests with jc opcode). Maybe it's just unconnected?
-	return m_sr | 0xff00;
-}
-
-READ16_MEMBER( hd63484_device::data16_r )
-{
-	uint16_t res;
-
-	if(m_ar == 0) // FIFO read
+	if (BIT(offset, 0))
 	{
-		uint8_t data;
+		// Read control register
+		uint16_t res;
 
-		dequeue_r(&data);
-		res = (data & 0xff) << 8;
-		dequeue_r(&data);
-		res |= data & 0xff;
+		if(m_ar == 0) // FIFO read
+		{
+			uint8_t data;
+
+			dequeue_r(&data);
+			res = (data & 0xff) << 8;
+			dequeue_r(&data);
+			res |= data & 0xff;
+		}
+		else
+			res = video_registers_r(m_ar);
+
+		inc_ar(2);
+
+		return res;
 	}
 	else
-		res = video_registers_r(m_ar);
-
-	inc_ar(2);
-
-	return res;
+	{
+		// Read status register
+		// kothello is coded so that upper byte of this should be 0xff (tests with jc opcode). Maybe it's just open bus?
+		return m_sr | 0xff00;
+	}
 }
 
-WRITE16_MEMBER( hd63484_device::address16_w )
+void hd63484_device::write16(offs_t offset, uint16_t data)
 {
-	if(ACCESSING_BITS_0_7)
-		m_ar = data & 0xfe;
-}
-
-WRITE16_MEMBER( hd63484_device::data16_w )
-{
-	if(ACCESSING_BITS_8_15)
+	if (BIT(offset, 0))
+	{
+		// Write control register
 		m_vreg[m_ar] = (data & 0xff00) >> 8;
-
-	if(ACCESSING_BITS_0_7)
 		m_vreg[m_ar+1] = (data & 0xff);
 
-	video_registers_w(m_ar);
+		video_registers_w(m_ar);
 
-	inc_ar(2);
-}
-
-READ8_MEMBER( hd63484_device::status8_r )
-{
-	return m_sr;
-}
-
-WRITE8_MEMBER( hd63484_device::address8_w )
-{
-	m_ar = data;
-}
-
-READ8_MEMBER( hd63484_device::data8_r )
-{
-	uint8_t res = 0xff;
-
-	if(m_ar < 2) // FIFO read
-		dequeue_r(&res);
-	else
-		res = video_registers_r(m_ar & 0xfe) >> (m_ar & 1 ? 0 : 8);
-
-	inc_ar(1);
-
-	return res;
-}
-
-WRITE8_MEMBER( hd63484_device::data8_w )
-{
-	m_vreg[m_ar] = data;
-
-	if(m_ar < 2) // FIFO write
-	{
-		queue_w(data);
-		if (m_ar & 1)
-			process_fifo();
-
-		m_ar ^= 1;
+		inc_ar(2);
 	}
 	else
-		video_registers_w(m_ar & 0xfe);
+	{
+		// Write address register
+		m_ar = data & 0xfe;
+	}
+}
 
-	inc_ar(1);
+uint8_t hd63484_device::read8(offs_t offset)
+{
+	if (BIT(offset, 0))
+	{
+		// Read control register
+		uint8_t res = 0xff;
+
+		if(m_ar < 2) // FIFO read
+			dequeue_r(&res);
+		else
+			res = video_registers_r(m_ar & 0xfe) >> (m_ar & 1 ? 0 : 8);
+
+		inc_ar(1);
+
+		return res;
+	}
+	else
+	{
+		// Read status register
+		return m_sr;
+	}
+}
+
+void hd63484_device::write8(offs_t offset, uint8_t data)
+{
+	if (BIT(offset, 0))
+	{
+		// Write control register
+		m_vreg[m_ar] = data;
+
+		if(m_ar < 2) // FIFO write
+		{
+			queue_w(data);
+			if (m_ar & 1)
+				process_fifo();
+
+			m_ar ^= 1;
+		}
+		else
+			video_registers_w(m_ar & 0xfe);
+
+		inc_ar(1);
+	}
+	else
+	{
+		// Write address register
+		m_ar = data;
+	}
 }
 
 void hd63484_device::device_start()
@@ -2095,7 +2111,7 @@ void hd63484_device::draw_graphics_line(bitmap_ind16 &bitmap, const rectangle &c
 			if (!m_display_cb.isnull())
 				m_display_cb(bitmap, cliprect, y, px, data & mask);
 			else if (cliprect.contains(px, y))
-				bitmap.pix16(y, px) = data & mask;
+				bitmap.pix(y, px) = data & mask;
 
 			data >>= bpp;
 		}

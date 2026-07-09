@@ -1,4 +1,4 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
 #include "../mame/drivers/astrof.cpp"
 
@@ -17,3 +17,4 @@ ROM_END
 
 
 GAME( 1979, astrofbl, astrof, astrof, astrof, astrof_state, empty_init, ROT90, "hack", "Astro Fighter (Black Background)", MACHINE_SUPPORTS_SAVE )
+

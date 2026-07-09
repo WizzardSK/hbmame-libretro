@@ -19,17 +19,17 @@ class isa8_pds_device :
 public:
 	isa8_pds_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER(ppi_r);
-	DECLARE_WRITE8_MEMBER(ppi_w);
+	uint8_t ppi_r(offs_t offset);
+	void ppi_w(offs_t offset, uint8_t data);
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_stop() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_stop() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	required_device<i8255_device> m_ppi;
 };

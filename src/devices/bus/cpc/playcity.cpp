@@ -31,12 +31,11 @@ void cpc_playcity_device::device_add_mconfig(machine_config &config)
 	m_ctc->zc_callback<2>().set(m_ctc, FUNC(z80ctc_device::trg3));
 	m_ctc->intr_callback().set(FUNC(cpc_playcity_device::ctc_intr_cb));
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 	YMZ294(config, m_ymz1, DERIVED_CLOCK(1, 1));  // when timer is not set, operates at 4MHz (interally divided by 2, so equivalent to the ST)
-	m_ymz1->add_route(ALL_OUTPUTS, "rspeaker", 0.30);
+	m_ymz1->add_route(ALL_OUTPUTS, "speaker", 0.30, 1);
 	YMZ294(config, m_ymz2, DERIVED_CLOCK(1, 1));
-	m_ymz2->add_route(ALL_OUTPUTS, "lspeaker", 0.30);
+	m_ymz2->add_route(ALL_OUTPUTS, "speaker", 0.30, 0);
 
 	// pass-through
 	cpc_expansion_slot_device &exp(CPC_EXPANSION_SLOT(config, "exp", DERIVED_CLOCK(1, 1), cpc_exp_cards, nullptr));
@@ -69,11 +68,11 @@ void cpc_playcity_device::device_start()
 	m_slot = dynamic_cast<cpc_expansion_slot_device *>(owner());
 	address_space &space = m_slot->cpu().space(AS_IO);
 
-	space.install_readwrite_handler(0xf880,0xf883, read8_delegate(*this, FUNC(cpc_playcity_device::ctc_r)), write8_delegate(*this, FUNC(cpc_playcity_device::ctc_w)));
-	space.install_readwrite_handler(0xf884,0xf884, read8_delegate(*this, FUNC(cpc_playcity_device::ymz1_data_r)), write8_delegate(*this, FUNC(cpc_playcity_device::ymz1_data_w)));
-	space.install_readwrite_handler(0xf888,0xf888, read8_delegate(*this, FUNC(cpc_playcity_device::ymz2_data_r)), write8_delegate(*this, FUNC(cpc_playcity_device::ymz2_data_w)));
-	space.install_write_handler(0xf984,0xf984, write8_delegate(*this, FUNC(cpc_playcity_device::ymz1_address_w)));
-	space.install_write_handler(0xf988,0xf988, write8_delegate(*this, FUNC(cpc_playcity_device::ymz2_address_w)));
+	space.install_readwrite_handler(0xf880,0xf883, read8sm_delegate(*this, FUNC(cpc_playcity_device::ctc_r)), write8sm_delegate(*this, FUNC(cpc_playcity_device::ctc_w)));
+	space.install_readwrite_handler(0xf884,0xf884, read8smo_delegate(*this, FUNC(cpc_playcity_device::ymz1_data_r)), write8smo_delegate(*this, FUNC(cpc_playcity_device::ymz1_data_w)));
+	space.install_readwrite_handler(0xf888,0xf888, read8smo_delegate(*this, FUNC(cpc_playcity_device::ymz2_data_r)), write8smo_delegate(*this, FUNC(cpc_playcity_device::ymz2_data_w)));
+	space.install_write_handler(0xf984,0xf984, write8smo_delegate(*this, FUNC(cpc_playcity_device::ymz1_address_w)));
+	space.install_write_handler(0xf988,0xf988, write8smo_delegate(*this, FUNC(cpc_playcity_device::ymz2_address_w)));
 }
 
 //-------------------------------------------------
@@ -85,44 +84,44 @@ void cpc_playcity_device::device_reset()
 }
 
 
-READ8_MEMBER(cpc_playcity_device::ctc_r)
+uint8_t cpc_playcity_device::ctc_r(offs_t offset)
 {
 	return m_ctc->read(offset);
 }
 
-WRITE8_MEMBER(cpc_playcity_device::ctc_w)
+void cpc_playcity_device::ctc_w(offs_t offset, uint8_t data)
 {
 	m_ctc->write(offset,data);
 	if(offset == 0)
 		update_ymz_clock();
 }
 
-WRITE8_MEMBER(cpc_playcity_device::ymz1_address_w)
+void cpc_playcity_device::ymz1_address_w(uint8_t data)
 {
 	m_ymz1->address_w(data);
 }
 
-WRITE8_MEMBER(cpc_playcity_device::ymz2_address_w)
+void cpc_playcity_device::ymz2_address_w(uint8_t data)
 {
 	m_ymz2->address_w(data);
 }
 
-WRITE8_MEMBER(cpc_playcity_device::ymz1_data_w)
+void cpc_playcity_device::ymz1_data_w(uint8_t data)
 {
 	m_ymz1->data_w(data);
 }
 
-WRITE8_MEMBER(cpc_playcity_device::ymz2_data_w)
+void cpc_playcity_device::ymz2_data_w(uint8_t data)
 {
 	m_ymz2->data_w(data);
 }
 
-READ8_MEMBER(cpc_playcity_device::ymz1_data_r)
+uint8_t cpc_playcity_device::ymz1_data_r()
 {
 	return m_ymz1->data_r();
 }
 
-READ8_MEMBER(cpc_playcity_device::ymz2_data_r)
+uint8_t cpc_playcity_device::ymz2_data_r()
 {
 	return m_ymz2->data_r();
 }

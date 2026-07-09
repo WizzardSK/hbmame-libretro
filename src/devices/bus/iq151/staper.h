@@ -25,11 +25,11 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	// iq151cart_interface overrides
 	virtual void io_read(offs_t offset, uint8_t &data) override;
@@ -37,11 +37,11 @@ protected:
 
 private:
 	// i8255 callbacks
-	DECLARE_READ8_MEMBER( ppi_porta_r );
-	DECLARE_WRITE8_MEMBER( ppi_portb_w );
-	DECLARE_WRITE8_MEMBER( ppi_portc_w );
+	uint8_t ppi_porta_r();
+	void ppi_portb_w(uint8_t data);
+	void ppi_portc_w(uint8_t data);
 
-	static const device_timer_id TIMER_PRINTER = 0;
+	TIMER_CALLBACK_MEMBER(pc2_low_tick);
 
 	required_device<i8255_device>           m_ppi;
 	required_device<printer_image_device>   m_printer;

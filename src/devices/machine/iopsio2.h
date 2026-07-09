@@ -34,8 +34,8 @@ public:
 	iop_sio2_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	virtual ~iop_sio2_device() override;
 
-	DECLARE_READ32_MEMBER(read);
-	DECLARE_WRITE32_MEMBER(write);
+	uint32_t read(offs_t offset, uint32_t mem_mask = ~0);
+	void write(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 
 	void transmit(uint8_t data);
 	uint8_t receive();
@@ -43,8 +43,8 @@ public:
 	void receive_from_device_hack(uint8_t data); // TODO: Turn me into a bus interface!
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(response_timer);
 

@@ -9,8 +9,8 @@
 *
 */
 
-#ifndef MAME_MACHINE_IOPSPU_H
-#define MAME_MACHINE_IOPSPU_H
+#ifndef MAME_SOUND_IOPSPU_H
+#define MAME_SOUND_IOPSPU_H
 
 #pragma once
 
@@ -31,8 +31,8 @@ public:
 	iop_spu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	virtual ~iop_spu_device() override;
 
-	DECLARE_READ16_MEMBER(read);
-	DECLARE_WRITE16_MEMBER(write);
+	uint16_t read(offs_t offset, uint16_t mem_mask = ~0);
+	void write(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
 
 	uint16_t reg_read(int bank, uint32_t offset, uint16_t mem_mask);
 	void reg_write(int bank, uint32_t offset, uint16_t data, uint16_t mem_mask);
@@ -44,11 +44,11 @@ public:
 	void dma_done(int bank);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// sound stream update overrides
-	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples) override;
+	virtual void sound_stream_update(sound_stream &stream) override;
 
 	// HACK: This timer is currently used to trigger an interrupt after the auto-DMA-transferred buffer would have been
 	//       mixed and played back, as the PS2 BIOS pulls a null return address and crashes if we trigger the auto-DMA-complete
@@ -98,4 +98,4 @@ protected:
 
 DECLARE_DEVICE_TYPE(SONYIOP_SPU, iop_spu_device)
 
-#endif // MAME_MACHINE_IOPSPU_H
+#endif // MAME_SOUND_IOPSPU_H

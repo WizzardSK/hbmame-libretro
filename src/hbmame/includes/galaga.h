@@ -1,8 +1,8 @@
-// license:BSD-3-Clause
+// license:GPL_2.0
 // copyright-holders:Robbbert
-#include "../mame/includes/galaga.h"
+#include "../mame/namco/galaga.h"
 #include "sound/samples.h"
-#include "machine/namco06.h"
+#include "../mame/namco/namco06.h"
 
 class galaga_hbmame : public galaga_state
 {
@@ -13,7 +13,7 @@ public:
 		, m_06xx(*this, "06xx")
 		{ }
 
-	DECLARE_WRITE8_MEMBER(galaga_sample_w);
+	void galaga_sample_w(offs_t offset, u8 data);
 	void galagost(machine_config &config);
 	void galagost_map(address_map &map);
 

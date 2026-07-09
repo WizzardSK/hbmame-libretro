@@ -1,1 +1,2 @@
-hbmame64 -valid
+@echo off
+hbmame -valid

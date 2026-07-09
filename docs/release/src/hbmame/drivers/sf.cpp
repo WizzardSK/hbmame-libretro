@@ -1,29 +1,31 @@
-// Proyecto De Inicio:"2016/2017"
-// Derechos Del Autor:Gaston90
+// license:GPL_2.0
+// copyright-holders:Robbbert
 #include "../mame/drivers/sf.cpp"
 
- /****************************************************
-         Proyecto Shadows Mame Build Plus
-*****************************************************/
- 
-  /************
- Street Fighter
-*****************/
 
-ROM_START( sfs01 )
+ROM_START( sfpp )
 	ROM_REGION( 0x60000, "maincpu", 0 )
-	ROM_LOAD16_BYTE("sfd-19hc01.2a", 0x00000, 0x10000, CRC(9bcaeada) SHA1(6d5228697b49aae797e089c14b2f79c30572cbaf) )
-	ROM_LOAD16_BYTE("sfd-22hc01.2c", 0x00001, 0x10000, CRC(001cffb9) SHA1(c6f83793ac2c2058ddaf40abfcc7d7da22b3cdb7) )
-	ROM_LOAD16_BYTE("sfd-20hc01.3a", 0x20000, 0x10000, CRC(2a2abcf9) SHA1(2eeb7aa32b0b32e6a4397156ab5cc9a022b11cbe) )
-	ROM_LOAD16_BYTE("sfd-23hc01.3c", 0x20001, 0x10000, CRC(67303dea) SHA1(a53cbd45e2be3ef8f85f7f38ba30a0db2a6f83d9) )
-	ROM_LOAD16_BYTE("sfd-21hc01.4a", 0x40000, 0x10000, CRC(7a3e0c4e) SHA1(a9cf0b0de93a328e071f997b10bc399471321c62) )
-	ROM_LOAD16_BYTE("sfd-24hc01.4c", 0x40001, 0x10000, CRC(a8ad79f5) SHA1(559612a1ce84754054c6f0d7866778c98abe9fef) )
+	ROM_LOAD16_BYTE("sfpp-19.2a", 0x00000, 0x10000, CRC(9bcaeada) SHA1(6d5228697b49aae797e089c14b2f79c30572cbaf) )
+	ROM_LOAD16_BYTE("sfpp-22.2c", 0x00001, 0x10000, CRC(001cffb9) SHA1(c6f83793ac2c2058ddaf40abfcc7d7da22b3cdb7) )
+	ROM_LOAD16_BYTE("sfpp-20.3a", 0x20000, 0x10000, CRC(2a2abcf9) SHA1(2eeb7aa32b0b32e6a4397156ab5cc9a022b11cbe) )
+	ROM_LOAD16_BYTE("sfpp-23.3c", 0x20001, 0x10000, CRC(67303dea) SHA1(a53cbd45e2be3ef8f85f7f38ba30a0db2a6f83d9) )
+	ROM_LOAD16_BYTE("sfpp-21.4a", 0x40000, 0x10000, CRC(7a3e0c4e) SHA1(a9cf0b0de93a328e071f997b10bc399471321c62) )
+	ROM_LOAD16_BYTE("sfpp-24.4c", 0x40001, 0x10000, CRC(a8ad79f5) SHA1(559612a1ce84754054c6f0d7866778c98abe9fef) )
+	// Lots of bugs in the attract mode which cause the game to go berzerk
+	// When an address error occurs, let's reboot instead
+	// It seems to fix itself after a game is played.
+	ROM_FILL(0x0c,4,0)
+	ROM_FILL(0x0d,1,0x03)
+	ROM_FILL(0x0e,1,0xb0)
 
 	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "sf-02.7k", 0x0000, 0x8000, CRC(4a9ac534) SHA1(933645f8db4756aa2a35a843c3ac6f93cb8d565d) )
 
+	ROM_REGION( 0x1000, "protcpu", 0 )
+	ROM_LOAD( "sf_s.id8751h-8.14f", 0x0000, 0x1000, CRC(6588891f) SHA1(699a96c682dd527dc77aa5cb2c2655136d2bfc90) )
+
 	ROM_REGION( 0x40000, "audio2", 0 )
-	ROM_LOAD( "sfu-00hc01.1h",0x00000, 0x20000, CRC(4b733845) SHA1(f7ff46e02f8ce6682d6e573588271bae2edfa90f) )
+	ROM_LOAD( "sf-00.1h", 0x00000, 0x20000, CRC(4b733845) SHA1(f7ff46e02f8ce6682d6e573588271bae2edfa90f) )
 	ROM_LOAD( "sf-01.1k", 0x20000, 0x20000, CRC(86e0f0d5) SHA1(7cef8056f83dac15f1b47d7be705d26170858337) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 )
@@ -50,6 +52,7 @@ ROM_START( sfs01 )
 	ROM_LOAD( "sf-07.1h", 0x080000, 0x020000, CRC(49f340d9) SHA1(65822efefa198791a632ef851a5ce06a71b4ed0f) )
 	ROM_LOAD( "sf-08.2h", 0x0a0000, 0x020000, CRC(95ece9b1) SHA1(f0a15fce5cd9617fa5d4dd43bd5b6ea190dace85) )
 	ROM_LOAD( "sf-03.1f", 0x0c0000, 0x020000, CRC(5ca05781) SHA1(004f5ad34798471b39bd4612c797f0913ed0fb4a) )
+
 	ROM_LOAD( "sf-17.3m", 0x0e0000, 0x020000, CRC(69fac48e) SHA1(c9272217256c73cb8ddb4fbbfb5905ce1122c746) )
 	ROM_LOAD( "sf-18.4m", 0x100000, 0x020000, CRC(71cfd18d) SHA1(4c17e2124f3456d6b13ede8ad3ae916b53f9bb7e) )
 	ROM_LOAD( "sf-13.3k", 0x120000, 0x020000, CRC(fa2eb24b) SHA1(96f3bd54c340771577cc232ebde93965421f2557) )
@@ -66,14 +69,8 @@ ROM_START( sfs01 )
 	ROM_LOAD( "sf-36.3h", 0x010000, 0x010000, CRC(ea16df6c) SHA1(68709a314b775c500817fc17d40a80204b2ae06c) )
 	ROM_LOAD( "sf-32.3g", 0x020000, 0x010000, CRC(72df2bd9) SHA1(9a0da618139673738b6b3302207255e44c5491a2) )
 	ROM_LOAD( "sf-33.4g", 0x030000, 0x010000, CRC(3e99d3d5) SHA1(9168a977e80f8c23c6126b9e64eb176290cf941a) )
-
-	ROM_REGION( 0x0320, "proms", 0 )
-	ROM_LOAD( "mb7114h.12k",  0x0000, 0x0100, CRC(75af3553) SHA1(14da009592877a6097b34ea844fa897ceda7465e) )
-	ROM_LOAD( "mb7114h.11h",  0x0100, 0x0100, CRC(c0e56586) SHA1(2abf93aef48af34f869b30f63c130513a97f86a3) )
-	ROM_LOAD( "mb7114h.12j",  0x0200, 0x0100, CRC(4c734b64) SHA1(7a122b643bad3e3586821980efff023a63e5a029) )
-	ROM_LOAD( "mmi-7603.13h", 0x0300, 0x0020, CRC(06bcda53) SHA1(fa69b77697bb12aa6012d82ef5b504d3a1d20232) )
 ROM_END
 
-//    YEAR  NAME     PARENT  MACHINE INPUT   CLASS    INIT   MONITOR COMPANY    FULLNAME                            FLAGS
-GAME( 1987, sfs01,   sf,      sfus,   sfus, sf_state, init_0, ROT0,   "hack", "Street Fighter (Plus)", MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
+GAME( 2020, sfpp, sf, sfus, sfus, sf_state, empty_init, ROT0, "Yumeji", "Street Fighter (Plus Plus)", MACHINE_SUPPORTS_SAVE )
+
 

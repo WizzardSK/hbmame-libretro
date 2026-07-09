@@ -17,7 +17,7 @@ DEFINE_DEVICE_TYPE(CPC_HD20, cpc_hd20_device, "cpc_hd20", "Dobbertin HD20")
 
 void cpc_hd20_device::device_add_mconfig(machine_config &config)
 {
-	ST11M_HDC(config, m_hdc,0);
+	ST11M_HDC(config, m_hdc);
 	m_hdc->irq_handler().set(FUNC(cpc_hd20_device::irq_w));
 	HARDDISK(config, "hdc:primary");
 	// no pass-through (?)
@@ -58,8 +58,8 @@ void cpc_hd20_device::device_start()
 {
 	m_slot = dynamic_cast<cpc_expansion_slot_device *>(owner());
 	address_space &space = m_slot->cpu().space(AS_IO);
-	space.install_write_handler(0xfbe0,0xfbe4, write8_delegate(*this, FUNC(cpc_hd20_device::hdc_w)));
-	space.install_read_handler(0xfbe0,0xfbe4, read8_delegate(*this, FUNC(cpc_hd20_device::hdc_r)));
+	space.install_write_handler(0xfbe0,0xfbe4, write8sm_delegate(*this, FUNC(cpc_hd20_device::hdc_w)));
+	space.install_read_handler(0xfbe0,0xfbe4, read8sm_delegate(*this, FUNC(cpc_hd20_device::hdc_r)));
 }
 
 //-------------------------------------------------
@@ -71,7 +71,7 @@ void cpc_hd20_device::device_reset()
 	// TODO
 }
 
-READ8_MEMBER(cpc_hd20_device::hdc_r)
+uint8_t cpc_hd20_device::hdc_r(offs_t offset)
 {
 	uint8_t ret = 0x00;
 
@@ -95,7 +95,7 @@ READ8_MEMBER(cpc_hd20_device::hdc_r)
 	return ret;
 }
 
-WRITE8_MEMBER(cpc_hd20_device::hdc_w)
+void cpc_hd20_device::hdc_w(offs_t offset, uint8_t data)
 {
 	switch(offset)
 	{
@@ -117,7 +117,7 @@ WRITE8_MEMBER(cpc_hd20_device::hdc_w)
 	}
 }
 
-WRITE_LINE_MEMBER(cpc_hd20_device::irq_w)
+void cpc_hd20_device::irq_w(int state)
 {
 //  if(state)
 //      m_hdc->set_ready();

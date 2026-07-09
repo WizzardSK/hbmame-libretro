@@ -10,7 +10,6 @@
 #include "emu.h"
 #include "mcs40.h"
 #include "mcs40dasm.h"
-#include "debugger.h"
 
 
 /*
@@ -102,7 +101,6 @@ mcs40_cpu_device_base::mcs40_cpu_device_base(
 			{ "ramport", ENDIANNESS_LITTLE, 8, u8(5),             0 },
 			{ "program", ENDIANNESS_LITTLE, 8, u8(rom_width - 3), 0 }, }
 	, m_spaces{ nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr }
-	, m_cache(nullptr)
 	, m_bus_cycle_cb(*this)
 	, m_sync_cb(*this)
 	, m_cm_rom_cb(*this)
@@ -142,16 +140,9 @@ void mcs40_cpu_device_base::device_start()
 	m_spaces[AS_RAM_STATUS]     = &space(AS_RAM_STATUS);
 	m_spaces[AS_RAM_PORTS]      = &space(AS_RAM_PORTS);
 	m_spaces[AS_PROGRAM_MEMORY] = &space(AS_PROGRAM_MEMORY);
-	m_cache = m_spaces[AS_ROM]->cache<0, 0, ENDIANNESS_LITTLE>();
+	m_spaces[AS_ROM]->cache(m_cache);
 
-	m_bus_cycle_cb.resolve();
-	m_sync_cb.resolve_safe();
-	m_cm_rom_cb.resolve_all_safe();
-	m_cm_ram_cb.resolve_all_safe();
-	m_cy_cb.resolve_safe();
-	m_stp_ack_cb.resolve_safe();
-	m_4289_pm_cb.resolve_safe();
-	m_4289_f_l_cb.resolve_safe();
+	m_bus_cycle_cb.resolve_safe();
 
 	m_stop_latch = m_decoded_halt = m_resume = false;
 
@@ -519,39 +510,39 @@ inline void mcs40_cpu_device_base::set_rc(u8 val)
 
 inline u8 mcs40_cpu_device_base::read_memory()
 {
-	return m_spaces[AS_RAM_MEMORY]->read_byte((u16(m_cr & 0x7U) << 8) | m_latched_rc) & 0x0fU;
+	return m_spaces[AS_RAM_MEMORY]->read_byte((u16(m_cr & 0x7U) << 8) | m_latched_rc, 0x0fU) & 0x0fU;
 }
 
 inline void mcs40_cpu_device_base::write_memory(u8 val)
 {
-	m_spaces[AS_RAM_MEMORY]->write_byte((u16(m_cr & 0x7U) << 8) | m_latched_rc, val & 0x0fU);
+	m_spaces[AS_RAM_MEMORY]->write_byte((u16(m_cr & 0x7U) << 8) | m_latched_rc, val & 0x0fU, 0x0fU);
 }
 
 inline u8 mcs40_cpu_device_base::read_status()
 {
 	u16 const addr((((u16(m_cr) << 6) | (m_latched_rc >> 2)) & 0x01fcU) | (m_opa & 0x0003U));
-	return m_spaces[AS_RAM_STATUS]->read_byte(addr) & 0x0fU;
+	return m_spaces[AS_RAM_STATUS]->read_byte(addr, 0x0fU) & 0x0fU;
 }
 
 inline void mcs40_cpu_device_base::write_status(u8 val)
 {
 	u16 const addr((((u16(m_cr) << 6) | (m_latched_rc >> 2)) & 0x01fcU) | (m_opa & 0x0003U));
-	m_spaces[AS_RAM_STATUS]->write_byte(addr, val & 0x0fU);
+	m_spaces[AS_RAM_STATUS]->write_byte(addr, val & 0x0fU, 0x0fU);
 }
 
 inline u8 mcs40_cpu_device_base::read_rom_port()
 {
-	return m_spaces[AS_ROM_PORTS]->read_byte((u16(m_cr) << 8) | m_latched_rc) & 0x0fU;
+	return m_spaces[AS_ROM_PORTS]->read_byte((u16(m_cr) << 8) | m_latched_rc, 0x0fU) & 0x0fU;
 }
 
 inline void mcs40_cpu_device_base::write_rom_port(u8 val)
 {
-	m_spaces[AS_ROM_PORTS]->write_byte((u16(m_cr) << 8) | m_latched_rc, val & 0x0fU);
+	m_spaces[AS_ROM_PORTS]->write_byte((u16(m_cr) << 8) | m_latched_rc, val & 0x0fU, 0x0fU);
 }
 
 inline void mcs40_cpu_device_base::write_memory_port(u8 val)
 {
-	m_spaces[AS_RAM_PORTS]->write_byte(((m_cr << 2) & 0x1cU) | (m_latched_rc >> 6), val & 0x0fU);
+	m_spaces[AS_RAM_PORTS]->write_byte(((m_cr << 2) & 0x1cU) | (m_latched_rc >> 6), val & 0x0fU, 0x0fU);
 }
 
 
@@ -589,7 +580,7 @@ inline void mcs40_cpu_device_base::do_a1()
 	if (cycle::OP == m_cycle)
 	{
 		m_pcbase = rom_bank() | m_rom_addr;
-		if (machine().debug_flags & DEBUG_FLAG_ENABLED)
+		if (debugger_enabled())
 			debugger_instruction_hook(pc());
 		if (m_stop_latch)
 		{
@@ -605,15 +596,13 @@ inline void mcs40_cpu_device_base::do_a1()
 	m_sync_cb(1);
 	update_4289_pm(1U);
 	update_4289_f_l(1U);
-	if (!m_bus_cycle_cb.isnull())
-		m_bus_cycle_cb(phase::A1, 1U, m_rom_addr & 0x000fU);
+	m_bus_cycle_cb(phase::A1, 1U, m_rom_addr & 0x000fU);
 }
 
 inline void mcs40_cpu_device_base::do_a2()
 {
 	m_4289_a = (m_4289_a & 0x0fU) | (m_rom_addr & 0xf0U);
-	if (!m_bus_cycle_cb.isnull())
-		m_bus_cycle_cb(phase::A2, 1U, (m_rom_addr >> 4) & 0x000fU);
+	m_bus_cycle_cb(phase::A2, 1U, (m_rom_addr >> 4) & 0x000fU);
 }
 
 inline void mcs40_cpu_device_base::do_a3()
@@ -621,8 +610,7 @@ inline void mcs40_cpu_device_base::do_a3()
 	m_4289_c = (m_rom_addr >> 8) & 0x0fU;
 	update_cm_rom(BIT(m_cr, 3) ? 0x01U : 0x02U);
 	update_cm_ram(f_cm_ram_table[m_cr & 0x07U]);
-	if (!m_bus_cycle_cb.isnull())
-		m_bus_cycle_cb(phase::A3, 1U, (m_rom_addr >> 8) & 0x000fU);
+	m_bus_cycle_cb(phase::A3, 1U, (m_rom_addr >> 8) & 0x000fU);
 }
 
 inline void mcs40_cpu_device_base::do_m1()
@@ -633,7 +621,7 @@ inline void mcs40_cpu_device_base::do_m1()
 		update_cm_rom(0x0fU);
 	}
 	// TODO: just read the high nybble here - MAME doesn't support this
-	u8 const read = m_cache->read_byte(rom_bank() | m_rom_addr);
+	u8 const read = m_cache.read_byte(rom_bank() | m_rom_addr);
 	if (cycle::OP == m_cycle)
 	{
 		m_opr = (m_stop_ff) ? 0x0U : (read >> 4);
@@ -644,14 +632,13 @@ inline void mcs40_cpu_device_base::do_m1()
 		m_arg = read;
 	}
 	m_decoded_halt = false;
-	if (!m_bus_cycle_cb.isnull())
-		m_bus_cycle_cb(phase::M1, 1U, (read >> 4) & 0x0fU);
+	m_bus_cycle_cb(phase::M1, 1U, (read >> 4) & 0x0fU);
 }
 
 inline void mcs40_cpu_device_base::do_m2()
 {
 	// TODO: just read the low nybble here - MAME doesn't support this
-	u8 const read = m_cache->read_byte(rom_bank() | m_rom_addr);
+	u8 const read = m_cache.read_byte(rom_bank() | m_rom_addr);
 	if (cycle::OP == m_cycle)
 		m_opa = (m_stop_ff) ? 0x0U : (read & 0x0fU);
 	else
@@ -666,8 +653,7 @@ inline void mcs40_cpu_device_base::do_m2()
 	if (!m_stop_ff && (cycle::IN != m_cycle))
 		pc() = (pc() + 1) & 0x0fff;
 	m_rom_addr = pc();
-	if (!m_bus_cycle_cb.isnull())
-		m_bus_cycle_cb(phase::M2, 1U, read & 0x0fU);
+	m_bus_cycle_cb(phase::M2, 1U, read & 0x0fU);
 }
 
 inline void mcs40_cpu_device_base::do_x1()
@@ -704,8 +690,7 @@ inline void mcs40_cpu_device_base::do_x1()
 		else
 			assert(pmem::WRITE == m_program_op);
 	}
-	if (!m_bus_cycle_cb.isnull())
-		m_bus_cycle_cb(phase::X1, 1U, output);
+	m_bus_cycle_cb(phase::X1, 1U, output);
 }
 
 void mcs40_cpu_device_base::do_x2()
@@ -734,8 +719,7 @@ void mcs40_cpu_device_base::do_x2()
 		set_a(output = m_arg & 0x0fU);
 	else if (pmem::WRITE == m_program_op)
 		output = get_a();
-	if (!m_bus_cycle_cb.isnull())
-		m_bus_cycle_cb(phase::X2, 1U, output);
+	m_bus_cycle_cb(phase::X2, 1U, output);
 }
 
 void mcs40_cpu_device_base::do_x3()
@@ -765,8 +749,7 @@ void mcs40_cpu_device_base::do_x3()
 		m_stp_ack_cb(1U);
 	}
 	m_resume = false;
-	if (!m_bus_cycle_cb.isnull())
-		m_bus_cycle_cb(phase::X3, 0U, m_new_rc & 0x0fU); // FIXME: what appears on the bus if it isn't SRC?
+	m_bus_cycle_cb(phase::X3, 0U, m_new_rc & 0x0fU); // FIXME: what appears on the bus if it isn't SRC?
 }
 
 
@@ -829,15 +812,14 @@ i4004_cpu_device::i4004_cpu_device(machine_config const &mconfig, char const *ta
 {
 }
 
+i4004_cpu_device::~i4004_cpu_device()
+{
+}
+
 
 /***********************************************************************
     device_execute_interface implementation
 ***********************************************************************/
-
-u32 i4004_cpu_device::execute_input_lines() const noexcept
-{
-	return 1U;
-}
 
 void i4004_cpu_device::execute_set_input(int inputnum, int state)
 {
@@ -880,10 +862,9 @@ i4004_cpu_device::cycle i4004_cpu_device::do_cycle1(u8 opr, u8 opa, pmem &progra
 	case 0x0:
 		switch (opa)
 		{
+		default: // in practice, the 4004 treats these as aliases for NOP
 		case 0x0: // NOP
 			return cycle::OP;
-		default:
-			break;
 		}
 		break;
 
@@ -1139,15 +1120,14 @@ i4040_cpu_device::i4040_cpu_device(machine_config const &mconfig, char const *ta
 {
 }
 
+i4040_cpu_device::~i4040_cpu_device()
+{
+}
+
 
 /***********************************************************************
     device_execute_interface implementation
 ***********************************************************************/
-
-u32 i4040_cpu_device::execute_input_lines() const noexcept
-{
-	return 3U;
-}
 
 void i4040_cpu_device::execute_set_input(int inputnum, int state)
 {
@@ -1183,6 +1163,8 @@ i4040_cpu_device::cycle i4040_cpu_device::do_cycle1(u8 opr, u8 opa, pmem &progra
 	case 0x0:
 		switch (opa)
 		{
+		case 0x0: // NOP
+			return cycle::OP;
 		case 0x1: // HLT
 			halt_decoded();
 			return cycle::OP;
@@ -1209,7 +1191,8 @@ i4040_cpu_device::cycle i4040_cpu_device::do_cycle1(u8 opr, u8 opa, pmem &progra
 			program_op = pmem::READ;
 			return cycle::OP;
 		default:
-			break;
+			logerror("MCS-40: unhandled instruction OPR=%X OPA=%X\n", opr, opa);
+			return cycle::OP;
 		}
 		break;
 	default:

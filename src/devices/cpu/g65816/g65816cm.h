@@ -1,24 +1,9 @@
 // license:BSD-3-Clause
 // copyright-holders:Karl Stenerud
+#ifndef MAME_CPU_G65816_G65816CM_H
+#define MAME_CPU_G65816_G65816CM_H
+
 #pragma once
-
-#ifndef __G65816CM_H__
-#define __G65816CM_H__
-
-
-#define g65816i_branching(A)
-#define g65816i_jumping(A)
-
-
-#undef G65816_CALL_DEBUGGER
-#define G65816_CALL_DEBUGGER(x) debugger_instruction_hook(x)
-
-#define g65816_read_8(addr)             m_data_space->read_byte(addr)
-#define g65816_write_8(addr,data)       m_data_space->write_byte(addr,data)
-#define g65816_read_8_immediate(A)      m_program_cache->read_byte(A)
-#define g65816_read_8_opcode(A)         m_opcode_cache->read_byte(A)
-#define g65816_jumping(A)
-#define g65816_branching(A)
 
 
 /* ======================================================================== */
@@ -26,6 +11,20 @@
 /* ======================================================================== */
 
 #include <climits>
+
+
+#define g65816i_branching(A)
+#define g65816i_jumping(A)
+
+
+#define G65816_CALL_DEBUGGER(x) debugger_instruction_hook(x)
+
+#define g65816_read_8(addr)             m_data.read_byte(addr)
+#define g65816_write_8(addr,data)       m_data.write_byte(addr,data)
+#define g65816_read_8_immediate(A)      m_program.read_byte(A)
+#define g65816_read_8_opcode(A)         m_opcode.read_byte(A)
+#define g65816_jumping(A)
+#define g65816_branching(A)
 
 
 /* ======================================================================== */
@@ -242,4 +241,4 @@
 /* ======================================================================== */
 /* ================================== CPU ================================= */
 /* ======================================================================== */
-#endif /* __G65816CM_H__ */
+#endif // MAME_CPU_G65816_G65816CM_H

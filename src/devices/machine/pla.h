@@ -69,17 +69,18 @@ public:
 	uint32_t outputs() { return m_outputs; }
 
 	uint32_t read(uint32_t input);
+	bool reinit();
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 private:
 	static constexpr unsigned MAX_TERMS       = 512;
 	static constexpr unsigned MAX_CACHE_BITS  = 20;
 	static constexpr unsigned CACHE2_SIZE     = 8;
 
-	void parse_fusemap();
+	int parse_fusemap();
 
 	required_memory_region m_region;
 

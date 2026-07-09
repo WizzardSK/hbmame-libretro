@@ -58,7 +58,7 @@ class duscc_channel : public device_t, public device_serial_interface
 	friend class duscc_device;
 
 public:
-	duscc_channel(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	duscc_channel(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	// read register handlers
 	uint8_t do_dusccreg_cmr1_r();
@@ -140,25 +140,28 @@ public:
 	void m_rx_fifo_rp_step();
 	uint8_t m_rx_fifo_rp_data();
 
-	DECLARE_WRITE_LINE_MEMBER( write_rx );
-	DECLARE_WRITE_LINE_MEMBER( cts_w );
-	DECLARE_WRITE_LINE_MEMBER( dcd_w );
-	DECLARE_WRITE_LINE_MEMBER( ri_w );
-	DECLARE_WRITE_LINE_MEMBER( rxc_w );
-	DECLARE_WRITE_LINE_MEMBER( txc_w );
-	DECLARE_WRITE_LINE_MEMBER( sync_w );
+	void write_rx(int state);
+	void cts_w(int state);
+	void dcd_w(int state);
+	void ri_w(int state);
+	void rxc_w(int state);
+	void txc_w(int state);
+	void sync_w(int state);
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_serial_interface overrides
 	virtual void tra_callback() override;
 	virtual void tra_complete() override;
 	virtual void rcv_callback() override;
 	virtual void rcv_complete() override;
+
+	TIMER_CALLBACK_MEMBER(check_zero_detect);
+	TIMER_CALLBACK_MEMBER(rtxc_tick);
+	TIMER_CALLBACK_MEMBER(trxc_tick);
 
 	int m_rxc;
 	int m_txc;
@@ -435,13 +438,6 @@ protected:
 		REG_CTCR_TIM_OC         = 0x20,
 	};
 
-	enum
-	{
-		TIMER_ID,
-		TIMER_ID_RTXC,
-		TIMER_ID_TRXC
-	};
-
 	uint16_t m_brg_rx_rate;
 	uint16_t m_brg_tx_rate;
 	uint16_t m_brg_const;
@@ -561,48 +557,50 @@ public:
 #endif
 	}
 
-	DECLARE_READ8_MEMBER( read );
-	DECLARE_WRITE8_MEMBER( write );
+	uint8_t read(offs_t offset);
+	void write(offs_t offset, uint8_t data);
 
 	// interrupt acknowledge
-	DECLARE_READ8_MEMBER( iack );
+	uint8_t iack();
 
 	// device_z80daisy_interface overrides
 	virtual int z80daisy_irq_state() override;
 	virtual int z80daisy_irq_ack() override;
 	virtual void z80daisy_irq_reti() override;
 
-	DECLARE_WRITE_LINE_MEMBER( rxa_w ) { m_chanA->write_rx(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxb_w ) { m_chanB->write_rx(state); }
-	DECLARE_WRITE_LINE_MEMBER( ctsa_w ) { m_chanA->cts_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( ctsb_w ) { m_chanB->cts_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( dcda_w ) { m_chanA->dcd_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( dcdb_w ) { m_chanB->dcd_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( ria_w ) { m_chanA->ri_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rib_w ) { m_chanB->ri_w(state); }
+	void rxa_w(int state) { m_chanA->write_rx(state); }
+	void rxb_w(int state) { m_chanB->write_rx(state); }
+	void ctsa_w(int state) { m_chanA->cts_w(state); }
+	void ctsb_w(int state) { m_chanB->cts_w(state); }
+	void dcda_w(int state) { m_chanA->dcd_w(state); }
+	void dcdb_w(int state) { m_chanB->dcd_w(state); }
+	void ria_w(int state) { m_chanA->ri_w(state); }
+	void rib_w(int state) { m_chanB->ri_w(state); }
 #if 0
-	DECLARE_WRITE_LINE_MEMBER( rxca_w ) { m_chanA->rxc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxcb_w ) { m_chanB->rxc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( txca_w ) { m_chanA->txc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( txcb_w ) { m_chanB->txc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxtxcb_w ) { m_chanB->rxc_w(state); m_chanB->txc_w(state); }
+	void rxca_w(int state) { m_chanA->rxc_w(state); }
+	void rxcb_w(int state) { m_chanB->rxc_w(state); }
+	void txca_w(int state) { m_chanA->txc_w(state); }
+	void txcb_w(int state) { m_chanB->txc_w(state); }
+	void rxtxcb_w(int state) { m_chanB->rxc_w(state); m_chanB->txc_w(state); }
 #endif
-	DECLARE_WRITE_LINE_MEMBER( synca_w ) { m_chanA->sync_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( syncb_w ) { m_chanB->sync_w(state); }
+	void synca_w(int state) { m_chanA->sync_w(state); }
+	void syncb_w(int state) { m_chanB->sync_w(state); }
 
 protected:
 	duscc_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint32_t variant);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	// internal interrupt management
 	void check_interrupts();
 	void reset_interrupts();
 	uint8_t modify_vector(uint8_t vect, int i, uint8_t src);
+	int interrupt_priority(int index, int state);
 	void trigger_interrupt(int index, int state);
+	void clear_interrupt(int index, int state);
 	int get_channel_index(duscc_channel *ch) const { return (ch == m_chanA) ? 0 : 1; }
 
 	// Variants in the DUSCC family

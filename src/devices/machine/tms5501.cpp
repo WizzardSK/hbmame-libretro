@@ -60,7 +60,7 @@ tms5501_device::tms5501_device(const machine_config &mconfig, const char *tag, d
 	device_serial_interface(mconfig, *this),
 	m_write_int(*this),
 	m_write_xmt(*this),
-	m_read_xi(*this),
+	m_read_xi(*this, 0),
 	m_write_xo(*this),
 	m_irq(IRQ_TB),
 	m_rb(0),
@@ -81,18 +81,12 @@ tms5501_device::tms5501_device(const machine_config &mconfig, const char *tag, d
 
 void tms5501_device::device_start()
 {
-	// resolve callbacks
-	m_write_int.resolve_safe();
-	m_write_xmt.resolve_safe();
-	m_read_xi.resolve_safe(0);
-	m_write_xo.resolve_safe();
-
 	// create timers
-	m_timer[TIMER_1] = timer_alloc(TIMER_1);
-	m_timer[TIMER_2] = timer_alloc(TIMER_2);
-	m_timer[TIMER_3] = timer_alloc(TIMER_3);
-	m_timer[TIMER_4] = timer_alloc(TIMER_4);
-	m_timer[TIMER_5] = timer_alloc(TIMER_5);
+	m_timer[TIMER_1] = timer_alloc(FUNC(tms5501_device::timer_expired), this);
+	m_timer[TIMER_2] = timer_alloc(FUNC(tms5501_device::timer_expired), this);
+	m_timer[TIMER_3] = timer_alloc(FUNC(tms5501_device::timer_expired), this);
+	m_timer[TIMER_4] = timer_alloc(FUNC(tms5501_device::timer_expired), this);
+	m_timer[TIMER_5] = timer_alloc(FUNC(tms5501_device::timer_expired), this);
 
 	// state saving
 	save_item(NAME(m_rb));
@@ -122,38 +116,22 @@ void tms5501_device::device_reset()
 
 
 //-------------------------------------------------
-//  device_timer - handle timer events
+//  timer_expired -
 //-------------------------------------------------
 
-void tms5501_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(tms5501_device::timer_expired)
 {
-	switch (id)
+	if (param == TIMER_5)
 	{
-	case TIMER_1:
-		set_interrupt(IRQ_TMR1);
-		break;
-
-	case TIMER_2:
-		set_interrupt(IRQ_TMR2);
-		break;
-
-	case TIMER_3:
-		set_interrupt(IRQ_TMR3);
-		break;
-
-	case TIMER_4:
-		set_interrupt(IRQ_TMR4);
-		break;
-
-	case TIMER_5:
 		if (!(m_cmd & CMD_XI7))
 		{
 			set_interrupt(IRQ_TMR5);
 		}
-		break;
-
-	default:
-		break;
+	}
+	else
+	{
+		static uint8_t const s_irq_ids[4] = { IRQ_TMR1, IRQ_TMR2, IRQ_TMR3, IRQ_TMR4 };
+		set_interrupt(s_irq_ids[param]);
 	}
 }
 
@@ -219,7 +197,7 @@ void tms5501_device::rcv_complete()
 //  rb_r - read receiver buffer
 //-------------------------------------------------
 
-READ8_MEMBER( tms5501_device::rb_r )
+uint8_t tms5501_device::rb_r()
 {
 	m_sta &= ~STA_RBL;
 	m_irq &= ~IRQ_RB;
@@ -234,7 +212,7 @@ READ8_MEMBER( tms5501_device::rb_r )
 //  xi_r - read external inputs
 //-------------------------------------------------
 
-READ8_MEMBER( tms5501_device::xi_r )
+uint8_t tms5501_device::xi_r()
 {
 	uint8_t data = m_read_xi(0);
 
@@ -251,7 +229,7 @@ READ8_MEMBER( tms5501_device::xi_r )
 //  rst_r - read interrupt address
 //-------------------------------------------------
 
-READ8_MEMBER( tms5501_device::rst_r )
+uint8_t tms5501_device::rst_r()
 {
 	return get_vector();
 }
@@ -261,7 +239,7 @@ READ8_MEMBER( tms5501_device::rst_r )
 //  sta_r - read TMS5510 status
 //-------------------------------------------------
 
-READ8_MEMBER( tms5501_device::sta_r )
+uint8_t tms5501_device::sta_r()
 {
 	if(is_transmit_register_empty())
 		m_sta |= STA_XBE;
@@ -278,7 +256,7 @@ READ8_MEMBER( tms5501_device::sta_r )
 //  cmd_w - issue discrete commands
 //-------------------------------------------------
 
-WRITE8_MEMBER( tms5501_device::cmd_w )
+void tms5501_device::cmd_w(uint8_t data)
 {
 	if (LOG) logerror("TMS5501 '%s' Command %02x\n", tag(), data);
 
@@ -317,7 +295,7 @@ WRITE8_MEMBER( tms5501_device::cmd_w )
 //  rr_w - load rate register
 //-------------------------------------------------
 
-WRITE8_MEMBER( tms5501_device::rr_w )
+void tms5501_device::rr_w(uint8_t data)
 {
 	if (LOG) logerror("TMS5501 '%s' Rate Register %02x\n", tag(), data);
 
@@ -351,7 +329,7 @@ WRITE8_MEMBER( tms5501_device::rr_w )
 //  tb_w - load transmitter buffer
 //-------------------------------------------------
 
-WRITE8_MEMBER( tms5501_device::tb_w )
+void tms5501_device::tb_w(uint8_t data)
 {
 	if (LOG) logerror("TMS5501 '%s' Transmitter Buffer %02x\n", tag(), data);
 
@@ -376,7 +354,7 @@ WRITE8_MEMBER( tms5501_device::tb_w )
 //  xo_w - load output port
 //-------------------------------------------------
 
-WRITE8_MEMBER( tms5501_device::xo_w )
+void tms5501_device::xo_w(uint8_t data)
 {
 	if (LOG) logerror("TMS5501 '%s' Output %02x\n", tag(), data);
 
@@ -388,7 +366,7 @@ WRITE8_MEMBER( tms5501_device::xo_w )
 //  mr_w - load mask register
 //-------------------------------------------------
 
-WRITE8_MEMBER( tms5501_device::mr_w )
+void tms5501_device::mr_w(uint8_t data)
 {
 	if (LOG) logerror("TMS5501 '%s' Mask Register %02x\n", tag(), data);
 
@@ -402,11 +380,11 @@ WRITE8_MEMBER( tms5501_device::mr_w )
 //  tmr_w - load interval timer
 //-------------------------------------------------
 
-WRITE8_MEMBER( tms5501_device::tmr_w )
+void tms5501_device::tmr_w(offs_t offset, uint8_t data)
 {
 	if (LOG) logerror("TMS5501 '%s' Timer %u %02x\n", tag(), offset, data);
 
-	m_timer[offset]->adjust(attotime::from_double((double) data / (clock() / 128.0)));
+	m_timer[offset]->adjust(attotime::from_double((double) data / (clock() / 128.0)), (int)offset);
 }
 
 
@@ -414,7 +392,7 @@ WRITE8_MEMBER( tms5501_device::tmr_w )
 //  rcv_w - receive data write
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( tms5501_device::rcv_w )
+void tms5501_device::rcv_w(int state)
 {
 	device_serial_interface::rx_w(state);
 
@@ -435,7 +413,7 @@ WRITE_LINE_MEMBER( tms5501_device::rcv_w )
 //  xi7_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( tms5501_device::xi7_w )
+void tms5501_device::xi7_w(int state)
 {
 	if (m_cmd & CMD_XI7)
 	{
@@ -453,7 +431,7 @@ WRITE_LINE_MEMBER( tms5501_device::xi7_w )
 //  sens_w -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( tms5501_device::sens_w )
+void tms5501_device::sens_w(int state)
 {
 	if (!m_sens && state)
 	{

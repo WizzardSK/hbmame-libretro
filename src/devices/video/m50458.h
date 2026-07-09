@@ -34,9 +34,9 @@ public:
 	m50458_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// I/O operations
-	DECLARE_WRITE_LINE_MEMBER( write_bit );
-	DECLARE_WRITE_LINE_MEMBER( set_cs_line );
-	DECLARE_WRITE_LINE_MEMBER( set_clock_line );
+	void write_bit(int state);
+	void set_cs_line(int state);
+	void set_clock_line(int state);
 
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
@@ -49,25 +49,25 @@ protected:
 
 	// device-level overrides
 	virtual void device_validity_check(validity_checker &valid) const override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual space_config_vector memory_space_config() const override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
 
 private:
 	inline uint16_t read_word(offs_t address);
 	inline void write_word(offs_t address, uint16_t data);
 
-	DECLARE_WRITE16_MEMBER(vreg_120_w);
-	DECLARE_WRITE16_MEMBER(vreg_121_w);
-	DECLARE_WRITE16_MEMBER(vreg_122_w);
-	DECLARE_WRITE16_MEMBER(vreg_123_w);
-	DECLARE_WRITE16_MEMBER(vreg_124_w);
-	DECLARE_WRITE16_MEMBER(vreg_125_w);
-	DECLARE_WRITE16_MEMBER(vreg_126_w);
-	DECLARE_WRITE16_MEMBER(vreg_127_w);
+	void vreg_120_w(uint16_t data);
+	void vreg_121_w(uint16_t data);
+	void vreg_122_w(uint16_t data);
+	void vreg_123_w(uint16_t data);
+	void vreg_124_w(uint16_t data);
+	void vreg_125_w(uint16_t data);
+	void vreg_126_w(uint16_t data);
+	void vreg_127_w(uint16_t data);
 
-	void m50458_vram(address_map &map);
+	void m50458_vram(address_map &map) ATTR_COLD;
 
 	const address_space_config      m_space_config;
 

@@ -17,15 +17,15 @@ public:
 	neogeo_rom_device(const machine_config &mconfig, const char *tag, device_t *owner, uint16_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ16_MEMBER(rom_r) override;
-	virtual DECLARE_WRITE16_MEMBER(banksel_w) override;
+	virtual uint16_t rom_r(offs_t offset) override;
+	virtual void banksel_w(uint16_t data) override;
 
 protected:
 	neogeo_rom_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint16_t clock);
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 };
 
 
@@ -44,15 +44,15 @@ class neogeo_vliner_cart_device : public neogeo_rom_device
 public:
 	neogeo_vliner_cart_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	virtual DECLARE_READ16_MEMBER(ram_r) override { return m_cart_ram[offset]; }
-	virtual DECLARE_WRITE16_MEMBER(ram_w) override { COMBINE_DATA(&m_cart_ram[offset]); }
+	virtual uint16_t ram_r(offs_t offset) override { return m_cart_ram[offset]; }
+	virtual void ram_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0) override { COMBINE_DATA(&m_cart_ram[offset]); }
 
 	virtual int get_fixed_bank_type() override { return 0; }
 
 protected:
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	std::unique_ptr<uint16_t[]> m_cart_ram;
