@@ -7145,7 +7145,11 @@ namespace bgfx { namespace gl
 	void FrameBufferGL::create(uint16_t _denseIdx, void* _nwh, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
 	{
 		BX_UNUSED(_format, _depthFormat);
+#if BX_PLATFORM_IOS
+		m_swapChain = s_renderGL->m_glctx.createSwapChain(_nwh);
+#else
 		m_swapChain = s_renderGL->m_glctx.createSwapChain(_nwh, _width, _height);
+#endif
 		m_width     = _width;
 		m_height    = _height;
 		m_numTh     = 0;
