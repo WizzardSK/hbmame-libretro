@@ -535,6 +535,31 @@ ifdef USE_SYSTEM_LIB_PUGIXML
 PARAMS += --with-system-pugixml='$(USE_SYSTEM_LIB_PUGIXML)'
 endif
 
+# libretro
+ifdef LIBRETRO_OS
+PARAMS += --LIBRETRO_OS=$(LIBRETRO_OS)
+endif
+
+ifdef LIBRETRO_CPU
+PARAMS += --LIBRETRO_CPU=$(LIBRETRO_CPU)
+endif
+
+ifdef LIBRETRO_IOS
+PARAMS += --LIBRETRO_IOS=$(LIBRETRO_IOS)
+endif
+
+ifdef LIBRETRO_TVOS
+PARAMS += --LIBRETRO_TVOS=$(LIBRETRO_TVOS)
+endif
+
+ifdef LIBRETRO_OSX_ARM64
+PARAMS += --LIBRETRO_OSX_ARM64=$(LIBRETRO_OSX_ARM64)
+endif
+
+ifeq '$(CONFIG)' 'libretro'
+TOOLCHAIN :=
+endif
+
 ifdef TOOLCHAIN
 PARAMS += --TOOLCHAIN='$(TOOLCHAIN)'
 endif
@@ -1062,15 +1087,6 @@ PROJECTDIR := $(BUILDDIR)/projects/$(OSD)/$(FULLTARGET)
 PROJECTDIR_SDL := $(BUILDDIR)/projects/sdl/$(FULLTARGET)
 PROJECTDIR_WIN := $(BUILDDIR)/projects/windows/$(FULLTARGET)
 
-APPLE_EXTRA_FLAGS=
-ifeq (ios-arm64,$(LIBRETRO_OS))
-APPLE_EXTRA_FLAGS += --NOASM=1 --DONT_USE_NETWORK=1  --NO_USE_MIDI=1 --NO_OPENGL=1 --USE_QTDEBUG=0 --LIBRETRO_IOS=1
-endif
-
-ifeq (tvos-arm64,$(LIBRETRO_OS))
-APPLE_EXTRA_FLAGS += --NOASM=1 --DONT_USE_NETWORK=1  --NO_USE_MIDI=1 --NO_OPENGL=1 --USE_QTDEBUG=0 --LIBRETRO_TVOS=1
-endif
-
 .PHONY: all clean regenie generate FORCE
 all: $(GENIE) $(TARGETOS)$(ARCHITECTURE)
 regenie:
@@ -1357,7 +1373,7 @@ macosx_x86: generate $(PROJECTDIR)/$(MAKETYPE)-osx/Makefile
 #-------------------------------------------------
 
 $(PROJECTDIR)/$(MAKETYPE)-osx-clang/Makefile: makefile $(SCRIPTS) $(GENIE)
-	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=osx-clang --gcc_version=$(CLANG_VERSION) $(APPLE_EXTRA_FLAGS) $(MAKETYPE)
+	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=osx-clang --gcc_version=$(CLANG_VERSION) $(MAKETYPE)
 
 .PHONY: macosx_x64_clang
 macosx_x64_clang: generate $(PROJECTDIR)/$(MAKETYPE)-osx-clang/Makefile

@@ -727,18 +727,17 @@ function toolchain(_buildDir, _subDir)
 
 		-- Set TARGETOS based on LIBRETRO_OS if we know
 		if LIBRETRO_OS~=nil then
-			-- most things are "linux" (ish).
 			local targetos = "linux"
-			if LIBRETRO_OS=="osx" then
+			if LIBRETRO_OS=="macosx"  then
 				targetos = "macosx"
-			elseif LIBRETRO_OS:sub(1, 4)=="armv" then
+			elseif LIBRETRO_OS=="android" then
 				targetos = "android"
-                        elseif LIBRETRO_OS=="ios" then
+			elseif LIBRETRO_OS=="ios" then
 				targetos = "ios"
-                        elseif LIBRETRO_OS=="win32" then
-				targetos = "win32"
+			elseif LIBRETRO_OS=="win" then
+				targetos = "windows"
 			end
-			_OPTIONS["TARGETOS"] = targetos
+			_OPTIONS["targetos"] = targetos
 		end
 
 		-- FIXME: set BIGENDIAN and dynarec based on retro_platform/retro_arch
@@ -755,11 +754,11 @@ function toolchain(_buildDir, _subDir)
 			linkoptions { "-fPIC" }
 		end
 
-		-- Don't use BGFX (Defaults to 1 for Windows if unset)
-		 USE_BGFX = 0
--- _OPTIONS["USE_BGFX"] = "1"
 		-- libretro only supports the retro OSD
 		_OPTIONS["osd"] = "retro"
+
+		-- Don't use BGFX
+		_OPTIONS["NO_USE_BGFX"] = "1"
 
 		-- libretro does not (yet) support MIDI.
 		_OPTIONS["NO_USE_MIDI"] = "1"

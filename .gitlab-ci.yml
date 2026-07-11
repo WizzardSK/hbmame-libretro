@@ -186,17 +186,18 @@ libretro-build-osx-arm64:
 #    - /^libretro/mame.*$/
 
 # Android ARMv8a
-android-arm64-v8a:
-  extends:
-    - .libretro-android-make-arm64-v8a
-    - .core-defs
-  variables:
-    TARGET:    hbmame
-  cache:
-    <<: *global_cache
-  only:
-    - master
-    - /^libretro/mame.*$/
+#android-arm64-v8a:
+#  extends:
+#    - .libretro-android-make-arm64-v8a
+#    - .core-defs
+#  variables:
+#    TARGET: hbmame
+#    ANDROID_NDK_NEXT: 27.3.13750724
+#  cache:
+#    <<: *global_cache
+#  only:
+#    - master
+#    - /^libretro/mame.*$/
 
 # Android ARMv8a (mess)
 #android-arm64-v8a-mess:

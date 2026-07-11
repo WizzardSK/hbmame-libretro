@@ -1,5 +1,5 @@
 
-VERBOSE ?= 1
+VERBOSE ?= 0
 NOWERROR ?= 1
 CONFIG ?= libretro
 NO_USE_MIDI ?= 1
@@ -142,6 +142,7 @@ ifeq ($(findstring android,$(platform)),android)
         ANDROID_NDK_HOME := $(ANDROID_NDK_ROOT)
     endif
 	export ANDROID_NDK_HOME ?= /opt/ndk
+	ANDROID_NDK_LLVM := $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/linux-x86_64
     LIBRETRO_CPU :=
     LIBRETRO_OS :=
     PTR64 :=

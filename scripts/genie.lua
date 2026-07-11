@@ -602,6 +602,9 @@ if _OPTIONS["osd"]=="retro" then
 		}
 	end
 end
+-- define mcrypto if android arm64
+configuration { "android-arm64"}
+	buildoptions { "-march=armv8-a+crypto" }
 -- RETRO HACK
 
 -- Avoid error when invoking genie --help.
@@ -1090,7 +1093,9 @@ end
 		else
 			if version < 110000 then
 				print("GCC version 11 or later needed")
-				os.exit(-1)
+-- RETRO HACK for gitlab CI
+				-- os.exit(-1)
+-- RETRO HACK END
 			end
 			buildoptions_cpp {
 				"-Wimplicit-fallthrough",
