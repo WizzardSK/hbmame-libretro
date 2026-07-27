@@ -120,6 +120,16 @@ libretro-build-linux-x64:
   extends:
     - .libretro-linux-x64-make-default
     - .core-defs
+  image: $CI_SERVER_HOST:5050/libretro-infrastructure/libretro-build-amd64-ubuntu:backports
+  variables:
+    OVERRIDE_CC: /usr/bin/gcc-12
+    OVERRIDE_CXX: /usr/bin/g++-12
+    CXXFLAGS: -Wno-deprecated-declarations # Deprecation warnings aren't helpful on the libretro Gitlab
+  cache:
+    <<: *global_cache
+  only:
+    - master
+    - /^libretro/mame.*$/
 
 # Linux ARM 64-bit
 libretro-build-linux-aarch64:
