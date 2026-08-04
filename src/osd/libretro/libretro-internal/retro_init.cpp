@@ -14,6 +14,7 @@
 #include "drivenum.h"
 #include "corestr.h"
 #include "path.h"
+#include "video.h"
 
 #include "libretro.h"
 #include "options.h"
@@ -303,7 +304,11 @@ static int getGameInfo(const char *gameName, int *rotation, int *driverIndex, bo
          *arcade = true;
          log_cb(RETRO_LOG_DEBUG, "System type: ARCADE\n");
       }
-      else
+      /*else if (flags & MACHINE_TYPE_CONSOLE)
+      {
+         log_cb(RETRO_LOG_DEBUG, "System type: CONSOLE\n");
+      }*/
+      else //if (flags & MACHINE_TYPE_COMPUTER)
       {
          log_cb(RETRO_LOG_DEBUG, "System type: OTHER\n");
       }
