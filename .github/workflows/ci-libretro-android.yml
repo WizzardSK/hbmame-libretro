@@ -1,4 +1,4 @@
-name: Build Libretro Android (ARM64)
+name: CI (Libretro - Android ARM64)
 
 on:
   push:
@@ -12,14 +12,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk wget unzip cmake ninja-build
+          sudo apt-get install -y openjdk-25-jdk wget unzip cmake ninja-build
 
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r29
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Build
         shell: bash
