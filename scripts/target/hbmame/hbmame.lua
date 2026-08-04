@@ -367,16 +367,14 @@ files {
 	MAME_DIR .. "src/mame/dataeast/deco16ic.cpp", -- cninja
 	MAME_DIR .. "src/mame/dataeast/deco104.cpp",  -- cninja
 	MAME_DIR .. "src/mame/dataeast/deco146.cpp", -- cninja
+	MAME_DIR .. "src/mame/dataeast/deco156.cpp", -- cninja
 	MAME_DIR .. "src/mame/shared/decospr.cpp",  -- cninja
 	MAME_DIR .. "src/mame/dataeast/deco_irq.cpp",  -- cninja
 	MAME_DIR .. "src/mame/dataeast/decocrpt.cpp",  -- cninja
 	MAME_DIR .. "src/hbmame/drivers/deco_mlc.cpp",  -- mlc
 	MAME_DIR .. "src/mame/dataeast/deco_mlc_v.cpp",    -- mlc
-	MAME_DIR .. "src/mame/dataeast/deco156.cpp",   -- mlc
-	MAME_DIR .. "src/mame/dataeast/deco156.cpp",   -- mlc, deco32
-	MAME_DIR .. "src/mame/dataeast/deco156_m.cpp",   -- mlc, deco32
-	MAME_DIR .. "src/hbmame/drivers/deco32.cpp",
-	MAME_DIR .. "src/mame/dataeast/deco32_v.cpp",
+	MAME_DIR .. "src/hbmame/drivers/fghthist.cpp",
+	MAME_DIR .. "src/mame/dataeast/fghthist_v.cpp",
 	MAME_DIR .. "src/mame/shared/decobsmt.cpp", -- deco32
 	MAME_DIR .. "src/mame/dataeast/deco_ace.cpp", -- deco32
 	MAME_DIR .. "src/hbmame/drivers/rohga.cpp",
@@ -600,6 +598,7 @@ files {
 	MAME_DIR .. "src/mame/namco/polepos_v.cpp",
 	MAME_DIR .. "src/hbmame/drivers/rallyx.cpp",
 	MAME_DIR .. "src/mame/namco/rallyx_v.cpp",
+	MAME_DIR .. "src/mame/namco/nl_rallyx.cpp",
 	MAME_DIR .. "src/mame/namco/namcoio.cpp",
 	MAME_DIR .. "src/mame/namco/namco06.cpp",
 	MAME_DIR .. "src/mame/namco/namco50.cpp",
@@ -800,6 +799,8 @@ files {
 	MAME_DIR .. "src/mame/sega/saturn_v.cpp",
 	MAME_DIR .. "src/mame/sega/saturn_scu.cpp",
 	MAME_DIR .. "src/mame/sega/saturn_cd_hle.cpp",
+	MAME_DIR .. "src/mame/sega/saturn_dcc.cpp",
+	MAME_DIR .. "src/mame/sega/saturn_vdp2.cpp",
 	MAME_DIR .. "src/mame/sega/segabill.cpp",
 	MAME_DIR .. "src/mame/sega/smpc.cpp",
 	MAME_DIR .. "src/hbmame/drivers/model1.cpp", -- from here, for model1

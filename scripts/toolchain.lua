@@ -56,6 +56,12 @@ function toolchain(_buildDir, _subDir)
 
 	location (_buildDir .. "projects/" .. _subDir .. "/".. _ACTION)
 
+	local androidApiLevel = 24
+	if _OPTIONS["with-android"] then
+		androidApiLevel = _OPTIONS["with-android"]
+	end
+
+	-- old code:
 	local androidPlatform = "android-24"
 	if _OPTIONS["with-android"] then
 		androidPlatform = "android-" .. _OPTIONS["with-android"]
@@ -105,13 +111,13 @@ function toolchain(_buildDir, _subDir)
 
 		if "asmjs" == _OPTIONS["gcc"] then
 
-			if not os.getenv("EMSCRIPTEN") then
-				print("Set EMSCRIPTEN enviroment variables.")
+			if not os.getenv("EMSDK") then
+				print("Set EMSDK enviroment variables.")
 			end
 
-			premake.gcc.cc   = "$(EMSCRIPTEN)/emcc"
-			premake.gcc.cxx  = "$(EMSCRIPTEN)/em++"
-			premake.gcc.ar   = "$(EMSCRIPTEN)/emar"
+			premake.gcc.cc   = "$(EMSDK)/upstream/emscripten/emcc"
+			premake.gcc.cxx  = "$(EMSDK)/upstream/emscripten/em++"
+			premake.gcc.ar   = "$(EMSDK)/upstream/emscripten/emar"
 			premake.gcc.llvm = true
 			location (_buildDir .. "projects/" .. _subDir .. "/".. _ACTION .. "-asmjs")
 		end
@@ -558,7 +564,7 @@ function toolchain(_buildDir, _subDir)
 				"$(ANDROID_NDK_LLVM)/sysroot/usr/lib/arm-linux-androideabi",
 			}
 			includedirs {
-				"$(ANDROID_NDK_ROOT)/sysroot/usr/include/arm-linux-androideabi",
+				"$(ANDROID_NDK_ROOT)/sysroot/usr/include/arm-linux-androideabi" .. androidApiLevel,
 			}
 			buildoptions {
 --				"-gcc-toolchain $(ANDROID_NDK_ARM)",
@@ -593,7 +599,7 @@ function toolchain(_buildDir, _subDir)
 			}
 			buildoptions {
 --				"-gcc-toolchain $(ANDROID_NDK_ARM64)",
-				"-target aarch64-none-linux-android",
+				"-target aarch64-none-linux-android" .. androidApiLevel,
 			}
 			linkoptions {
 --				"-gcc-toolchain $(ANDROID_NDK_ARM64)",
@@ -614,7 +620,7 @@ function toolchain(_buildDir, _subDir)
 		}
 		buildoptions {
 --			"-gcc-toolchain $(ANDROID_NDK_X86)",
-			"-target i686-none-linux-android",
+			"-target i686-none-linux-android" .. androidApiLevel,
 			"-mssse3"
 		}
 		linkoptions {
@@ -637,7 +643,7 @@ function toolchain(_buildDir, _subDir)
 		}
 		buildoptions {
 --			"-gcc-toolchain $(ANDROID_NDK_X64)",
-			"-target x86_64-none-linux-android",
+			"-target x86_64-none-linux-android" .. androidApiLevel,
 		}
 		linkoptions {
 --			"-gcc-toolchain $(ANDROID_NDK_X64)",
