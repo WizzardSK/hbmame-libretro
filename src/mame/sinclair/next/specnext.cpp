@@ -1287,7 +1287,10 @@ template <u8 Reg> u8 specnext_state::uart_reg_r()
 	if (!port_uart_io_en())
 		return 0x00;
 
-	return m_uart[m_uart_select]->reg_r(Reg);
+	if constexpr (Reg == 0b01)
+		return (m_uart_select << 6) | m_uart[m_uart_select]->reg_r(Reg);
+	else
+		return m_uart[m_uart_select]->reg_r(Reg);
 }
 
 template <u8 Reg> void specnext_state::uart_reg_w(u8 data)
@@ -3256,8 +3259,8 @@ void specnext_state::map_io(address_map &map)
 	}));
 	map(0x133b, 0x133b).rw(FUNC(specnext_state::uart_reg_r<3>), FUNC(specnext_state::uart_reg_w<3>));
 	map(0x143b, 0x143b).rw(FUNC(specnext_state::uart_reg_r<0>), FUNC(specnext_state::uart_reg_w<0>));
-	map(0x153b, 0x153b).w(FUNC(specnext_state::uart_reg_w<1>));
-	map(0x163b, 0x163b).w(FUNC(specnext_state::uart_reg_w<2>));
+	map(0x153b, 0x153b).rw(FUNC(specnext_state::uart_reg_r<1>), FUNC(specnext_state::uart_reg_w<1>));
+	map(0x163b, 0x163b).rw(FUNC(specnext_state::uart_reg_r<2>), FUNC(specnext_state::uart_reg_w<2>));
 	map(0x243b, 0x243b).lrw8(NAME([this]() { return m_nr_register; })
 		, NAME([this](u8 data) { m_nr_register = data; }));
 	map(0x253b, 0x253b).lrw8(NAME([this]() { return m_next_regs.read_byte(m_nr_register); })
@@ -3822,6 +3825,16 @@ void specnext_state::machine_reset()
 
 	if (m_nr_02_hard_reset)
 		reset_hard();
+
+	// FPGA ym2149.vhd resets R07 to 0xFF (all tone/noise disabled); ay8910_reset_ym sets 0x00.
+	for (auto &ay : m_ay)
+	{
+		ay->address_w(0x07);
+		ay->data_w(0xff);
+	}
+
+	for (auto &dac : m_dac)
+		dac->data_w(0x80);
 
 	m_spi_clock->reset();
 	m_spi_clock_cycles = 0;

@@ -6,7 +6,7 @@
 #
 ###########################################################################
 
-BARE_VERS := 0.288
+BARE_VERS := 0.289
 LONG_VERS := $(BARE_VERS).x
 
 ###########################################################################
@@ -470,7 +470,7 @@ OSD := sdl
 else ifeq ($(TARGETOS),macosx)
 OSD := sdl3
 else ifeq ($(TARGETOS),asmjs)
-OSD := sdl
+OSD := sdl3
 endif # TARGETOS
 
 endif # OSD
@@ -1084,7 +1084,7 @@ else
 FULLTARGET := $(TARGET)$(SUBTARGET_FULL)
 endif
 PROJECTDIR := $(BUILDDIR)/projects/$(OSD)/$(FULLTARGET)
-PROJECTDIR_SDL := $(BUILDDIR)/projects/sdl/$(FULLTARGET)
+PROJECTDIR_SDL := $(BUILDDIR)/projects/sdl3/$(FULLTARGET)
 PROJECTDIR_WIN := $(BUILDDIR)/projects/windows/$(FULLTARGET)
 
 .PHONY: all clean regenie generate FORCE
@@ -1216,23 +1216,22 @@ ifeq ($(OSD), retro)
 #RETRO HACK no sdl for libretro android
 $(PROJECTDIR)/$(MAKETYPE)-android-arm/Makefile: makefile $(SCRIPTS) $(GENIE)
 	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=android-arm --gcc_version=$(CLANG_VERSION) --osd=retro --targetos=android --PLATFORM=arm --NO_USE_MIDI=1 --NO_OPENGL=1 --USE_QTDEBUG=0 --DONT_USE_NETWORK=1 --NOASM=1 $(MAKETYPE)
+else
+$(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm/Makefile: makefile $(SCRIPTS) $(GENIE)
+	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-arm --gcc_version=$(CLANG_VERSION) --osd=sdl3 --targetos=android --PLATFORM=arm --NOASM=1 $(MAKETYPE)
+endif # ifdef RETRO
 
 .PHONY: android-arm
+
+ifeq ($(OSD), retro)
 android-arm: android-ndk generate $(PROJECTDIR)/$(MAKETYPE)-android-arm/Makefile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR)/$(MAKETYPE)-android-arm config=$(CONFIG) precompile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR)/$(MAKETYPE)-android-arm config=$(CONFIG)
 else
-$(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm/Makefile: makefile $(SCRIPTS) $(GENIE)
-ifndef ANDROID_NDK_ARM
-	$(error ANDROID_NDK_ARM is not set)
-endif
-	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-arm --gcc_version=$(CLANG_VERSION) --osd=sdl --targetos=android --PLATFORM=arm --NO_USE_MIDI=1 --NO_OPENGL=1 --USE_QTDEBUG=0 --NO_X11=1 --USE_TAPTUN=0 --USE_PCAP=0 --NOASM=1 $(MAKETYPE)
-
-.PHONY: android-arm
 android-arm: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm/Makefile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm config=$(CONFIG) precompile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm config=$(CONFIG)
-endif # ifdef RETRO
+endif
 
 #-------------------------------------------------
 # android-arm64
@@ -1242,29 +1241,29 @@ ifeq ($(OSD), retro)
 #RETRO HACK no sdl for libretro android
 $(PROJECTDIR)/$(MAKETYPE)-android-arm64/Makefile: makefile $(SCRIPTS) $(GENIE)
 	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=android-arm64 --gcc_version=$(CLANG_VERSION) --osd=retro --targetos=android --PLATFORM=arm64 --NO_USE_MIDI=1 --NO_OPENGL=1 --USE_QTDEBUG=0 --DONT_USE_NETWORK=1 --NOASM=1 $(MAKETYPE)
+else
+$(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm64/Makefile: makefile $(SCRIPTS) $(GENIE)
+	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-arm64 --gcc_version=$(CLANG_VERSION) --osd=sdl3 --targetos=android --PLATFORM=arm64 --NOASM=1 $(MAKETYPE)
+endif # ifdef RETRO
 
 .PHONY: android-arm64
+
+ifeq ($(OSD), retro)
 android-arm64: android-ndk generate $(PROJECTDIR)/$(MAKETYPE)-android-arm64/Makefile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR)/$(MAKETYPE)-android-arm64 config=$(CONFIG) precompile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR)/$(MAKETYPE)-android-arm64 config=$(CONFIG)
 else
-ifndef ANDROID_NDK_ARM64
-	$(error ANDROID_NDK_ARM64 is not set)
-endif
-	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-arm64 --gcc_version=$(CLANG_VERSION) --osd=sdl --targetos=android --PLATFORM=arm64 --NO_USE_MIDI=1 --NO_OPENGL=1 --USE_QTDEBUG=0 --NO_X11=1 --USE_TAPTUN=0 --USE_PCAP=0 --NOASM=1 $(MAKETYPE)
-
-.PHONY: android-arm64
 android-arm64: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm64/Makefile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm64 config=$(CONFIG) precompile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm64 config=$(CONFIG)
-endif # ifdef RETRO
+endif
 
 #-------------------------------------------------
 # android-x86
 #-------------------------------------------------
 
 $(PROJECTDIR_SDL)/$(MAKETYPE)-android-x86/Makefile: makefile $(SCRIPTS) $(GENIE)
-	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-x86 --gcc_version=$(CLANG_VERSION) --osd=sdl --targetos=android --PLATFORM=x86 $(MAKETYPE)
+	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-x86 --gcc_version=$(CLANG_VERSION) --osd=sdl3 --targetos=android --PLATFORM=x86 $(MAKETYPE)
 
 .PHONY: android-x86
 android-x86: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-x86/Makefile
@@ -1276,7 +1275,7 @@ android-x86: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-x86/Make
 #-------------------------------------------------
 
 $(PROJECTDIR_SDL)/$(MAKETYPE)-android-x64/Makefile: makefile $(SCRIPTS) $(GENIE)
-	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-x64 --gcc_version=$(CLANG_VERSION) --osd=sdl --targetos=android --PLATFORM=x64 $(MAKETYPE)
+	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-x64 --gcc_version=$(CLANG_VERSION) --osd=sdl3 --targetos=android --PLATFORM=x64 $(MAKETYPE)
 
 .PHONY: android-x64
 android-x64: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-x64/Makefile
@@ -1288,15 +1287,15 @@ android-x64: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-x64/Make
 #-------------------------------------------------
 
 $(PROJECTDIR)/$(MAKETYPE)-asmjs/Makefile: makefile $(SCRIPTS) $(GENIE)
-ifndef EMSCRIPTEN
-	$(error EMSCRIPTEN is not set)
+ifndef EMSDK
+	$(error EMSDK is not set)
 endif
 	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=asmjs --gcc_version=$(CLANG_VERSION) $(MAKETYPE)
 
 .PHONY: asmjs
 asmjs: generate $(PROJECTDIR)/$(MAKETYPE)-asmjs/Makefile
-ifndef EMSCRIPTEN
-	$(error EMSCRIPTEN is not set)
+ifndef EMSDK
+	$(error EMSDK is not set)
 endif
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR)/$(MAKETYPE)-asmjs config=$(CONFIG) precompile
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR)/$(MAKETYPE)-asmjs config=$(CONFIG)
