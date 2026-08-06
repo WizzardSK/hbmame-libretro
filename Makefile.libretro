@@ -282,7 +282,7 @@ ifneq (,$(or $(findstring webos,$(CROSS_COMPILE)),$(findstring starfish,$(CROSS_
 	endif
 	PLATFLAGS += OVERRIDE_CC=$(TOOLCHAIN_PREFIX)gcc OVERRIDE_CXX=$(TOOLCHAIN_PREFIX)g++
 	PLATFLAGS += OVERRIDE_LD=$(TOOLCHAIN_PREFIX)ld OVERRIDE_AR=$(TOOLCHAIN_PREFIX)gcc-ar
-	PLATFLAGS += CROSS_BUILD=1 NO_X11=1 LTO=1
+	PLATFLAGS += CROSS_BUILD=1 NO_X11=1
 	ifneq ($(shell command -v $(TOOLCHAIN_PREFIX)ld.gold 2>/dev/null),)
 		BUILDFLAGS += LDOPTS=-fuse-ld=gold
 		BUILDFLAGS += LDOPTS+=-Wl,--long-plt
