@@ -26,6 +26,7 @@
 #include "modules/font/font_module.h"
 
 #include "libretro_shared.h"
+#include "libretro_vfs.h"
 
 #define UINT16 uint16_t
 #define INT16 int16_t
@@ -680,6 +681,18 @@ static int execute_game(char *path)
 
 static int loadcmdfile(char *argv)
 {
+   std::string contents;
+
+   if (retro_vfs_interface_ptr && libretro_vfs_read_whole_file(argv, contents))
+   {
+      size_t eol = contents.find_first_of("\r\n");
+      if (eol != std::string::npos)
+         contents.erase(eol);
+
+      snprintf(CMDFILE, sizeof(CMDFILE), "%s", contents.c_str());
+      return 1;
+   }
+
    std::ifstream cmdfile(argv);
    std::string cmdstr;
 
