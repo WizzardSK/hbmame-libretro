@@ -5,6 +5,7 @@
   variables:
     MAKEFILE: Makefile.libretro
     CORENAME: hbmame
+    REGENIE: 0
 
 # Core definitions
 include:
@@ -21,13 +22,17 @@ include:
   - project: 'libretro-infrastructure/ci-templates'
     file: '/linux-x64.yml'
 
+  # Linux ARM 64-bit
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/linux-aarch64.yml'
+
   # Linux 32-bit
   #- project: 'libretro-infrastructure/ci-templates'
   #  file: '/linux-i686.yml'
 
   # MacOS 64-bit
-  #- project: 'libretro-infrastructure/ci-templates'
-  #  file: '/osx-x64.yml'
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/osx-x64.yml'
 
   # MacOS ARM 64-bit
   - project: 'libretro-infrastructure/ci-templates'
@@ -93,7 +98,7 @@ libretro-build-windows-x64:
   extends:
     - .libretro-windows-x64-mingw-make-default
     - .core-defs
-  image: $CI_SERVER_HOST:5050/libretro-infrastructure/libretro-build-mxe-win-cross-cores:mingw12
+  image: $CI_SERVER_HOST:5050/libretro-infrastructure/libretro-build-mxe-win-cross-cores:gcc14
   cache:
     <<: *global_cache
   only:
@@ -127,6 +132,21 @@ libretro-build-linux-x64:
     - master
     - /^libretro/mame.*$/
 
+# Linux ARM 64-bit
+libretro-build-linux-aarch64:
+  extends:
+    - .libretro-linux-aarch64-make-default
+    - .core-defs
+  variables:
+    OVERRIDE_CC: /usr/bin/gcc-12
+    OVERRIDE_CXX: /usr/bin/g++-12
+    CXXFLAGS: -Wno-deprecated-declarations # Deprecation warnings aren't helpful on the libretro Gitlab
+  cache:
+    <<: *global_cache
+  only:
+    - master
+    - /^libretro/mame.*$/
+
 # Linux 32-bit
 #libretro-build-linux-i686:
 #  extends:
@@ -144,17 +164,17 @@ libretro-build-linux-x64:
 #    - /^libretro/mame.*$/
     
 # MacOS 64-bit
-#libretro-build-osx-x64:
-#  extends:
-#    - .libretro-osx-x64-make-default
-#    - .core-defs
-#  variables:
-#    MACOSX_DEPLOYMENT_TARGET: "10.14"
-#  cache:
-#    <<: *global_cache
-#  only:
-#    - master
-#    - /^libretro/mame.*$/
+libretro-build-osx-x64:
+  extends:
+    - .libretro-osx-x64-make-default
+    - .core-defs
+  variables:
+    MACOSX_DEPLOYMENT_TARGET: "10.14"
+  cache:
+    <<: *global_cache
+  only:
+    - master
+    - /^libretro/mame.*$/
 
 # MacOS ARM 64-bit
 libretro-build-osx-arm64:
@@ -192,7 +212,7 @@ android-arm64-v8a:
     - .core-defs
   variables:
     TARGET: hbmame
-    ANDROID_NDK_NEXT: 27.3.13750724
+    ANDROID_NDK_NEXT: 29.0.14206865
     WITH_ANDROID: 30
   cache:
     <<: *global_cache
