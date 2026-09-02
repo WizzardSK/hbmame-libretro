@@ -21,7 +21,7 @@ jobs:
           make -f Makefile.libretro platform=android-x86_64 TARGET=hbmame REGENIE=0 \
             ANDROID_NDK_NEXT=29.0.14206865 ${{ matrix.extra }} -j$(nproc) > build.log 2>&1 || {
             echo "=== FAILED ==="
-            grep -nE "genie |invalid option|error:|Error [0-9]|does not exist" build.log | head -25
+            sed -n "340,380p" build.log
             exit 1
           }
           ls -la *_libretro_android.so
