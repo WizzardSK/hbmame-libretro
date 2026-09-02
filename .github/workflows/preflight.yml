@@ -21,7 +21,7 @@ jobs:
           make -f Makefile.libretro platform=android-x86_64 TARGET=hbmame REGENIE=0 \
             ANDROID_NDK_NEXT=29.0.14206865 ${{ matrix.extra }} -j$(nproc) > build.log 2>&1 || {
             echo "=== FAILED ==="
-            sed -n "340,380p" build.log
+            grep -vE "^(python3|Compressing|Compiling|Linking|Archiving|clang|g\+\+|gcc|ar )" build.log | tail -40
             exit 1
           }
           ls -la *_libretro_android.so
