@@ -1,27 +1,28 @@
 name: preflight
 on: [push, workflow_dispatch]
 jobs:
-  osx-x64:
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@v4
-      - name: build for macOS x64
-        run: |
-          make -f Makefile.libretro platform=osx TARGET=hbmame REGENIE=0 -j$(sysctl -n hw.ncpu) > build.log 2>&1 || { echo "=== FAILED ==="; tail -80 build.log; exit 1; }
-          tail -5 build.log
-          ls -la *_libretro.dylib
-          lipo -info *_libretro.dylib
   android-x86_64:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: as-the-job-runs-it, extra: "" }
+          - { name: with-osd-retro,     extra: "OSD=retro" }
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: build for Android x86_64
+      - name: put the NDK where the Makefile looks for it
         run: |
-          export ANDROID_NDK_ROOT="$ANDROID_NDK_LATEST_HOME"
-          export ANDROID_NDK_LLVM="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64"
-          export ANDROID_NDK_CLANG="$ANDROID_NDK_LLVM"
-          export ANDROID_NDK_X64="$ANDROID_NDK_LLVM"
-          make -f Makefile.libretro platform=android-x86_64 TARGET=hbmame REGENIE=0 -j$(nproc) > build.log 2>&1 || { echo "=== FAILED ==="; tail -80 build.log; exit 1; }
-          tail -5 build.log
+          sudo mkdir -p /android-sdk-linux/ndk
+          sudo ln -s "$ANDROID_NDK_LATEST_HOME" /android-sdk-linux/ndk/29.0.14206865
+          ls -la /android-sdk-linux/ndk/
+      - name: build (${{ matrix.name }})
+        run: |
+          make -f Makefile.libretro platform=android-x86_64 TARGET=hbmame REGENIE=0 \
+            ANDROID_NDK_NEXT=29.0.14206865 ${{ matrix.extra }} -j$(nproc) > build.log 2>&1 || {
+            echo "=== FAILED ==="
+            grep -nE "genie |invalid option|error:|Error [0-9]|does not exist" build.log | head -25
+            exit 1
+          }
           ls -la *_libretro_android.so
           file *_libretro_android.so
