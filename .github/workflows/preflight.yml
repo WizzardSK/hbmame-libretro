@@ -1,0 +1,27 @@
+name: preflight
+on: [push, workflow_dispatch]
+jobs:
+  osx-x64:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - name: build for macOS x64
+        run: |
+          make -f Makefile.libretro platform=osx TARGET=hbmame REGENIE=0 -j$(sysctl -n hw.ncpu) > build.log 2>&1 || { echo "=== FAILED ==="; tail -80 build.log; exit 1; }
+          tail -5 build.log
+          ls -la *_libretro.dylib
+          lipo -info *_libretro.dylib
+  android-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build for Android x86_64
+        run: |
+          export ANDROID_NDK_ROOT="$ANDROID_NDK_LATEST_HOME"
+          export ANDROID_NDK_LLVM="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+          export ANDROID_NDK_CLANG="$ANDROID_NDK_LLVM"
+          export ANDROID_NDK_X64="$ANDROID_NDK_LLVM"
+          make -f Makefile.libretro platform=android-x86_64 TARGET=hbmame REGENIE=0 -j$(nproc) > build.log 2>&1 || { echo "=== FAILED ==="; tail -80 build.log; exit 1; }
+          tail -5 build.log
+          ls -la *_libretro_android.so
+          file *_libretro_android.so
