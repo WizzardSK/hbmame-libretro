@@ -31,8 +31,8 @@ include:
   #  file: '/linux-i686.yml'
 
   # MacOS 64-bit
-  #- project: 'libretro-infrastructure/ci-templates'
-  #  file: '/osx-x64.yml'
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/osx-x64.yml'
 
   # MacOS ARM 64-bit
   - project: 'libretro-infrastructure/ci-templates'
@@ -164,17 +164,17 @@ libretro-build-linux-aarch64:
 #    - /^libretro/mame.*$/
     
 # MacOS 64-bit
-#libretro-build-osx-x64:
-#  extends:
-#    - .libretro-osx-x64-make-default
-#    - .core-defs
-#  variables:
-#    MACOSX_DEPLOYMENT_TARGET: "10.14"
-#  cache:
-#    <<: *global_cache
-#  only:
-#    - master
-#    - /^libretro/mame.*$/
+libretro-build-osx-x64:
+  extends:
+    - .libretro-osx-x64-make-default
+    - .core-defs
+  variables:
+    MACOSX_DEPLOYMENT_TARGET: "10.14"
+  cache:
+    <<: *global_cache
+  only:
+    - master
+    - /^libretro/mame.*$/
 
 # MacOS ARM 64-bit
 libretro-build-osx-arm64:
