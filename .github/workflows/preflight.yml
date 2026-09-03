@@ -78,20 +78,21 @@ jobs:
           sudo apt update
           sudo apt install -y mingw-w64 gcc-mingw-w64-i686-posix g++-mingw-w64-i686-posix
 
+      # ARCH has to arrive as an environment variable, never on the make
+      # command line: Makefile.libretro clears it with ARCH := (GENie uses
+      # the name for something else) and a command-line assignment wins over
+      # that, so "x86" ends up on the host gcc link line.
       - name: Build
         shell: bash
+        env:
+          platform: win32
+          MSYSTEM: MINGW32
+          ARCH: x86
+          CC: i686-w64-mingw32-gcc-posix
+          CXX: i686-w64-mingw32-g++-posix
+          AR: i686-w64-mingw32-ar
         run: |
-          export CC=i686-w64-mingw32-gcc-posix
-          export CXX=i686-w64-mingw32-g++-posix
-          export AR=i686-w64-mingw32-ar
-
-          make -f Makefile.libretro \
-            platform=win \
-            MSYSTEM=MINGW32 \
-            MINGW32=1 \
-            ARCH=x86 \
-            TARGET=hbmame \
-            -j$(nproc)
+          make -f Makefile.libretro TARGET=hbmame -j$(nproc)
 
       - name: Show what came out
         if: always()
@@ -113,12 +114,13 @@ jobs:
           sudo apt-get install -y build-essential gcc-multilib g++-multilib python3
 
       - name: Build
+        env:
+          platform: unix
+          ARCH: x86
+          CC: gcc
+          CXX: g++
         run: |
-          make -f Makefile.libretro \
-            platform=unix \
-            ARCH=x86 \
-            TARGET=hbmame \
-            -j$(nproc)
+          make -f Makefile.libretro TARGET=hbmame -j$(nproc)
 
       - name: Show what came out
         if: always()
