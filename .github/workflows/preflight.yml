@@ -1,0 +1,126 @@
+# Fork-only preflight for the jobs this branch turns on in .gitlab-ci.yml.
+# Same shape as the repo's own CI (Libretro - Android ARM64) workflow, one job
+# per target the buildbot has never built before.
+name: preflight (32-bit + Android x86)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - preflight-**
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: android-x86
+            platform: android-x86
+            triple: i686-linux-android
+            ndk_var: ANDROID_NDK_X86
+          - name: android-x86_64
+            platform: android-x86_64
+            triple: x86_64-linux-android
+            ndk_var: ANDROID_NDK_X64
+    name: ${{ matrix.name }}
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-25-jdk wget unzip cmake ninja-build
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r29
+
+      - uses: actions/checkout@v7
+
+      - name: Build
+        shell: bash
+        env:
+          PLATFORM_ARG: ${{ matrix.platform }}
+          TRIPLE: ${{ matrix.triple }}
+          NDK_VAR: ${{ matrix.ndk_var }}
+        run: |
+          export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
+          export API=30
+          export ANDROID_NDK_LLVM="$TOOLCHAIN"
+          export "$NDK_VAR"="$TOOLCHAIN/bin/${TRIPLE}${API}"
+
+          make -f Makefile.libretro \
+            platform="$PLATFORM_ARG" \
+            OVERRIDE_CC="$TOOLCHAIN/bin/${TRIPLE}${API}-clang" \
+            OVERRIDE_CXX="$TOOLCHAIN/bin/${TRIPLE}${API}-clang++" \
+            OVERRIDE_AR="$TOOLCHAIN/bin/llvm-ar" \
+            WITH_ANDROID="30" \
+            TARGET=hbmame \
+            CROSS_BUILD=1 \
+            -j$(nproc)
+
+      - name: Show what came out
+        if: always()
+        run: |
+          ls -la *_libretro_android.so 2>/dev/null || true
+          find . -maxdepth 2 -name '*_libretro*.so' -exec file {} \; 2>/dev/null || true
+
+  windows-i686:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install MinGW
+        run: |
+          sudo apt update
+          sudo apt install -y mingw-w64 gcc-mingw-w64-i686-posix g++-mingw-w64-i686-posix
+
+      - name: Build
+        shell: bash
+        run: |
+          export CC=i686-w64-mingw32-gcc-posix
+          export CXX=i686-w64-mingw32-g++-posix
+          export AR=i686-w64-mingw32-ar
+
+          make -f Makefile.libretro \
+            platform=win \
+            MSYSTEM=MINGW32 \
+            MINGW32=1 \
+            ARCH=x86 \
+            TARGET=hbmame \
+            -j$(nproc)
+
+      - name: Show what came out
+        if: always()
+        run: |
+          find . -maxdepth 2 -name '*_libretro.dll' -exec file {} \; 2>/dev/null || true
+
+  linux-i686:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential gcc-multilib g++-multilib python3 \
+            libgl1-mesa-dev:i386 libglu1-mesa-dev:i386 || \
+          sudo apt-get install -y build-essential gcc-multilib g++-multilib python3
+
+      - name: Build
+        run: |
+          make -f Makefile.libretro \
+            platform=unix \
+            ARCH=x86 \
+            TARGET=hbmame \
+            -j$(nproc)
+
+      - name: Show what came out
+        if: always()
+        run: |
+          find . -maxdepth 2 -name '*_libretro.so' -exec file {} \; 2>/dev/null || true
